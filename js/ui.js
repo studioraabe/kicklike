@@ -36,6 +36,18 @@ const UI = {
     UI.showScreen('screen-draft');
   },
 
+  // Feature 1: Build opponent tell string from special + traits
+  _buildOppTell(opp) {
+    const parts = [];
+    const locTells = I18N.locale().data?.oppTells || {};
+    if (opp.special?.id && locTells[opp.special.id]) parts.push(locTells[opp.special.id]);
+    for (const traitId of (opp.traits || [])) {
+      if (locTells['trait_' + traitId]) parts.push(locTells['trait_' + traitId]);
+    }
+    if (opp.isBoss) parts.push(I18N.t('ui.labels.bossTell'));
+    return parts.length ? parts[0] : null;
+  },
+
   renderHub() {
     $('#hub-match-num').textContent = state.matchNumber + 1;
     $('#hub-wins').textContent = state.wins;
@@ -119,6 +131,25 @@ const UI = {
       ])
     ];
     oppBox.appendChild(el('div', { class:'matchup-meta' }, oppMeta));
+
+    // Feature 1: Opponent tell
+    const tell = UI._buildOppTell(opp);
+    if (tell) {
+      oppBox.appendChild(el('div', {
+        style: {
+          background: 'rgba(255,210,58,0.10)',
+          border: '1px solid rgba(255,210,58,0.35)',
+          padding: '5px 8px',
+          margin: '6px 0',
+          fontSize: '10px',
+          color: 'var(--gold)',
+          letterSpacing: '0.04em',
+          fontFamily: 'var(--font-display)',
+          textTransform: 'uppercase'
+        }
+      }, ['⚠ ' + tell]));
+    }
+
     oppBox.appendChild(UI.renderComparedStatBars(opp.stats, teamStats, {}, { compact:true }));
     const sqBox = $('#hub-squad');
     sqBox.innerHTML = '';
@@ -236,14 +267,12 @@ const UI = {
         else if (v < other) cmpClass = 'lower';
         else cmpClass = 'equal';
       }
-      // SVG trend arrows
       const trendVal = (highlight || {})[k] || 0;
       let trendEl = null;
       if (trendVal !== 0) {
         const _isUp = trendVal > 0;
         const _isDbl = Math.abs(trendVal) >= 2;
         const _col = _isUp ? 'var(--good)' : 'var(--danger)';
-        // Style C: vertical line + open chevron tip. Double = two lines side by side.
         let _svg;
         if (!_isDbl) {
           _svg = _isUp
@@ -388,7 +417,6 @@ const UI = {
   },
 
   appendLog(msg, cls='') {
-    // Screen effects on key events
     if (window.FX) {
       if (cls === 'goal-me') window.FX.goalMe();
       else if (cls === 'goal-opp') window.FX.goalOpp();
@@ -527,7 +555,6 @@ const UI = {
   },
 
   renderResult(result, scoreMe, scoreOpp, reward, match) {
-    // Screen effects
     if (window.FX) {
       if (result === 'win') window.FX.winResult();
       else if (result === 'loss') window.FX.lossResult();
@@ -539,7 +566,10 @@ const UI = {
     content.appendChild(el('div', { class:'result-big', style:{ paddingBottom:'16px' } }, [
       el('h1', { class: cls }, [title]),
       el('div', { class:'big-score' }, [`${scoreMe} : ${scoreOpp}`]),
-      reward ? el('div', { class:'reward' }, [reward]) : null
+      reward ? el('div', { class:'reward' }, [reward]) : null,
+      // Feature 5: show sacrifice consequence
+      match?._sacrificeVictim ? el('div', { style:{ color:'var(--accent-2)', fontFamily:'var(--font-display)', fontSize:'11px', marginTop:'8px' } },
+        [I18N.t('ui.result.sacrificeNote', { name: match._sacrificeVictim.name })]) : null
     ]));
     if (match) {
       const s = match.stats;

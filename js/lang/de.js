@@ -46,7 +46,8 @@ I18N.registerLocale('de', {
       draw: 'UNENTSCHIEDEN',
       continue: '▶ Weiter',
       analysis: 'Match-Bilanz',
-      players: 'Spieler-Bilanz'
+      players: 'Spieler-Bilanz',
+      sacrificeNote: '⚠ {name} hat alles gegeben — dauerhafter Stat-Verlust.'
     },
     gameover: { title: 'GAME OVER' },
     victory: { survived: '15 matches survived' },
@@ -67,7 +68,8 @@ I18N.registerLocale('de', {
       outcomeSurvivor: 'Klasse gehalten',
       outcomeFired: 'Entlassen',
       compactTeamMeta: '{lineup} + {bench}B',
-      matchLabel: 'Match {num}: {me}:{opp} vs {name}'
+      matchLabel: 'Match {num}: {me}:{opp} vs {name}',
+      bossTell: 'Bosskampf — alle Stats erhöht, kein Fehler erlaubt'
     },
     statsPanel: {
       possession: 'Ballbesitz',
@@ -126,6 +128,13 @@ I18N.registerLocale('de', {
       chainAttack: '  ⚡ Chain-Angriff!',
       luckyDouble: '  🍀 {name} hat Glück — Doppelangriff!',
       counter: '  🔁 Konter!',
+      activeBuffs: '  📊 Aktive Buffs: {buffs}',
+      synergyBonus: '  🔗 Synergie: {name} ({trait}) +{bonus}% Angriff',
+      tacticPressingTrigger: '  🏃 Pressing wirkt — Ballgewinn + Konter!',
+      tacticCounterTrigger: '  🔁 Konter-Taktik greift — nächster Aufbau verstärkt!',
+      tacticRallyTrigger: '  💪 Mobilisierung zündet — +{bonus} Offense durch Rückstand!',
+      tacticHighPressTrigger: '  🏃 Hohes Pressing — Ballgewinn!',
+      tacticFinalPressTrigger: '  ⚡ Schlusspressing — Konter eingeleitet!',
       laserPass: '🎯 {name} LASER-PASS — Konter eingeleitet!',
       bulldoze: '🛡 {name} BULLDOZE — Ballgewinn + Konter!',
       hardTackle: '🥾 {name} HARTES TACKLING — Konter!',
@@ -241,7 +250,7 @@ I18N.registerLocale('de', {
       catman: 'Katze',
       enforcer: 'Enforcer',
       bulldozer: 'Bulldozer',
-      captain_cool: 'Käpt’n',
+      captain_cool: 'Käptn',
       shark: 'Hai',
       terminator: 'Terminator',
       whirlwind: 'Wirbelwind',
@@ -292,6 +301,55 @@ I18N.registerLocale('de', {
         cerebral: 'Taktiker',
         stoic: 'Eisenhart',
         balanced: 'Ausgewogen'
+      }
+    },
+    oppTells: {
+      offensive: 'Sehr offensiv — Deckung priorisieren',
+      defensive: 'Mauert komplett — braucht Schnelligkeit oder Vision',
+      pacey: 'Extrem schnell — Konter-Gefahr auf beiden Seiten',
+      cerebral: 'Taktisch ausgefeilt — Ballbesitz-Spiel gefährlich',
+      stoic: 'Unerschütterlich — Nerven entscheiden im Finish',
+      balanced: 'Ausgewogen — keine klare Schwäche erkennbar',
+      trait_sturm: 'Hochgefährlich vor dem Tor — Schüsse sehr präzise',
+      trait_riegel: 'Abschlüsse werden aktiv konterkariert — Paraden leiden',
+      trait_konter_opp: 'Lauert auf Fehler — bei Ballverlust sofort Konter',
+      trait_presser_opp: 'Aggressives Pressing — Aufbau unter Dauerdruck',
+      trait_clutch_opp: 'Stärker in der Schlussphase — in Runden 5-6 besonders gefährlich',
+      trait_lucky: 'Unberechenbares Glück — rechne mit unerwarteten Angriffen',
+      trait_ironwall: 'Früh sehr defensiv — Runden 1-2 schwer zu knacken',
+      trait_sniper: 'Präzisionsschütze — jeder Schuss ein Risiko'
+    },
+    tactics: {
+      kickoff: {
+        aggressive: { name: 'Aggressiver Start', desc: '+6 Offense für Runden 1-3, -4 Defense.' },
+        defensive: { name: 'Defensiver Start', desc: '+6 Defense für Runden 1-3, -4 Offense.' },
+        balanced: { name: 'Ausgewogen', desc: '+3 auf alle Stats für Runden 1-3.' },
+        tempo: { name: 'Tempo-Spiel', desc: '+8 Tempo für Runden 1-3, -3 Composure.' },
+        pressing: { name: 'Pressing', desc: '+5 Defense und +4 Tempo für Runden 1-3. Chance auf Konter.' },
+        possession: { name: 'Ballbesitz', desc: '+6 Vision und +4 Composure für Runden 1-3.' },
+        counter: { name: 'Konter-Lauer', desc: '+8 Defense, +4 Tempo für Runden 1-3, -2 Off. Aufbau-Bonus.' },
+        flank_play: { name: 'Flügelspiel', desc: '+5 Tempo und +5 Offense für Runden 1-3.' }
+      },
+      halftime: {
+        push: { name: 'Risiko', desc: '+8 Offense für Runden 4-6, -6 Defense.' },
+        stabilize: { name: 'Stabilisieren', desc: '+6 Defense und +4 Composure für Runden 4-6.' },
+        shift: { name: 'Umstellen', desc: 'Ein Spieler erhält permanent +10 auf Fokusstat.' },
+        rally: { name: 'Mobilisieren', desc: 'Pro kassiertem Tor: +3 Off; pro eigenem: +3 Def. Bei Rückstand stärker.' },
+        reset: { name: 'Neu sortieren', desc: '+5 auf alle Stats für Runden 4-6.' },
+        counter_h: { name: 'Auf Konter', desc: '+10 Tempo und +5 Defense für Runden 4-6. Aufbau-Bonus.' },
+        high_press: { name: 'Hohes Pressing', desc: '+8 Defense für Runden 4-6, -3 Composure. Chance auf Ballgewinn.' },
+        vision_play: { name: 'Spiel öffnen', desc: '+8 Vision und +4 Offense für Runden 4-6.' }
+      },
+      final: {
+        all_in: { name: 'All-In', desc: 'Letzte Runde: +15 Offense, -15 Defense. Bei Rückstand noch stärker.' },
+        park_bus: { name: 'Bus parken', desc: 'Letzte Runde: +15 Defense, -10 Offense. Bei Führung noch stärker.' },
+        hero_ball: { name: 'Held des Tages', desc: 'Spieler in Topform erhält permanent +20 Fokus-Stat.' },
+        keep_cool: { name: 'Cool bleiben', desc: 'Letzte Runde: +8 Composure und +5 Vision.' },
+        final_press: { name: 'Schlusspressing', desc: 'Letzte Runde: +10 Tempo und +8 Defense, -5 Off. Hohe Konter-Chance.' },
+        long_ball: { name: 'Lange Bälle', desc: 'Letzte Runde: +12 Offense, -5 Vision.' },
+        midfield: { name: 'Mittelfeldkontrolle', desc: 'Letzte Runde: +8 Vision, +6 Tempo, +6 Composure.' },
+        sneaky: { name: 'Hinterhalt', desc: 'Letzte Runde: +12 Defense, +8 Tempo, -8 Offense.' },
+        sacrifice: { name: 'Opferlamm', desc: 'Ein Spieler verliert dauerhaft 15 Fokus-Stat. Team: +25 Offense jetzt.' }
       }
     },
     teamNamePools: {

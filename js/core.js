@@ -192,6 +192,79 @@ function teamStrengthLabel(teamStats) {
   return labels[entries[0][0]] || I18N.t('ui.labels.standard');
 }
 
+// ─── Feature 4: Synergy Bonus ───────────────────────────────────────────────
+function computeSynergyBonus(squad, activeTacticTags) {
+  if (!activeTacticTags || !activeTacticTags.length) return { bonus: 0, logLines: [] };
+  const tagSet = new Set(activeTacticTags);
+  let bonus = 0;
+  const logLines = [];
+  for (const p of squad) {
+    for (const traitId of (p.traits || [])) {
+      const traitDef = DATA.traits[traitId];
+      if (!traitDef) continue;
+      // Check tag overlap via tactic pools
+      const allTactics = [...DATA.kickoffTactics, ...DATA.halftimeOptions, ...DATA.finalOptions];
+      for (const tactic of allTactics) {
+        if (!(tactic.tags || []).some(t => tagSet.has(t))) continue;
+        // trait and tactic share a tag — synergy found
+        const overlap = (tactic.tags || []).filter(t => tagSet.has(t)).length;
+        if (overlap > 0) {
+          bonus += overlap * 0.03;
+          logLines.push(I18N.t('ui.log.synergyBonus', { name: p.name, trait: traitDef.name, bonus: Math.round(overlap * 3) }));
+          break; // only one synergy per player per call
+        }
+      }
+    }
+  }
+  bonus = Math.min(bonus, 0.20); // cap at 20%
+  return { bonus, logLines };
+}
+
+// ─── Feature 3: Tactic Trigger Handlers ─────────────────────────────────────
+const TACTIC_HANDLERS = {
+  pressing_trigger: async (match, squad, onEvent) => {
+    if (rand() < 0.25) {
+      match.counterPending = true;
+      await log(onEvent, 'trigger', I18N.t('ui.log.tacticPressingTrigger'));
+    }
+  },
+  counter_trigger: async (match, squad, onEvent) => {
+    if (rand() < 0.30) {
+      match.nextBuildupBonus = (match.nextBuildupBonus || 0) + 0.12;
+      await log(onEvent, 'trigger', I18N.t('ui.log.tacticCounterTrigger'));
+    }
+  },
+  rally_trigger: async (match, squad, onEvent) => {
+    const deficit = match.scoreOpp - match.scoreMe;
+    if (deficit > 0) {
+      const bonus = deficit * 0.05;
+      match.teamBuffs.offense = (match.teamBuffs.offense || 0) + Math.round(deficit * 3);
+      await log(onEvent, 'trigger', I18N.t('ui.log.tacticRallyTrigger', { bonus: Math.round(deficit * 3) }));
+    }
+  },
+  high_press_trigger: async (match, squad, onEvent) => {
+    if (rand() < 0.20) {
+      match.counterPending = true;
+      await log(onEvent, 'trigger', I18N.t('ui.log.tacticHighPressTrigger'));
+    }
+  },
+  final_press_trigger: async (match, squad, onEvent) => {
+    if (rand() < 0.35) {
+      match.counterPending = true;
+      await log(onEvent, 'trigger', I18N.t('ui.log.tacticFinalPressTrigger'));
+    }
+  },
+  sacrifice_trigger: async (match, squad, onEvent) => {
+    // handled in applyTactic directly (permanent stat change)
+  }
+};
+
+async function dispatchTacticTrigger(triggerName, match, squad, onEvent) {
+  if (!triggerName) return;
+  const handler = TACTIC_HANDLERS[triggerName];
+  if (handler) await handler(match, squad, onEvent);
+}
+
 const TRIGGER_HANDLERS = {
   "titan_stand": (p, ctx) => {
     if (ctx.event === 'oppShot' && Math.abs(ctx.match.scoreMe - ctx.match.scoreOpp) <= 1) {
@@ -771,6 +844,7 @@ async function startMatch(squad, opp, onEvent) {
     halftimeAction: null,
     finalAction: null,
     puzzleBonus: 0,
+    activeTacticTags: [],
     stats: {
       myShots: 0, myShotsOnTarget: 0, myBuildups: 0, myBuildupsSuccess: 0,
       oppShots: 0, oppShotsOnTarget: 0, oppBuildups: 0, oppBuildupsSuccess: 0,
@@ -814,6 +888,16 @@ async function startMatch(squad, opp, onEvent) {
     match.round = r;
     match.triggersThisRound = 0;
     recomputeTeamBuffs(match);
+
+    // Feature 2: Log active buffs when significant
+    if (r > 1) {
+      const buffEntries = Object.entries(match.teamBuffs).filter(([k,v]) => Math.abs(v) >= 5 && ['offense','defense','tempo','vision','composure'].includes(k));
+      if (buffEntries.length > 0) {
+        const buffStr = buffEntries.map(([k,v]) => `${k.substring(0,3).toUpperCase()} ${v>0?'+':''}${v}`).join(' ');
+        await log(onEvent, 'decision', I18N.t('ui.log.activeBuffs', { buffs: buffStr }));
+      }
+    }
+
     const lateCtx = applyOppTraitEffect(match.opp, match, 'lateGameBoost', {});
     const earlyCtx = applyOppTraitEffect(match.opp, match, 'earlyDefense', {});
     match.opp._roundBuffs = {
@@ -829,23 +913,29 @@ async function startMatch(squad, opp, onEvent) {
       const tactic = await onEvent({ type:'interrupt', phase:'kickoff', match });
       match.lastTactic = tactic;
       applyTactic(match, tactic, 'kickoff');
+      match.activeTacticTags = [...(tactic.tags || [])];
       await log(onEvent, 'decision', I18N.t('ui.log.kickoffChoice', { name: tactic.name }));
+      await dispatchTacticTrigger(tactic.tacticTrigger, match, squad, onEvent);
     }
     if (r === 4) {
       const halftime = await onEvent({ type:'interrupt', phase:'halftime', match });
       match.halftimeAction = halftime;
       applyTactic(match, halftime, 'halftime');
+      for (const tag of (halftime.tags || [])) { if (!match.activeTacticTags.includes(tag)) match.activeTacticTags.push(tag); }
       await log(onEvent, 'round-header', I18N.t('ui.log.halftimeHeader'));
       await log(onEvent, 'decision', I18N.t('ui.log.halftimeChoice', { name: halftime.name }));
       for (const p of squad) { delete p._speedBurstUsed; }
       dispatchTrigger('halftime', { match });
       await flushTriggerLog(match, onEvent);
+      await dispatchTacticTrigger(halftime.tacticTrigger, match, squad, onEvent);
     }
     if (r === 6) {
       const final = await onEvent({ type:'interrupt', phase:'final', match });
       match.finalAction = final;
-      applyTactic(match, final, 'final');
+      applyTactic(match, final, 'final', squad, onEvent);
+      for (const tag of (final.tags || [])) { if (!match.activeTacticTags.includes(tag)) match.activeTacticTags.push(tag); }
       await log(onEvent, 'decision', I18N.t('ui.log.finalChoice', { name: final.name }));
+      await dispatchTacticTrigger(final.tacticTrigger, match, squad, onEvent);
     }
 
     await log(onEvent, 'round-header', I18N.t('ui.log.roundHeader', { round: r }));
@@ -967,7 +1057,7 @@ async function startMatch(squad, opp, onEvent) {
   return { scoreMe: match.scoreMe, scoreOpp: match.scoreOpp, result, match };
 }
 
-function applyTactic(match, tactic, phase) {
+function applyTactic(match, tactic, phase, squad, onEvent) {
   if (!tactic) return;
   const RANGES = {
     kickoff:  [1, 3],
@@ -1004,20 +1094,35 @@ function applyTactic(match, tactic, phase) {
     if (tactic.id === 'vision_play') { layer.stats = { vision: 8, offense: 4 }; }
   }
   if (phase === 'final') {
-    if (tactic.id === 'all_in')      { layer.stats = { offense: 15, defense: -15 }; }
-    if (tactic.id === 'park_bus')    { layer.stats = { defense: 15, offense: -10 }; }
-    if (tactic.id === 'hero_ball')   {
-      const hero = pick(match.squad);
+    // Feature 5: condition-based scaling
+    if (tactic.condition) {
+      layer.stats = tactic.condition(match);
+    } else {
+      if (tactic.id === 'keep_cool')   { layer.stats = { composure: 8, vision: 5 }; }
+      if (tactic.id === 'long_ball')   { layer.stats = { offense: 12, vision: -5 }; }
+      if (tactic.id === 'midfield')    { layer.stats = { vision: 8, tempo: 6, composure: 6 }; }
+      if (tactic.id === 'sneaky')      { layer.stats = { defense: 12, tempo: 8, offense: -8 }; }
+      if (tactic.id === 'final_press') { layer.stats = { tempo: 10, defense: 8, offense: -5 }; }
+    }
+    // Feature 5: hero_ball picks player with highest form
+    if (tactic.id === 'hero_ball') {
+      const heroSquad = match.squad || (squad || []);
+      const hero = heroSquad.slice().sort((a,b) => (b.form||0) - (a.form||0))[0] || pick(heroSquad);
       const focus = DATA.roles.find(r => r.id === hero.role)?.focusStat || 'offense';
       hero.stats[focus] = clamp(hero.stats[focus] + 20, 20, 99);
       match._hero = hero;
       return;
     }
-    if (tactic.id === 'keep_cool')   { layer.stats = { composure: 8, vision: 5 }; }
-    if (tactic.id === 'final_press') { layer.stats = { tempo: 10, defense: 8, offense: -5 }; }
-    if (tactic.id === 'long_ball')   { layer.stats = { offense: 12, vision: -5 }; }
-    if (tactic.id === 'midfield')    { layer.stats = { vision: 8, tempo: 6, composure: 6 }; }
-    if (tactic.id === 'sneaky')      { layer.stats = { defense: 12, tempo: 8, offense: -8 }; }
+    // Feature 5: sacrifice — permanent stat loss for huge short-term gain
+    if (tactic.id === 'sacrifice') {
+      const heroSquad = match.squad || (squad || []);
+      const victim = heroSquad.slice().sort((a,b) => (b.form||0) - (a.form||0))[0] || pick(heroSquad);
+      const focus = DATA.roles.find(r => r.id === victim.role)?.focusStat || 'offense';
+      victim.stats[focus] = Math.max(20, victim.stats[focus] - 15);
+      match._sacrificeVictim = victim;
+      layer.stats = { offense: 25 };
+      return match.buffLayers.push(layer) && recomputeTeamBuffs(match);
+    }
   }
 
   match.buffLayers.push(layer);
@@ -1081,6 +1186,15 @@ async function attemptAttack(match, squad, onEvent, extra={}) {
     ownBuildupSuccess: false, guaranteedBuildup: false,
     autoGoal: false, scorer: st, oppAvgDefense: match.opp.avgDefense + (match.opp._roundBuffs?.defense || 0)
   };
+
+  // Feature 4: synergy bonus
+  const synergy = computeSynergyBonus(squad, match.activeTacticTags);
+  if (synergy.bonus > 0) {
+    ctx.attackBonus += synergy.bonus;
+    for (const line of synergy.logLines) {
+      await log(onEvent, 'trigger', line);
+    }
+  }
 
   dispatchTrigger('ownAttack', ctx);
   await flushTriggerLog(match, onEvent);
@@ -1213,7 +1327,6 @@ async function attemptOppAttack(match, squad, onEvent) {
                  + composureDefBonus + visionDefBonus
                  + (match.nextSaveBonus || 0);
   if (match.teamBuffs?.saveBonus) saveChance += match.teamBuffs.saveBonus;
-  if (match.teamBuffs?.buildupMalus) {  }
   const oppShotCtx = applyOppTraitEffect(opp, match, 'oppShotChance', { bonus: 0 });
   const oppSaveCtx = applyOppTraitEffect(opp, match, 'savePenalty', { penalty: 0 });
   saveChance -= (oppShotCtx.bonus || 0);
@@ -1270,6 +1383,9 @@ window.squadPowerAvg = squadPowerAvg;
 window.aggregateTeamStats = aggregateTeamStats;
 window.teamTotalPower = teamTotalPower;
 window.teamStrengthLabel = teamStrengthLabel;
+window.computeSynergyBonus = computeSynergyBonus;
+window.TACTIC_HANDLERS = TACTIC_HANDLERS;
+window.dispatchTacticTrigger = dispatchTacticTrigger;
 window.TRIGGER_HANDLERS = TRIGGER_HANDLERS;
 window.dispatchTrigger = dispatchTrigger;
 window.flushTriggerLog = flushTriggerLog;
@@ -1282,7 +1398,3 @@ window.recomputeTeamBuffs = recomputeTeamBuffs;
 window.bumpPlayerStat = bumpPlayerStat;
 window.resetPlayerMatchStats = resetPlayerMatchStats;
 window.getTeamDisplayName = getTeamDisplayName;
-
-
-
-

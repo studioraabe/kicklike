@@ -262,34 +262,45 @@ const DATA = {
     ]
   },
   kickoffTactics: [
-    { id:"aggressive",  tags:["aggressiv"],          name:"Aggressiver Start",  desc:"+6 Offense für Runden 1-3, -4 Defense."        },
-    { id:"defensive",   tags:["defensiv"],           name:"Defensiver Start",   desc:"+6 Defense für Runden 1-3, -4 Offense."        },
-    { id:"balanced",    tags:["kontrolle"],          name:"Ausgewogen",         desc:"+3 auf alle Stats für Runden 1-3."             },
-    { id:"tempo",       tags:["tempo"],              name:"Tempo-Spiel",        desc:"+8 Tempo für Runden 1-3, -3 Composure."        },
-    { id:"pressing",    tags:["pressing","aggressiv"], name:"Pressing",         desc:"+5 Defense und +4 Tempo für Runden 1-3."       },
-    { id:"possession",  tags:["ballbesitz","vision"], name:"Ballbesitz",        desc:"+6 Vision und +4 Composure für Runden 1-3."    },
-    { id:"counter",     tags:["konter","defensiv"],  name:"Konter-Lauer",       desc:"+8 Defense, +4 Tempo für Runden 1-3, -2 Off."  },
-    { id:"flank_play",  tags:["tempo","technik"],    name:"Flügelspiel",        desc:"+5 Tempo und +5 Offense für Runden 1-3."       }
+    { id:"aggressive",  tags:["aggressiv"],          name:"Aggressiver Start",  desc:"+6 Offense für Runden 1-3, -4 Defense.",        tacticTrigger: null },
+    { id:"defensive",   tags:["defensiv"],           name:"Defensiver Start",   desc:"+6 Defense für Runden 1-3, -4 Offense.",        tacticTrigger: null },
+    { id:"balanced",    tags:["kontrolle"],          name:"Ausgewogen",         desc:"+3 auf alle Stats für Runden 1-3.",             tacticTrigger: null },
+    { id:"tempo",       tags:["tempo"],              name:"Tempo-Spiel",        desc:"+8 Tempo für Runden 1-3, -3 Composure.",        tacticTrigger: null },
+    { id:"pressing",    tags:["pressing","aggressiv"], name:"Pressing",         desc:"+5 Defense und +4 Tempo für Runden 1-3.",       tacticTrigger: "pressing_trigger" },
+    { id:"possession",  tags:["ballbesitz","vision"], name:"Ballbesitz",        desc:"+6 Vision und +4 Composure für Runden 1-3.",    tacticTrigger: null },
+    { id:"counter",     tags:["konter","defensiv"],  name:"Konter-Lauer",       desc:"+8 Defense, +4 Tempo für Runden 1-3, -2 Off.",  tacticTrigger: "counter_trigger" },
+    { id:"flank_play",  tags:["tempo","technik"],    name:"Flügelspiel",        desc:"+5 Tempo und +5 Offense für Runden 1-3.",       tacticTrigger: null }
   ],
   halftimeOptions: [
-    { id:"push",        tags:["aggressiv"],          name:"Risiko",             desc:"+8 Offense für Runden 4-6, -6 Defense."        },
-    { id:"stabilize",   tags:["defensiv","kontrolle"], name:"Stabilisieren",    desc:"+6 Defense und +4 Composure für Runden 4-6."   },
-    { id:"shift",       tags:["technik"],            name:"Umstellen",          desc:"Ein Spieler erhält permanent +10 auf Fokusstat." },
-    { id:"rally",       tags:["physisch","aggressiv"], name:"Mobilisieren",     desc:"Pro kassiertem Tor: +3 Off; pro eigenem: +3 Def." },
-    { id:"reset",       tags:["kontrolle"],          name:"Neu sortieren",      desc:"+5 auf alle Stats für Runden 4-6."             },
-    { id:"counter_h",   tags:["konter","tempo"],     name:"Auf Konter",         desc:"+10 Tempo und +5 Defense für Runden 4-6."      },
-    { id:"high_press",  tags:["pressing"],           name:"Hohes Pressing",     desc:"+8 Defense für Runden 4-6, -3 Composure."      },
-    { id:"vision_play", tags:["ballbesitz","vision"], name:"Spiel öffnen",      desc:"+8 Vision und +4 Offense für Runden 4-6."      }
+    { id:"push",        tags:["aggressiv"],          name:"Risiko",             desc:"+8 Offense für Runden 4-6, -6 Defense.",        tacticTrigger: null },
+    { id:"stabilize",   tags:["defensiv","kontrolle"], name:"Stabilisieren",    desc:"+6 Defense und +4 Composure für Runden 4-6.",   tacticTrigger: null },
+    { id:"shift",       tags:["technik"],            name:"Umstellen",          desc:"Ein Spieler erhält permanent +10 auf Fokusstat.", tacticTrigger: null },
+    { id:"rally",       tags:["physisch","aggressiv"], name:"Mobilisieren",     desc:"Pro kassiertem Tor: +3 Off; pro eigenem: +3 Def.", tacticTrigger: "rally_trigger" },
+    { id:"reset",       tags:["kontrolle"],          name:"Neu sortieren",      desc:"+5 auf alle Stats für Runden 4-6.",             tacticTrigger: null },
+    { id:"counter_h",   tags:["konter","tempo"],     name:"Auf Konter",         desc:"+10 Tempo und +5 Defense für Runden 4-6.",      tacticTrigger: "counter_trigger" },
+    { id:"high_press",  tags:["pressing"],           name:"Hohes Pressing",     desc:"+8 Defense für Runden 4-6, -3 Composure.",      tacticTrigger: "high_press_trigger" },
+    { id:"vision_play", tags:["ballbesitz","vision"], name:"Spiel öffnen",      desc:"+8 Vision und +4 Offense für Runden 4-6.",      tacticTrigger: null }
   ],
   finalOptions: [
-    { id:"all_in",      tags:["aggressiv"],          name:"All-In",             desc:"Letzte Runde: +15 Offense, -15 Defense."       },
-    { id:"park_bus",    tags:["defensiv"],           name:"Bus parken",         desc:"Letzte Runde: +15 Defense, -10 Offense."       },
-    { id:"hero_ball",   tags:["technik"],            name:"Held des Tages",     desc:"Ein zufälliger Spieler: permanent +20 Fokus-Stat." },
-    { id:"keep_cool",   tags:["kontrolle","vision"], name:"Cool bleiben",       desc:"Letzte Runde: +8 Composure und +5 Vision."     },
-    { id:"final_press", tags:["pressing"],           name:"Schlusspressing",    desc:"Letzte Runde: +10 Tempo und +8 Defense, -5 Off." },
-    { id:"long_ball",   tags:["physisch","aggressiv"], name:"Lange Bälle",      desc:"Letzte Runde: +12 Offense, -5 Vision."         },
-    { id:"midfield",    tags:["ballbesitz","kontrolle"], name:"Mittelfeldkontrolle", desc:"Letzte Runde: +8 Vision, +6 Tempo, +6 Composure." },
-    { id:"sneaky",      tags:["konter","defensiv"],  name:"Hinterhalt",         desc:"Letzte Runde: +12 Defense, +8 Tempo, -8 Offense." }
+    { id:"all_in",      tags:["aggressiv"],          name:"All-In",             desc:"Letzte Runde: +15 Offense, -15 Defense. Bei Rückstand noch stärker.",       tacticTrigger: null,
+      condition: (match) => {
+        const deficit = match.scoreOpp - match.scoreMe;
+        return deficit > 0 ? { offense: 15 + deficit * 5, defense: -15 } : { offense: 15, defense: -15 };
+      }
+    },
+    { id:"park_bus",    tags:["defensiv"],           name:"Bus parken",         desc:"Letzte Runde: +15 Defense, -10 Offense. Bei Führung noch stärker.",        tacticTrigger: null,
+      condition: (match) => {
+        const lead = match.scoreMe - match.scoreOpp;
+        return lead > 0 ? { defense: 15 + lead * 5, offense: -10 } : { defense: 15, offense: -10 };
+      }
+    },
+    { id:"hero_ball",   tags:["technik"],            name:"Held des Tages",     desc:"Spieler in Topform erhält permanent +20 Fokus-Stat.",                      tacticTrigger: null },
+    { id:"keep_cool",   tags:["kontrolle","vision"], name:"Cool bleiben",       desc:"Letzte Runde: +8 Composure und +5 Vision.",                                tacticTrigger: null },
+    { id:"final_press", tags:["pressing"],           name:"Schlusspressing",    desc:"Letzte Runde: +10 Tempo und +8 Defense, -5 Off.",                          tacticTrigger: "final_press_trigger" },
+    { id:"long_ball",   tags:["physisch","aggressiv"], name:"Lange Bälle",      desc:"Letzte Runde: +12 Offense, -5 Vision.",                                    tacticTrigger: null },
+    { id:"midfield",    tags:["ballbesitz","kontrolle"], name:"Mittelfeldkontrolle", desc:"Letzte Runde: +8 Vision, +6 Tempo, +6 Composure.",                    tacticTrigger: null },
+    { id:"sneaky",      tags:["konter","defensiv"],  name:"Hinterhalt",         desc:"Letzte Runde: +12 Defense, +8 Tempo, -8 Offense.",                         tacticTrigger: null },
+    { id:"sacrifice",   tags:["aggressiv","physisch"], name:"Opferlamm",        desc:"Ein Spieler opfert dauerhaft 15 Fokus-Stat für +25 Offense im Team jetzt.", tacticTrigger: "sacrifice_trigger" }
   ]
 };
 function deriveStage2Details() {
