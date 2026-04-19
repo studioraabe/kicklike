@@ -34,6 +34,7 @@ const FLOW = {
     state._skipAnim = false;
     state._paused = false;
     state._preKickoff = true;
+    state._matchLogBuffer = [];
     const pb = document.getElementById('match-pause-btn');
     if (pb) pb.textContent = I18N.t('ui.match.pause');
     const sb = document.getElementById('match-speed-btn');
@@ -43,6 +44,10 @@ const FLOW = {
       if (state._skipAnim) ev.match && (ev.match.fastSkip = true);
       return FLOW.handleMatchEvent(ev);
     });
+
+    state._lastMatchLog = (state._matchLogBuffer || []).slice();
+    state._matchLogBuffer = [];
+
     state.matchNumber++;
     state.matchHistory.push({
       md: state.matchNumber,
@@ -78,10 +83,20 @@ const FLOW = {
       } else {
         xp = 2 + teamBonus;
         if (p.role === 'ST') {
-          xp += (ms.shotsOnTarget || 0) * 1;
-          xp += (ms.goals || 0) * 2;
-          if ((ms.shots || 0) > 0 && (ms.shotsOnTarget || 0) === 0) xp -= 1;
-          if ((ms.shots || 0) === 0) xp -= 1;
+          const shots = ms.shots || 0;
+          const onTarget = ms.shotsOnTarget || 0;
+          const goals = ms.goals || 0;
+          xp += onTarget * 1;
+          xp += goals * 2;
+          if (shots >= 2) {
+            const accuracy = onTarget / shots;
+            if (accuracy >= 0.67) xp += 2;
+            else if (accuracy >= 0.50) xp += 1;
+            else if (accuracy === 0 && shots >= 3) xp -= 2;
+            else if (accuracy === 0 && shots >= 1) xp -= 1;
+          } else if (shots === 0) {
+            xp -= 1;
+          }
         } else if (p.role === 'LF') {
           xp += (ms.goals || 0) * 2;
           xp += Math.min(3, (ms.counters || 0));
@@ -140,6 +155,8 @@ const FLOW = {
 
   async handleMatchEvent(ev) {
     if (ev.type === 'log') {
+      if (!state._matchLogBuffer) state._matchLogBuffer = [];
+      state._matchLogBuffer.push({ msg: ev.msg, cls: ev.cls || '' });
       UI.appendLog(ev.msg, ev.cls);
       let base;
       if (ev.cls === 'goal-me' || ev.cls === 'goal-opp') base = 2500;
@@ -148,14 +165,10 @@ const FLOW = {
       else if (ev.cls === 'kickoff') base = 1200;
       else if (ev.cls === 'decision') base = 900;
       else base = 700;
-
       if (state._skipAnim) base = Math.min(base, 150);
       if (state._preKickoff) base = 0;
-
       await sleep(base);
-      while (state._paused) {
-        await sleep(120);
-      }
+      while (state._paused) { await sleep(120); }
       return;
     }
     if (ev.type === 'roundEnd') {
@@ -205,7 +218,6 @@ const FLOW = {
       const currentId = player.evoPath[player.evoPath.length - 1];
       const options = DATA.evolutions[currentId] || [];
       if (!options.length) { resolve(); return; }
-
       UI.showEvolution(player, options, (chosenId) => {
         const evo = DATA.evoDetails[chosenId];
         if (!evo) { resolve(); return; }
@@ -220,7 +232,6 @@ const FLOW = {
         player.label = evo.label;
         player.stage += 1;
         player.evoPath.push(chosenId);
-
         resolve();
       });
     });
@@ -257,9 +268,7 @@ const FLOW = {
     FLOW.advance();
   },
 
-  openLineup() {
-    UI.renderLineup();
-  },
+  openLineup() { UI.renderLineup(); },
 
   closeLineup() {
     if (!isLineupValid(state.lineupIds)) {
@@ -272,11 +281,8 @@ const FLOW = {
   swapPlayer(id1, id2) {
     const in1 = state.lineupIds.indexOf(id1);
     const in2 = state.lineupIds.indexOf(id2);
-    if (in1 >= 0 && in2 < 0) {
-      state.lineupIds[in1] = id2;
-    } else if (in2 >= 0 && in1 < 0) {
-      state.lineupIds[in2] = id1;
-    }
+    if (in1 >= 0 && in2 < 0) state.lineupIds[in1] = id2;
+    else if (in2 >= 0 && in1 < 0) state.lineupIds[in2] = id1;
     UI.renderLineup();
   },
 
@@ -286,21 +292,18 @@ const FLOW = {
     if (pts >= 36) { outcome = 'champion'; title = 'CHAMPION!'; titleColor = 'win'; }
     else if (pts >= 24) { outcome = 'survivor'; title = I18N.t('ui.flow.safe'); titleColor = 'draw'; }
     else { outcome = 'survivor'; title = I18N.t('ui.flow.rescued'); titleColor = 'draw'; }
-
     const entry = buildHighscoreEntry(state, outcome);
     const isNewBest = saveHighscore(entry);
     const best = loadHighscore();
-
     const summary = $('#victory-summary');
     summary.innerHTML = '';
     const h1 = $('#screen-victory h1');
     if (h1) { h1.textContent = title; h1.className = titleColor; }
-
     const statsBox = el('div', { class:'pixel', style:{ color:'var(--fg)', marginBottom:'16px', lineHeight:'1.6' } }, [
       el('div', { style:{ fontFamily:'var(--font-display)', fontSize:'14px', color:'var(--accent)', marginBottom:'8px' } },
         [I18N.t('ui.flow.points', { points: pts })]),
-      el('div', {}, [`${state.wins}S  ${state.draws}U  ${state.losses}N`]),
-      el('div', {}, [`${I18N.t('ui.statsPanel.goals')}: ${state.goalsFor} : ${state.goalsAgainst}  (Diff ${(state.goalsFor - state.goalsAgainst >= 0 ? '+' : '') + (state.goalsFor - state.goalsAgainst)})`]),
+      el('div', {}, [`${state.wins}W  ${state.draws}D  ${state.losses}L`]),
+      el('div', {}, [`${I18N.t('ui.statsPanel.goals')}: ${state.goalsFor}:${state.goalsAgainst}  (${(state.goalsFor - state.goalsAgainst >= 0 ? '+' : '') + (state.goalsFor - state.goalsAgainst)})`]),
       isNewBest
         ? el('div', { style:{ color:'var(--gold)', marginTop:'12px', fontFamily:'var(--font-display)', fontSize:'12px' } }, [I18N.t('ui.flow.record')])
         : (best ? el('div', { style:{ color:'var(--muted)', marginTop:'8px', fontSize:'12px' } },
@@ -323,10 +326,9 @@ const FLOW = {
     reasonEl.appendChild(el('div', { style:{ marginTop:'16px', color:'var(--fg)', fontFamily:'var(--font-display)' } },
       [I18N.t('ui.flow.afterMatches', { points: state.seasonPoints, matches: state.matchNumber })]));
     reasonEl.appendChild(el('div', { style:{ fontSize:'11px' } },
-      [`${state.wins}S ${state.draws}U ${state.losses}N · ${I18N.t('ui.statsPanel.goals')} ${state.goalsFor}:${state.goalsAgainst}`]));
+      [`${state.wins}W ${state.draws}D ${state.losses}L · ${I18N.t('ui.statsPanel.goals')} ${state.goalsFor}:${state.goalsAgainst}`]));
     if (isNewBest) {
-      reasonEl.appendChild(el('div', { style:{ color:'var(--gold)', marginTop:'12px', fontFamily:'var(--font-display)' } },
-        [I18N.t('ui.flow.bestRun')]));
+      reasonEl.appendChild(el('div', { style:{ color:'var(--gold)', marginTop:'12px', fontFamily:'var(--font-display)' } }, [I18N.t('ui.flow.bestRun')]));
     } else if (best) {
       reasonEl.appendChild(el('div', { style:{ color:'var(--muted)', marginTop:'8px', fontSize:'10px' } },
         [I18N.t('ui.flow.bestScore', { points: best.points, team: best.teamName })]));
@@ -358,5 +360,4 @@ document.addEventListener('DOMContentLoaded', () => {
   I18N.applyDom();
   UI.renderStart();
 });
-
 window.FLOW = FLOW;

@@ -3,15 +3,15 @@ const CONFIG = {
   rounds: 6,
   teamSize: 5,
   maxBench: 2,
-  evolutionLevels: [4, 7, 10],
-  xpPerWin: 4,
-  xpPerDraw: 2,
-  xpPerLoss: 1,
+  evolutionLevels: [5, 9, 13],   // was [4, 7, 10] — evolutions come later
+  xpPerWin: 3,                    // was 4
+  xpPerDraw: 1,                   // was 2
+  xpPerLoss: 0,                   // was 1
   bossMatches: [5, 10, 15],
-  attackBase: 0.38,
-  attackStatScale: 0.006,
+  attackBase: 0.32,               // was 0.38 — harder to score by default
+  attackStatScale: 0.005,         // was 0.006 — stat edge matters more relatively
   defenseStatScale: 0.005,
-  tempoAdvantage: 0.04,
+  tempoAdvantage: 0.03,           // was 0.04
 };
 const DATA = {
   roles: [

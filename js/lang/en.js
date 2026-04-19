@@ -131,65 +131,182 @@ I18N.registerLocale('en', {
       mechanicRally: 'Rally mode'
     },
     log: {
-      opponentIntro: '  ↳ Opponent: {parts}',
-      kickoffChoice: '  → Kickoff: {name}',
-      halftimeHeader: '––– HALFTIME –––',
-      halftimeChoice: '  → Halftime: {name}',
-      finalChoice: '  → Final phase: {name}',
-      possessionPressure: '  Possession: {pct}% — pressure phase',
-      possessionDominated: '  Possession: {pct}% — opponent in control',
-      chainAttack: '  ⚡ Chain attack!',
-      luckyDouble: '  🍀 {name} gets lucky — double attack!',
-      counter: '  🔁 Counterattack!',
-      autoCounter: '  ⚡ COUNTER SYSTEM LIVE — their mistake, our attack!',
-      doubleCounter: '  ⚡⚡ DOUBLE COUNTER — two failed attacks, two chances!',
-      pressingCap: '  🏃 Pressing — capped their attack to one threat.',
-      aggressiveThird: '  💥 All-out pressure — third attack wave incoming!',
-      rallyReaction: '  💢 RALLY — instant reaction after their goal!',
-      flankRun: '  🏃 {name} bursts down the wing — extra chance!',
-      momentumBuilt: '  🔄 Momentum building — consecutive control rounds paying off.',
+      matchIntro: [
+        '{me} vs {opp} — kick-off.',
+        '{me} take on {opp}.',
+        '{me} vs {opp} — the referee blows.',
+        'Both sides ready. {me} vs {opp}.'
+      ],
+      formHot: [
+        '🔥 The squad is flying — sharp and hungry.',
+        '🔥 Hot streak — confidence through the roof.',
+        '🔥 In form. Expect crisp football today.'
+      ],
+      formCrisis: [
+        '❄ Shaky confidence. They need a result badly.',
+        '❄ Heavy legs and heavy heads. This will be a grind.',
+        '❄ Three poor runs. Something has to give today.'
+      ],
+      opponentIntro: '  ↳ {parts}',
+      kickoffChoice: '  → {name}',
+      halftimeHeader: '––– HALF TIME –––',
+      halftimeChoice: '  → {name}',
+      finalChoice: '  → {name}',
+      roundHeader: 'ROUND {round}',
+      roundIntroTied: [
+        'Level at {me}:{opp} — anyone\'s game.',
+        'Still goalless. Tension rising.',
+        '{me}:{opp} — neither side giving an inch.',
+        'All square. Next goal could decide everything.'
+      ],
+      roundIntroLeading: [
+        '{me}:{opp} — holding the advantage.',
+        'Up {me}:{opp}. Keep the shape.',
+        '{me}:{opp} — in control, for now.',
+        'Leading {me}:{opp}. Don\'t invite them back in.'
+      ],
+      roundIntroTrailing: [
+        '{me}:{opp} — need to find a way back.',
+        'Chasing the game at {me}:{opp}.',
+        '{me}:{opp} — the pressure is mounting.',
+        'Behind at {me}:{opp}. Something has to change.'
+      ],
+      roundIntroFinal: [
+        'Last round. Everything on the line at {me}:{opp}.',
+        'Final minutes. {me}:{opp}. No margin for error.',
+        'It all comes down to this. {me}:{opp}.',
+        'One round left. {me}:{opp}. Make it count.'
+      ],
+      possessionPressure: [
+        '  Dominating possession at {pct}% — pushing for an opening.',
+        '  {pct}% of the ball — camped in their half.',
+        '  Controlling at {pct}% — constant pressure.'
+      ],
+      possessionDominated: [
+        '  Pinned back at {pct}% possession.',
+        '  Forced deep — barely seeing the ball.',
+        '  {pct}% — scrambling to hold shape.'
+      ],
+      activeBuffs: '  📊 {buffs}',
+      chainAttack: '  ⚡ Quick combination — another chance follows.',
+      luckyDouble: '  🍀 {name} steal possession — second attack!',
+      counter: '  🔁 Turnover — counter on.',
+      autoCounter: '  ⚡ They gave it away — we pounce.',
+      doubleCounter: '  ⚡⚡ Two attacks wasted — double counter!',
+      pressingCap: '  Pressing cuts off their second run.',
+      aggressiveThird: '  💥 Wave after wave — a third attack follows.',
+      rallyReaction: '  💢 Instant response after conceding.',
+      flankRun: '  {name} burns down the wing — extra chance.',
+      momentumBuilt: '  Momentum building — consecutive control paying off.',
       htSummaryPressing: 'Pressing blocked {n} attacks',
       htSummaryCounters: 'Counter system fired {n}x',
       htSummaryMomentum: 'Momentum active',
-      activeBuffs: '  📊 Active buffs: {buffs}',
-      synergyBonus: '  🔗 Synergy: {name} ({trait}) +{bonus}% attack',
-      tacticPressingTrigger: '  🏃 Pressing pays off — turnover and counter!',
-      tacticCounterTrigger: '  🔁 Counter tactic triggers — next build-up boosted!',
-      tacticRallyTrigger: '  💪 Rally ignites — +{bonus} offense from deficit!',
-      tacticHighPressTrigger: '  🏃 High press — ball won!',
-      tacticFinalPressTrigger: '  ⚡ Final press — counter launched!',
-      laserPass: '🎯 {name} LASER PASS — counter triggered!',
-      bulldoze: '🛡 {name} BULLDOZE — turnover and counter!',
-      hardTackle: '🥾 {name} HARD TACKLE — counter!',
-      chessPredict: '♟ {name} CHESS PREDICT — reads out the goal!',
-      speedBurst: '💨 {name} SPEED BURST — build-up guaranteed!',
-      pounce: '🐆 {name} HUNTING INSTINCT — instant counter!',
-      oppBlitzCounter: '  ⚡ {name} breaks into a lightning counter!',
-      shadowStrike: '{name} SHADOW STRIKE - hidden attack!',
-      streetTrick: '{name} STREET TRICK - defender beaten!',
-      silentKiller: '{name} SILENT KILLER - first shot empowered!',
-      cannonBlast: '{name} CANNON BLAST!',
-      ghostRun: '{name} GHOST RUN - hidden chance!',
-      puzzleConnect: '{name} PUZZLE LINKED!',
-      nineLives: '🐱 {name} NINE LIVES — goal cancelled!',
-      killerPass: '⚡ {name} KILLER PASS — chain next round!',
-      maestroCombo: '🎼 {name} MAESTRO COMBO — next goal counts double!',
-      unstoppable: '🚀 {name} UNSTOPPABLE — uncontested goal!',
-      godMode: '⭐ {name} GOD MODE — next goal x3!',
-      unbreakable: '🛡 {name} UNBREAKABLE — goal cancelled!',
-      roundHeader: 'ROUND {round}',
+      pressingBeaten: [
+        '  {opp} find the gap — space opens behind the press.',
+        '  The line is beaten — {opp} are in behind.',
+        '  Pressing bypassed — {opp} have numbers going forward.'
+      ],
+      aggressiveError: [
+        '  Too eager — the move breaks down in transition.',
+        '  Overcommitted — the ball is lost.',
+        '  The urgency costs them — loose ball in midfield.'
+      ],
+      possessionLost: [
+        '  Ball given away — {opp} are already moving.',
+        '  Sloppy touch — {opp} immediately press high.',
+        '  Turned over in build-up — {opp} ready to counter.'
+      ],
+      defensiveLackOfPunch: [
+        '  Compact but toothless — no runners forward.',
+        '  The shape is there, but the attack has no bite.',
+        '  Too cautious going forward.'
+      ],
+      leadComplacency: [
+        '  Comfortable lead — the urgency fades.',
+        '  Two up — maybe a touch too relaxed.',
+        '  The legs stop working as hard with a cushion.'
+      ],
+      deficitNervousness: [
+        '  Chasing the game — tension affecting the passing.',
+        '  The deficit is showing — decisions rushed.',
+        '  Behind and pressing — mistakes creeping in.'
+      ],
+      allInExposed: [
+        '  All-in and caught open — the defence is thin.',
+        '  The gamble backfires — acres of space at the back.',
+        '  All men forward — {opp} find the gap.'
+      ],
+      attackingExposed: [
+        '  Attacking shape leaves gaps — {opp} exploit it.',
+        '  High line, thin cover — {opp} run straight through.',
+        '  Going forward costs them — {opp} hit on the break.'
+      ],
+      aggressiveExposed: [
+        '  Aggressive press punished — {opp} through on goal.',
+        '  Too high, too open — {opp} find the channel.',
+        '  The aggression turns against them.'
+      ],
+      synergyCombo: [
+        '{a} & {b} combine',
+        '{a} sets up {b}',
+        'Quick exchange — {b} finishes',
+        '{a} finds {b} in space',
+        'One-two: {a} to {b}'
+      ],
       ownGoal: '⚽ GOAL {name}!{suffix}   {me}:{opp}',
-      oppGoal: '💥 Conceded — {name} scores   {me}:{opp}',
+      ownGoalCombo: '⚽ GOAL {name}! {combo}   {me}:{opp}',
+      oppGoal: '💥 {name} score   {me}:{opp}',
       fullTime: '🏁 FULL TIME — {me}:{opp}',
-      penaltiesIntro: '🏁 90 MINUTES OVER — {me}:{opp}',
-      penaltiesTitle: '⚽ PENALTY SHOOTOUT — no draw in the final match!',
-      penaltyScored: '  {num}. ⚽ scored — {me}:{opp}',
-      penaltyMissed: '  {num}. ⚠ missed — {me}:{opp}',
+      epilogueWin: [
+        'Three points. Job done.',
+        'Hard-earned — but worth it.',
+        'The squad delivers when it matters.',
+        'Deserved. Clinical when it counted.'
+      ],
+      epilogueDraw: [
+        'A point each. Both sides left something out there.',
+        'Honours even — could have gone either way.',
+        'A hard-fought draw. On to the next.'
+      ],
+      epilogueLoss: [
+        'Heads drop. A tough one to take.',
+        'Not good enough today. Regroup.',
+        'They were sharper. A lesson to learn from.'
+      ],
+      penaltiesIntro: '🏁 90 MINUTES — {me}:{opp}. Penalties.',
+      penaltiesTitle: '⚽ SHOOTOUT — who holds their nerve?',
+      penaltyScored: '  {num}. ⚽ — {me}:{opp}',
+      penaltyMissed: '  {num}. ✗ — {me}:{opp}',
       oppPenaltyScored: '  {name} scores — {me}:{opp}',
       oppPenaltyMissed: '  {name} misses — {me}:{opp}',
       suddenDeath: '  Sudden death: {me}:{opp}',
       penaltiesWin: '🏆 WIN ON PENALTIES',
-      penaltiesLoss: '💥 LOSS ON PENALTIES'
+      penaltiesLoss: '💥 OUT ON PENALTIES',
+      tacticPressingTrigger: '  Pressing pays — ball won.',
+      tacticCounterTrigger: '  Counter set — next move boosted.',
+      tacticRallyTrigger: '  💪 Rally fires — +{bonus} from the deficit.',
+      tacticHighPressTrigger: '  High press — ball recovered.',
+      tacticFinalPressTrigger: '  ⚡ Final press — counter launched.',
+      laserPass: '🎯 {name} — laser pass, counter on.',
+      bulldoze: '🛡 {name} — bulldozes through, ball won.',
+      hardTackle: '🥾 {name} — hard tackle, counter!',
+      chessPredict: '♟ {name} — reads it perfectly, goal wiped out.',
+      speedBurst: '💨 {name} — build-up guaranteed.',
+      pounce: '🐆 {name} — pounces on the error.',
+      oppBlitzCounter: '  ⚡ {name} hit back immediately.',
+      shadowStrike: '{name} — phantom run, sudden chance.',
+      streetTrick: '{name} — leaves the defender standing.',
+      silentKiller: '{name} — first touch, maximum damage.',
+      cannonBlast: '{name} — fires.',
+      ghostRun: '{name} — appears from nowhere.',
+      puzzleConnect: '{name} — the final piece.',
+      nineLives: '🐱 {name} — cleared off the line. Still alive.',
+      killerPass: '⚡ {name} — that pass opens another chance.',
+      maestroCombo: '🎼 {name} — the combination clicks. Next goal counts double.',
+      unstoppable: '🚀 {name} — through on goal, no stopping that.',
+      godMode: '⭐ {name} — everything clicking. Next goal counts triple.',
+      unbreakable: '🛡 {name} — stands firm. Goal cancelled.',
+      synergyBonus: '  🔗 {name} ({trait}) +{bonus}%'
     }
   },
   stats: {
@@ -205,108 +322,79 @@ I18N.registerLocale('en', {
   },
   logs: {
     ownBuildFail: [
-      '{pm} loses the ball in midfield',
-      'The opponent intercepts {pm}\'s pass',
-      'A misplaced pass from {vt} sparks danger',
-      '{pm} overhits the vertical ball',
-      'Pressing forces {pm} into a back pass',
-      'Turnover on the halfway line'
+      '{pm} loses it in midfield — possession gone.',
+      'The pass from {pm} is cut out.',
+      '{vt} plays it backwards — the move stalls.',
+      '{pm} tries to force it — intercepted.',
+      'The press wins the ball back.',
+      'Turnover. They transition immediately.'
     ],
     ownBuildSuccess: [
-      '{pm} opens midfield with a through ball',
-      '{pm} finds the lane between the lines',
-      'Quick one-two between {pm} and {lf}',
-      '{pm} switches it wide',
-      '{lf} surges down the flank',
-      '{vt} starts the move well — {pm} takes over',
-      '{pm} drives the ball into the final third'
+      '{pm} slides it through — {lf} is running.',
+      '{pm} finds the gap, {lf} takes it on.',
+      'Quick ball from {vt}, {pm} releases {lf} in behind.',
+      '{pm} switches play — {lf} in space.',
+      '{lf} accelerates past his marker.',
+      '{pm} drives forward, {lf} makes the overlap.',
+      'Neat combination — {pm} to {lf}, ball into the box.'
     ],
     chance: [
-      '{scorer} gets the shot away...',
-      '{scorer} breaks free in the box...',
-      '{scorer} has the chance...',
-      '{scorer} is lurking in front of goal...',
-      '{scorer} is fed inside the area...'
+      '{scorer} shapes to shoot...',
+      '{scorer} gets on the end of it...',
+      '{scorer} cuts inside, finds the angle...',
+      '{scorer} is one-on-one...',
+      '{scorer} arrives late — powerful effort...',
+      '{scorer} has time and space...'
     ],
     miss: [
-      '{scorer} drags it just wide',
-      '{scorer} hits the post!',
-      '{scorer} shoots too centrally — keeper saves',
-      '{scorer} fires over',
-      '{scorer} is blocked at the last second',
-      '{scorer} wastes the chance',
-      '{scorer} rattles the bar!'
+      '{scorer} drags it wide.',
+      '{scorer} hits the post — so close.',
+      '{scorer} goes central — keeper reads it.',
+      '{scorer} skies it — well over.',
+      'Blocked! {scorer} can\'t believe it.',
+      '{scorer} hesitates — the chance is gone.',
+      '{scorer} gets under it — up and over.'
     ],
     oppBuildFail: [
-      '{opp} loses the ball in the build-up',
-      '{opp} misplaces the pass completely',
-      '{vt} cuts it out',
-      '{opp} is disrupted in possession',
-      'Counter-pressing forces {opp} into a mistake'
+      'They lose it — {vt} reads the play.',
+      'Pressure from {vt} forces a poor touch.',
+      'They try to play out — {vt} intercepts.',
+      'The pass is sloppy — our ball.',
+      '{vt} wins it cleanly in the challenge.'
     ],
     oppApproach: [
-      '{opp} attacks down the wing',
-      '{opp} moves the ball forward at speed',
-      '{opp} looks for the finish',
-      'The opposing striker slips beyond the back line',
-      '{opp} plays through midfield'
+      '{opp} advance with purpose.',
+      '{opp} break quickly — numbers forward.',
+      '{opp} work it into a dangerous position.',
+      'A runner finds space in behind.',
+      '{opp} isolate the backline — threat incoming.'
     ],
     save: [
-      '{tw} makes a strong save!',
-      '{tw} gathers it cleanly',
-      '{vt} blocks the shot at the last second',
-      'Wayward effort — {tw} has it covered',
-      '{tw} produces a brilliant stop!',
-      'Header wide of the goal'
+      '{tw} — strong hands. Stays out.',
+      '{tw} dives full stretch — remarkable.',
+      '{vt} throws himself in the way — blocked.',
+      '{tw} smothers it at the near post.',
+      'Tipped over by {tw} — corner.',
+      '{vt} clears off the line — crucial.'
     ]
   },
   data: {
     evoLabels: {
-      titan: 'Titan',
-      fortress: 'Fortress',
-      shotstopper: 'Shot Stopper',
-      libero_keeper: 'Libero Keeper',
-      distributor: 'Distributor',
-      highline: 'High-Liner',
-      acrobat: 'Acrobat',
-      wall: 'Wall',
-      catman: 'Cat Man',
-      enforcer: 'Enforcer',
-      bulldozer: 'Bulldozer',
-      captain_cool: 'Captain Cool',
-      shark: 'Shark',
-      terminator: 'Terminator',
-      whirlwind: 'Whirlwind',
-      orchestrator: 'Orchestrator',
-      late_bloomer: 'Late Bloomer',
-      scholar: 'Scholar',
-      metronome: 'Metronome',
-      architect: 'Architect',
-      whisperer: 'Whisperer',
-      hunter: 'Hunter',
-      gegenpress: 'Gegenpress',
-      shadow: 'Shadow',
-      maestro_mid: 'Maestro',
-      chess: 'Chessmaster',
-      conductor_mid: 'Conductor',
-      speedster: 'Speedster',
-      rocket: 'Rocket',
-      freight: 'Freight Train',
-      magician: 'Magician',
-      street: 'Street Baller',
-      trickster: 'Trickster',
-      ironman: 'Ironman',
-      dynamo: 'Dynamo',
-      eternal: 'Eternal',
-      assassin: 'Assassin',
-      predator_s: 'Predator',
-      opportunist: 'Opportunist',
-      cannon: 'Cannon',
-      skyscraper: 'Skyscraper',
-      brick: 'Brick',
-      ghost: 'Ghost',
-      puzzle: 'Puzzle',
-      chameleon: 'Chameleon'
+      titan: 'Titan', fortress: 'Fortress', shotstopper: 'Shot Stopper',
+      libero_keeper: 'Libero Keeper', distributor: 'Distributor', highline: 'High-Liner',
+      acrobat: 'Acrobat', wall: 'Wall', catman: 'Cat Man',
+      enforcer: 'Enforcer', bulldozer: 'Bulldozer', captain_cool: 'Captain Cool',
+      shark: 'Shark', terminator: 'Terminator', whirlwind: 'Whirlwind',
+      orchestrator: 'Orchestrator', late_bloomer: 'Late Bloomer', scholar: 'Scholar',
+      metronome: 'Metronome', architect: 'Architect', whisperer: 'Whisperer',
+      hunter: 'Hunter', gegenpress: 'Gegenpress', shadow: 'Shadow',
+      maestro_mid: 'Maestro', chess: 'Chessmaster', conductor_mid: 'Conductor',
+      speedster: 'Speedster', rocket: 'Rocket', freight: 'Freight Train',
+      magician: 'Magician', street: 'Street Baller', trickster: 'Trickster',
+      ironman: 'Ironman', dynamo: 'Dynamo', eternal: 'Eternal',
+      assassin: 'Assassin', predator_s: 'Predator', opportunist: 'Opportunist',
+      cannon: 'Cannon', skyscraper: 'Skyscraper', brick: 'Brick',
+      ghost: 'Ghost', puzzle: 'Puzzle', chameleon: 'Chameleon'
     },
     roles: {
       TW: { label: 'Goalkeeper', desc: 'Wins one-on-ones' },
@@ -316,21 +404,11 @@ I18N.registerLocale('en', {
       ST: { label: 'Striker', desc: 'Finisher' }
     },
     archetypes: {
-      keeper_block: 'Blocking Keeper',
-      keeper_sweep: 'Sweeper Keeper',
-      keeper_reflex: 'Reflex Keeper',
-      def_wall: 'Concrete Wall',
-      def_tackle: 'Biter',
-      def_sweeper: 'Libero',
-      pm_regista: 'Regista',
-      pm_press: 'Press Engine',
-      pm_playmaker: 'Playmaker',
-      lf_winger: 'Wing Burner',
-      lf_dribbler: 'Dribbler',
-      lf_box: 'Box-to-Box',
-      st_poacher: 'Poacher',
-      st_target: 'Target Man',
-      st_false9: 'False Nine'
+      keeper_block: 'Blocking Keeper', keeper_sweep: 'Sweeper Keeper', keeper_reflex: 'Reflex Keeper',
+      def_wall: 'Concrete Wall', def_tackle: 'Biter', def_sweeper: 'Libero',
+      pm_regista: 'Regista', pm_press: 'Press Engine', pm_playmaker: 'Playmaker',
+      lf_winger: 'Wing Burner', lf_dribbler: 'Dribbler', lf_box: 'Box-to-Box',
+      st_poacher: 'Poacher', st_target: 'Target Man', st_false9: 'False Nine'
     },
     traits: {
       titan_stand: { name: 'Titan Stance', desc: 'Against enemy shots: 30% chance to stop them while the score is close (≤1 diff).' },
@@ -389,12 +467,8 @@ I18N.registerLocale('en', {
       prefixes: ['SC ', 'FC ', 'Athletic ', 'Union ', 'Sporting ', 'Dynamo ', 'Real ', 'Racing ', 'Red Star ', 'Albion '],
       places: ['Nightwood', 'Stormhold', 'Coldcrag', 'Ironvale', 'Roughbridge', 'Thunder Peak', 'Windhaven', 'Froststorm', 'Ravenfield', 'Shadowvale', 'Firehorn', 'Mistkeep', 'Wastemark', 'Bloodrock', 'Tempest Grove'],
       specials: {
-        offensive: 'Attack Focus',
-        defensive: 'Stronghold',
-        pacey: 'Lightning Quick',
-        cerebral: 'Tactician',
-        stoic: 'Iron-Willed',
-        balanced: 'Balanced'
+        offensive: 'Attack Focus', defensive: 'Stronghold', pacey: 'Lightning Quick',
+        cerebral: 'Tactician', stoic: 'Iron-Willed', balanced: 'Balanced'
       }
     },
     oppTells: {
@@ -419,31 +493,31 @@ I18N.registerLocale('en', {
         defensive: { name: 'Defensive Start', desc: '+18 defense in rounds 1-3, -8 attack. Invite them on and hit on the break.' },
         balanced: { name: 'Balanced', desc: '+8 to ALL stats in rounds 1-3. First build-up is guaranteed — no cold start.' },
         tempo: { name: 'Tempo Game', desc: '+22 tempo in rounds 1-3, -6 composure. Overwhelm with pace before they settle.' },
-        pressing: { name: 'Pressing', desc: '+14 defense, +10 tempo in rounds 1-3. Their build-up success rate drops hard for 3 rounds.' },
-        possession: { name: 'Possession', desc: '+18 vision, +10 composure in rounds 1-3. Control the game before hunting for the chance.' },
-        counter: { name: 'Counter Trap', desc: '+22 defense, +10 tempo in rounds 1-3, -6 attack. Every failed enemy attack triggers an automatic counter for 3 rounds.' },
+        pressing: { name: 'Pressing', desc: '+14 defense, +10 tempo in rounds 1-3. Their build-up drops hard — but gaps appear if beaten.' },
+        possession: { name: 'Possession', desc: '+18 vision, +10 composure in rounds 1-3. Control the game — but a turnover invites a counter.' },
+        counter: { name: 'Counter Trap', desc: '+22 defense, +10 tempo in rounds 1-3, -6 attack. Every failed enemy attack triggers an automatic counter.' },
         flank_play: { name: 'Wing Play', desc: '+14 tempo, +14 attack in rounds 1-3. Wide and fast from the off.' }
       },
       halftime: {
-        push: { name: 'Risk Push', desc: '+20 attack in rounds 4-6, -10 defense. If trailing, the attack boost grows with every goal owed.' },
-        stabilize: { name: 'Stabilize', desc: '+18 defense, +10 composure in rounds 4-6. If leading, the defense wall grows higher for every goal ahead.' },
+        push: { name: 'Risk Push', desc: '+20 attack in rounds 4-6, -10 defense. If trailing, the boost grows with every goal owed.' },
+        stabilize: { name: 'Stabilize', desc: '+18 defense, +10 composure in rounds 4-6. If leading, the wall grows with every goal ahead.' },
         shift: { name: 'Reassign', desc: 'One player permanently gains +18 to their focus stat right now.' },
-        rally: { name: 'Rally', desc: '+6 attack per goal conceded, +6 defense per goal scored. Massive swing potential from behind.' },
+        rally: { name: 'Rally', desc: '+6 attack per goal conceded, +6 defense per goal scored. Massive swing potential.' },
         reset: { name: 'Reset Shape', desc: '+12 to ALL stats in rounds 4-6. Wipe the slate clean.' },
-        counter_h: { name: 'Lean Into Counters', desc: '+24 tempo, +14 defense in rounds 4-6. Every failed enemy attack triggers an automatic counter for 3 rounds.' },
-        high_press: { name: 'High Press', desc: '+22 defense in rounds 4-6, -6 composure. Their build-up is squeezed even harder in the second half.' },
+        counter_h: { name: 'Lean Into Counters', desc: '+24 tempo, +14 defense in rounds 4-6. Every failed enemy attack triggers an automatic counter.' },
+        high_press: { name: 'High Press', desc: '+22 defense in rounds 4-6, -6 composure. Squeeze their build-up — but the gaps are real if beaten.' },
         vision_play: { name: 'Open the Game', desc: '+22 vision, +10 attack in rounds 4-6. Create the gaps and pick them apart.' }
       },
       final: {
-        all_in: { name: 'All In', desc: 'Final round: +15 attack, -15 defense. Scales up sharply with every goal owed.' },
-        park_bus: { name: 'Park the Bus', desc: 'Final round: +15 defense, -10 attack. Scales up sharply with every goal in hand.' },
-        hero_ball: { name: 'Hero Ball', desc: 'Player with the best form permanently gains +30 to their focus stat right now.' },
-        keep_cool: { name: 'Stay Cool', desc: 'Final round: +20 composure, +12 vision. Nerves of steel when it matters most.' },
+        all_in: { name: 'All In', desc: 'Final round: +15 attack, -15 defense. Scales with every goal owed — but leaves you wide open.' },
+        park_bus: { name: 'Park the Bus', desc: 'Final round: +15 defense, -10 attack. Scales with every goal in hand.' },
+        hero_ball: { name: 'Hero Ball', desc: 'Best form player permanently gains +30 to focus stat.' },
+        keep_cool: { name: 'Stay Cool', desc: 'Final round: +20 composure, +12 vision. Nerves of steel.' },
         final_press: { name: 'Final Press', desc: 'Final round: +24 tempo, +18 defense, -10 attack. High counter chance.' },
-        long_ball: { name: 'Long Balls', desc: 'Final round: +28 attack, -10 vision. Hit them hard and direct.' },
-        midfield: { name: 'Midfield Control', desc: 'Final round: +20 vision, +16 tempo, +14 composure. Suffocate them with quality.' },
-        sneaky: { name: 'Ambush', desc: 'Final round: +28 defense, +18 tempo, -14 attack. Lure them in and pounce.' },
-        sacrifice: { name: 'Sacrifice', desc: 'One player permanently loses 15 focus stat. Team: +35 offense right now. Desperate times.' }
+        long_ball: { name: 'Long Balls', desc: 'Final round: +28 attack, -10 vision. Direct and hard.' },
+        midfield: { name: 'Midfield Control', desc: 'Final round: +20 vision, +16 tempo, +14 composure.' },
+        sneaky: { name: 'Ambush', desc: 'Final round: +28 defense, +18 tempo, -14 attack. Lure and pounce.' },
+        sacrifice: { name: 'Sacrifice', desc: 'One player loses 15 focus stat permanently. Team: +35 offense now.' }
       }
     },
     teamNamePools: {

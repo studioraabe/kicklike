@@ -274,8 +274,8 @@ const UI = {
             : `<line x1="4" y1="1" x2="4" y2="8" stroke="${_col}" stroke-width="1.2" stroke-linecap="round"/><path d="M1.5 5 L4 9.5 L6.5 5" fill="none" stroke="${_col}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>`;
         } else {
           _svg = _isUp
-            ? `<line x1="2" y1="11" x2="2" y2="4" stroke="${_col}" stroke-width="1.2" stroke-linecap="round"/><path d="M0 7 L2 2.5 L4 7" fill="none" stroke="${_col}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><line x1="6" y1="11" x2="6" y2="4" stroke="${_col}" stroke-width="1.2" stroke-linecap="round"/><path d="M4 7 L6 2.5 L8 7" fill="none" stroke="${_col}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>`
-            : `<line x1="2" y1="1" x2="2" y2="8" stroke="${_col}" stroke-width="1.2" stroke-linecap="round"/><path d="M0 5 L2 9.5 L4 5" fill="none" stroke="${_col}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><line x1="6" y1="1" x2="6" y2="8" stroke="${_col}" stroke-width="1.2" stroke-linecap="round"/><path d="M4 5 L6 9.5 L8 5" fill="none" stroke="${_col}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>`;
+            ? `<line x1="2" y1="11" x2="2" y2="4" stroke="${_col}" stroke-width="1.2" stroke-linecap="round"/><path d="M0 7 L2 2.5 L4 7" fill="none" stroke="${_col}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><line x1="7" y1="11" x2="7" y2="4" stroke="${_col}" stroke-width="1.2" stroke-linecap="round"/><path d="M5 7 L7 2.5 L9 7" fill="none" stroke="${_col}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>`
+            : `<line x1="2" y1="1" x2="2" y2="8" stroke="${_col}" stroke-width="1.2" stroke-linecap="round"/><path d="M0 5 L2 9.5 L4 5" fill="none" stroke="${_col}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><line x1="7" y1="1" x2="7" y2="8" stroke="${_col}" stroke-width="1.2" stroke-linecap="round"/><path d="M5 5 L7 9.5 L9 5" fill="none" stroke="${_col}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>`;
         }
         trendEl = el('span', { class:'cb-trend ' + (_isUp ? 'trend-up' : 'trend-down') });
         trendEl.innerHTML = `<svg viewBox="0 0 8 12" width="8" height="12" style="vertical-align:middle;margin-left:4px;flex-shrink:0;overflow:visible">${_svg}</svg>`;
@@ -332,8 +332,8 @@ const UI = {
             : `<line x1="4" y1="1" x2="4" y2="8" stroke="${col}" stroke-width="1.2" stroke-linecap="round"/><path d="M1.5 5 L4 9.5 L6.5 5" fill="none" stroke="${col}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>`;
         } else {
           svg = isUp
-            ? `<line x1="2" y1="11" x2="2" y2="4" stroke="${col}" stroke-width="1.2" stroke-linecap="round"/><path d="M0 7 L2 2.5 L4 7" fill="none" stroke="${col}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><line x1="6" y1="11" x2="6" y2="4" stroke="${col}" stroke-width="1.2" stroke-linecap="round"/><path d="M4 7 L6 2.5 L8 7" fill="none" stroke="${col}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>`
-            : `<line x1="2" y1="1" x2="2" y2="8" stroke="${col}" stroke-width="1.2" stroke-linecap="round"/><path d="M0 5 L2 9.5 L4 5" fill="none" stroke="${col}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><line x1="6" y1="1" x2="6" y2="8" stroke="${col}" stroke-width="1.2" stroke-linecap="round"/><path d="M4 5 L6 9.5 L8 5" fill="none" stroke="${col}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>`;
+            ? `<line x1="2" y1="11" x2="2" y2="4" stroke="${col}" stroke-width="1.2" stroke-linecap="round"/><path d="M0 7 L2 2.5 L4 7" fill="none" stroke="${col}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><line x1="7" y1="11" x2="7" y2="4" stroke="${col}" stroke-width="1.2" stroke-linecap="round"/><path d="M5 7 L7 2.5 L9 7" fill="none" stroke="${col}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>`
+            : `<line x1="2" y1="1" x2="2" y2="8" stroke="${col}" stroke-width="1.2" stroke-linecap="round"/><path d="M0 5 L2 9.5 L4 5" fill="none" stroke="${col}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><line x1="7" y1="1" x2="7" y2="8" stroke="${col}" stroke-width="1.2" stroke-linecap="round"/><path d="M5 5 L7 9.5 L9 5" fill="none" stroke="${col}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>`;
         }
         const span = document.createElement('span');
         span.style.cssText = 'display:inline-flex;align-items:center;gap:3px;';
@@ -397,15 +397,19 @@ const UI = {
     });
   },
 
-  updateMatchScore(match) {
-    $('#score-me').textContent = String(match.scoreMe);
-    $('#score-opp').textContent = String(match.scoreOpp);
+  updateRoundIndicator(round) {
     $$('.round-dot').forEach(d => {
       const r = Number(d.dataset.round);
       d.classList.remove('active', 'past');
-      if (r < match.round) d.classList.add('past');
-      else if (r === match.round) d.classList.add('active');
+      if (r < round) d.classList.add('past');
+      else if (r === round) d.classList.add('active');
     });
+  },
+
+  updateMatchScore(match) {
+    $('#score-me').textContent = String(match.scoreMe);
+    $('#score-opp').textContent = String(match.scoreOpp);
+    UI.updateRoundIndicator(match.round);
     UI.renderMatchFooter(match.squad, match.opp);
   },
 
@@ -421,19 +425,11 @@ const UI = {
   },
 
   // ── Halftime summary panel ────────────────────────────────────────────────
-  renderHalftimeSummary(match) {
+  renderHalftimeSummary(match, opts={}) {
     const s = match.stats;
     const myAcc  = s.myShots  ? Math.round(s.myShotsOnTarget  / s.myShots  * 100) : null;
-    const oppAcc = s.oppShots ? Math.round(s.oppShotsOnTarget / s.oppShots * 100) : null;
     const myBR   = s.myBuildups ? Math.round(s.myBuildupsSuccess / s.myBuildups * 100) : null;
-    const oppBR  = s.oppBuildups ? Math.round(s.oppBuildupsSuccess / s.oppBuildups * 100) : null;
     const poss   = s.possRounds ? Math.round((s.possAccum / s.possRounds) * 100) : 50;
-
-    // colour helpers — only compare when both sides have data
-    const shotCol  = s.myShots > s.oppShots ? 'var(--accent)' : s.myShots < s.oppShots ? 'var(--accent-2)' : 'var(--fg)';
-    const accCol   = (myAcc !== null && oppAcc !== null) ? (myAcc > oppAcc ? 'var(--accent)' : myAcc < oppAcc ? 'var(--accent-2)' : 'var(--fg)') : 'var(--fg)';
-    const brCol    = (myBR  !== null && oppBR  !== null) ? (myBR  > oppBR  ? 'var(--accent)' : myBR  < oppBR  ? 'var(--accent-2)' : 'var(--fg)') : 'var(--fg)';
-    const saveCol  = (s.saves || 0) > 0 ? 'var(--good)' : 'var(--fg)';
 
     // Active mechanic tags carrying into 2nd half
     const mechanics = [];
@@ -454,7 +450,7 @@ const UI = {
       happened.push(`🔄 ${I18N.t('ui.ht.momentumActive', { bonus: 15 })}`);
 
     const panel = el('div', { class:'interrupt-panel ht-summary' }, [
-      el('div', { class:'ip-title' }, [I18N.t('ui.ht.title')]),
+      el('div', { class:'ip-title' }, [opts.title || I18N.t('ui.ht.title')]),
 
       // Score + possession strip
       el('div', { class:'ht-score-strip' }, [
@@ -468,26 +464,22 @@ const UI = {
         el('div', { class:'ht-score-opp' }, [String(match.scoreOpp)])
       ]),
 
-      // 4 key numbers with opponent context and colour coding
+      // 4 key numbers — own values only, no colour coding, no opponent comparison
       el('div', { class:'ht-stats-row' }, [
         el('div', { class:'ht-stat' }, [
-          el('div', { class:'ht-stat-val', style:{ color: shotCol } }, [`${s.myShots}`]),
-          el('div', { class:'ht-stat-sub' }, [`vs ${s.oppShots}`]),
+          el('div', { class:'ht-stat-val' }, [`${s.myShots}`]),
           el('div', { class:'ht-stat-label' }, [I18N.t('ui.statsPanel.shots')])
         ]),
         el('div', { class:'ht-stat' }, [
-          el('div', { class:'ht-stat-val', style:{ color: accCol } }, [myAcc !== null ? `${myAcc}%` : '—']),
-          el('div', { class:'ht-stat-sub' }, [oppAcc !== null ? `vs ${oppAcc}%` : '']),
+          el('div', { class:'ht-stat-val' }, [myAcc !== null ? `${myAcc}%` : '—']),
           el('div', { class:'ht-stat-label' }, [I18N.t('ui.statsPanel.accuracy')])
         ]),
         el('div', { class:'ht-stat' }, [
-          el('div', { class:'ht-stat-val', style:{ color: brCol } }, [myBR !== null ? `${myBR}%` : '—']),
-          el('div', { class:'ht-stat-sub' }, [oppBR !== null ? `vs ${oppBR}%` : '']),
+          el('div', { class:'ht-stat-val' }, [myBR !== null ? `${myBR}%` : '—']),
           el('div', { class:'ht-stat-label' }, [I18N.t('ui.statsPanel.buildup')])
         ]),
         el('div', { class:'ht-stat' }, [
-          el('div', { class:'ht-stat-val', style:{ color: saveCol } }, [String(s.saves || 0)]),
-          el('div', { class:'ht-stat-sub' }, ['']),
+          el('div', { class:'ht-stat-val' }, [String(s.saves || 0)]),
           el('div', { class:'ht-stat-label' }, [I18N.t('ui.statsPanel.saves')])
         ])
       ]),
@@ -526,18 +518,12 @@ const UI = {
     modal.appendChild(list);
 
     if (match) {
-      if (phase === 'halftime') {
-        // ── Halftime: replace generic panels with match summary ─────────────
-        modal.appendChild(UI.renderHalftimeSummary(match));
-      } else {
-        // ── Kickoff / Final: keep existing stat panels ───────────────────────
-        const stack = el('div', { class:'interrupt-panel-stack' });
-        stack.appendChild(UI.renderTeamStatsPanel(match));
-        if (phase !== 'kickoff') {
-          stack.appendChild(UI.renderMatchStatsPanel(match));
-        }
-        modal.appendChild(stack);
+      if (phase === 'halftime' || phase === 'final') {
+        // ── Halftime + Final: show match summary panel ───────────────────────
+        const title = phase === 'final' ? I18N.t('ui.flow.finalTitle') : undefined;
+        modal.appendChild(UI.renderHalftimeSummary(match, { title }));
       }
+      // ── Kickoff: no panels — no data yet ────────────────────────────────
     }
 
     $('#interrupt-overlay').classList.add('active');
@@ -654,6 +640,30 @@ const UI = {
         [I18N.t('ui.result.sacrificeNote', { name: match._sacrificeVictim.name })]) : null
     ]));
     if (match) {
+		
+	     // ── Match log viewer — collapsible, replaces team stats ───────────────
+      const logEntries = (window.getState?.()?._lastMatchLog) || [];
+      if (logEntries.length) {
+        const logWrap = el('div', { style:{ marginBottom:'16px' } });
+        const logToggle = el('button', { class:'btn', style:{ width:'100%', marginBottom:'0', fontSize:'11px', padding:'8px 14px' } }, ['▶ Match Log']);
+        const logBody = el('div', {
+          class:'match-log',
+          style:{ display:'none', maxHeight:'220px', marginTop:'4px', fontSize:'15px' }
+        });
+        logEntries.forEach(({ msg, cls }) => {
+          const line = el('div', { class:'log-line ' + cls }, [msg]);
+          logBody.appendChild(line);
+        });
+        logToggle.addEventListener('click', () => {
+          const open = logBody.style.display !== 'none';
+          logBody.style.display = open ? 'none' : 'block';
+          logToggle.textContent = open ? '▶ Match Log' : '▼ Match Log';
+          if (!open) logBody.scrollTop = logBody.scrollHeight;
+        });
+        logWrap.appendChild(logToggle);
+        logWrap.appendChild(logBody);
+        content.appendChild(logWrap);
+      }	
       const s = match.stats;
       const myAccuracy = s.myShots ? Math.round(s.myShotsOnTarget / s.myShots * 100) : 0;
       const oppAccuracy = s.oppShots ? Math.round(s.oppShotsOnTarget / s.oppShots * 100) : 0;
@@ -671,8 +681,9 @@ const UI = {
         UI.renderMatchStatRow(I18N.t('ui.statsPanel.abilitiesTriggered'), s.triggersFired || 0, '–')
       ]);
       content.appendChild(statsPanel);
-      content.appendChild(UI.renderTeamStatsPanel(match));
-      const perfTitle = el('div', { class:'card-title', style:{ marginTop:'16px' } }, [I18N.t('ui.result.players')]);
+
+ 
+      const perfTitle = el('div', { class:'card-title', style:{ marginTop:'16px' , display:'none' } }, [I18N.t('ui.result.players')]);
       const perfList = el('div', { class:'result-perf-list' });
       for (const p of match.squad) {
         const xp = p._lastMatchXp || 0;
