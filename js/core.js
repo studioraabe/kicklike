@@ -1,0 +1,1374 @@
+function pickThemedTactics(pool, n, team, phase) {
+  const sigIds = team?.signatureTactics?.[phase] || [];
+  const tagWeights = team?.tacticTags || {};
+  const result = [];
+  const sigOptions = pool.filter(t => sigIds.includes(t.id));
+  if (sigOptions.length) {
+    result.push(pick(sigOptions));
+  }
+  const remaining = pool.filter(t => !result.includes(t));
+  const scored = remaining.map(t => {
+    let score = 1;
+    for (const tag of (t.tags || [])) {
+      score += (tagWeights[tag] || 0);
+    }
+    return { tactic: t, score };
+  });
+  while (result.length < n && scored.length) {
+    const totalScore = scored.reduce((s, x) => s + x.score, 0);
+    let r = rand() * totalScore;
+    let idx = 0;
+    for (let i = 0; i < scored.length; i++) {
+      r -= scored[i].score;
+      if (r <= 0) { idx = i; break; }
+    }
+    result.push(scored[idx].tactic);
+    scored.splice(idx, 1);
+  }
+
+  return result;
+}
+const clamp  = (v,a,b) => Math.max(a, Math.min(b, v));
+const uid    = (prefix='x') => prefix + '_' + Math.random().toString(36).slice(2,9);
+const $      = (sel, root=document) => root.querySelector(sel);
+const $$     = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+const sleep  = (ms) => new Promise(r => setTimeout(r, ms));
+
+function el(tag, attrs={}, children=[]) {
+  const e = document.createElement(tag);
+  for (const [k,v] of Object.entries(attrs)) {
+    if (k === 'class')       e.className = v;
+    else if (k === 'html')   e.innerHTML = v;
+    else if (k === 'onClick') e.addEventListener('click', v);
+    else if (k.startsWith('on') && typeof v === 'function') e.addEventListener(k.slice(2).toLowerCase(), v);
+    else if (k === 'style' && typeof v === 'object') Object.assign(e.style, v);
+    else e.setAttribute(k, v);
+  }
+  for (const c of [].concat(children)) {
+    if (c == null) continue;
+    e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+  }
+  return e;
+}
+function formIndicator(form) {
+  if (!form) return '';
+  if (form >= 2)  return ' · 🔥↑↑';
+  if (form === 1) return ' · ↑';
+  if (form <= -2) return ' · ❄↓↓';
+  if (form === -1) return ' · ↓';
+  return '';
+}
+const TEAM_NAME_POOLS = {
+  konter: {
+    first: ["Fox","Jet","Ash","Kai","Zed","Rex","Vex","Nyx","Rook","Swift","Blaze","Corvo","Dash","Echo","Ravi","Slate","Volt","Zane","Kit","Milo"],
+    last: ["Sharp","Cross","Dash","Skye","Reeve","Blaze","Quinn","Striker","Fall","Rush","Edge","Swift","Hale","Stryder","Vortex","Flicker","Cipher"]
+  },
+  pressing: {
+    first: ["Grim","Vargr","Krag","Brax","Thor","Raze","Grunt","Bjorn","Krogh","Ulf","Magnus","Ragnar","Brokk","Vidar","Harald","Ivor","Orin","Knut"],
+    last: ["Bulk","Crush","Wolf","Blood","Steel","Fang","Claw","Bane","Hammer","Iron","Stone","Mauler","Tusk","Growl","Graf","Forge","Grimwald"]
+  },
+  technik: {
+    first: ["Luca","Nico","Rafa","Mateo","Dante","Enzo","Alessio","Marco","Giovani","Xavi","Theo","Renzo","Leandro","Diego","Seb","Liam","Silas"],
+    last: ["Bellucci","Corelli","Ferrando","Moretti","Salvatore","Laurent","Rossi","Valenti","Monti","Rinaldi","Serra","Piazza","Viale","Lionheart","Delacroix"]
+  },
+  kraft: {
+    first: ["Bernd","Horst","Reinhold","Klaus","Kurt","Manfred","Detlef","Siegfried","Hartmut","Werner","Friedhelm","Heinrich","Günter","Egon","Rolf","Ulli"],
+    last: ["Donnerberg","Eisenfaust","Steinbruck","Stahlhammer","Sturmwald","Rabenhorst","Wolfsberg","Ackermann","Rothmann","Schmied","Gruber","Bollwerk","Hartstein"]
+  }
+};
+
+function generateName(teamId) {
+  const pool = teamId && TEAM_NAME_POOLS[teamId] ? TEAM_NAME_POOLS[teamId] : null;
+  if (pool) {
+    return `${pick(pool.first)} ${pick(pool.last)}`;
+  }
+  const allFirst = Object.values(TEAM_NAME_POOLS).flatMap(p => p.first);
+  const allLast  = Object.values(TEAM_NAME_POOLS).flatMap(p => p.last);
+  return `${pick(allFirst)} ${pick(allLast)}`;
+}
+
+function makePlayer(archetypeId, opts={}) {
+  const a = DATA.archetypes[archetypeId];
+  const stats = {};
+  for (const [k, v] of Object.entries(a.stats)) {
+    stats[k] = opts.noRandom ? v : clamp(v + randi(-5, 5), 20, 99);
+  }
+  return {
+    id: uid('p'),
+    name: opts.name || generateName(opts.teamId),
+    role: a.role,
+    archetype: archetypeId,
+    label: a.label,
+    stage: opts.stage || 0,
+    evoPath: [archetypeId],
+    stats,
+    traits: opts.traits || [],
+    level: opts.level || 1,
+    xp: 0,
+    xpToNext: 4,
+    goals: 0,
+    pendingLevelUp: false,
+    evolutionLevel: null,
+    isLegendary: !!opts.isLegendary,
+    form: 0,
+    lastPerformance: 0
+  };
+}
+const LEGENDARY_TRAITS = {
+  "god_mode":        { name:"God Mode",         desc:"Einmal pro Match: nächstes Tor zählt dreifach." },
+  "clutch_dna":      { name:"Clutch-DNA",       desc:"In letzter Runde: +20 Offense, +10 Composure." },
+  "field_general":   { name:"Feldgeneral",      desc:"Gesamtes Team: +4 auf alle Stats." },
+  "unbreakable":     { name:"Unzerbrechlich",   desc:"Erstes kassiertes Tor pro Match: annulliert." },
+  "big_game":        { name:"Big-Game-Player",  desc:"Gegen Boss: +15 auf Fokus-Stat." },
+  "conductor":       { name:"Orchestrator",     desc:"Pro erfolgreichem Aufbau: +8% nächstes Tor." },
+  "phoenix":         { name:"Phönix",           desc:"Bei Rückstand 2+: +12 Offense dauerhaft dieses Match." },
+  "ice_in_veins":    { name:"Eis in den Adern", desc:"Ignoriert Gegner-Composure-Buffs komplett." }
+};
+
+function generateLegendaryPlayer() {
+  const role = pick(['TW','VT','PM','LF','ST']);
+  const stage1Options = Object.keys(DATA.evoDetails).filter(k => DATA.evoDetails[k].role === role && !DATA.evoDetails[k].inheritedFrom);
+  const evoId = pick(stage1Options);
+  const evo = DATA.evoDetails[evoId];
+  const baseArch = Object.entries(DATA.archetypes).find(([,a]) => a.role === role);
+  const [baseArchId, baseArchData] = baseArch;
+  const md = (typeof state !== 'undefined' && state.matchNumber) || 5;
+  let stage = 1, level = 4;
+  if (md >= 10) { stage = 2; level = 7; }
+  if (md >= 15) { stage = 2; level = 10; }
+  const player = {
+    id: uid('leg'),
+    name: pick([
+      "Nikolaus Vega","Rasmus Orth","Idris Storm","Jago Sand","Milo Rivera","Octavian Kross",
+      "Darian Lux","Suren Vex","Leon Trax","Rune Kainz","Ashe Quandt","Zephyr Böhm",
+      "Malik Kroos","Nils Falk","Sovereign Reinhardt","Maksim Thoma"
+    ]),
+    role,
+    archetype: evoId,
+    label: evo.label + " ⚜",
+    stage: 1,
+    evoPath: [baseArchId, evoId],
+    stats: { ...baseArchData.stats },
+    traits: [],
+    level,
+    xp: 0,
+    xpToNext: 6,
+    goals: 0,
+    pendingLevelUp: false,
+    evolutionLevel: null,
+    isLegendary: true,
+    form: 0,
+    lastPerformance: 0
+  };
+  for (const [k,v] of Object.entries(evo.boosts)) player.stats[k] = clamp((player.stats[k]||0) + v, 20, 99);
+  if (evo.trait) player.traits.push(evo.trait);
+  if (stage >= 2) {
+    const stage2Options = (DATA.evolutions[evoId] || []);
+    if (stage2Options.length) {
+      const s2Id = pick(stage2Options);
+      const s2 = DATA.evoDetails[s2Id];
+      if (s2) {
+        for (const [k,v] of Object.entries(s2.boosts || {})) player.stats[k] = clamp((player.stats[k]||0) + v, 20, 99);
+        if (s2.trait && !player.traits.includes(s2.trait)) player.traits.push(s2.trait);
+        player.label = s2.label + " ⚜";
+        player.archetype = s2Id;
+        player.evoPath.push(s2Id);
+        player.stage = 2;
+      }
+    }
+  }
+  const focusStat = DATA.roles.find(r=>r.id===role).focusStat;
+  player.stats[focusStat] = clamp(player.stats[focusStat] + 15, 20, 99);
+  const otherStats = ['offense','defense','tempo','vision','composure'].filter(s => s !== focusStat);
+  for (let i = 0; i < 5; i++) {
+    const s = pick(otherStats);
+    player.stats[s] = clamp(player.stats[s] + 5, 20, 99);
+  }
+  const legTraitKey = pick(Object.keys(LEGENDARY_TRAITS));
+  player.traits.push(legTraitKey);
+  return player;
+}
+
+function totalPower(squad) {
+  return squad.reduce((sum, p) => sum + Object.values(p.stats).reduce((a,b)=>a+b,0), 0);
+}
+
+function squadPowerAvg(squad) {
+  return Math.round(totalPower(squad) / squad.length);
+}
+function aggregateTeamStats(lineup) {
+  const totals = { offense:0, defense:0, tempo:0, vision:0, composure:0 };
+  for (const p of lineup) {
+    for (const k of Object.keys(totals)) totals[k] += (p.stats[k] || 0);
+  }
+  const n = Math.max(1, lineup.length);
+  for (const k of Object.keys(totals)) totals[k] = Math.round(totals[k] / n);
+  return totals;
+}
+function teamTotalPower(lineup) {
+  const agg = aggregateTeamStats(lineup);
+  return Object.values(agg).reduce((a,b) => a+b, 0);
+}
+function teamStrengthLabel(teamStats) {
+  const entries = Object.entries(teamStats).sort((a,b) => b[1] - a[1]);
+  const labels = {
+    offense:'Offensiv', defense:'Defensiv', tempo:'Tempo-orientiert',
+    vision:'Spielintelligent', composure:'Nervenstark'
+  };
+  return labels[entries[0][0]] || 'Ausgewogen';
+}
+
+const TRIGGER_HANDLERS = {
+  "titan_stand": (p, ctx) => {
+    if (ctx.event === 'oppShot' && Math.abs(ctx.match.scoreMe - ctx.match.scoreOpp) <= 1) {
+      if (rand() < 0.30) { ctx.oppShotSaved = true; ctx.log('⛔ ' + p.name + ' TITANENSTAND — abgewehrt!'); }
+    }
+  },
+  "fortress_aura": (p, ctx) => {
+    if (ctx.event === 'statCompute' && ctx.player?.role === 'VT') ctx.stats.defense += 6;
+  },
+  "clutch_save": (p, ctx) => {
+    if (ctx.event === 'oppShot' && ctx.match.round >= 5 && rand() < 0.20) {
+      ctx.oppShotSaved = true; ctx.log('🧤 ' + p.name + ' CLUTCH SAVE!');
+    }
+  },
+  "sweep_assist": (p, ctx) => {
+    if (ctx.event === 'postSave') ctx.match.nextBuildupBonus = (ctx.match.nextBuildupBonus||0) + 0.08;
+  },
+  "laser_pass": (p, ctx) => {
+    if (ctx.event === 'postSave' && rand() < 0.20) {
+      ctx.match.counterPending = true;
+      ctx.log('🎯 ' + p.name + ' LASER-PASS — Konter eingeleitet!');
+    }
+  },
+  "offside_trap": (p, ctx) => {
+    if (ctx.event === 'oppAttack' && rand() < 0.15) {
+      ctx.oppAttackNegated = true;
+      ctx.log('🚩 ' + p.name + ' Abseitsfalle!');
+    }
+  },
+  "acrobat_parry": (p, ctx) => {
+    if (ctx.event === 'oppShot' && !p._usedAcrobat) {
+      ctx.match.nextSaveBonus = 0.12;
+      p._usedAcrobat = true;
+    }
+  },
+  "wall_effect": (p, ctx) => {
+    if (ctx.event === 'matchStart') {
+      ctx.match.teamBuffs.saveBonus = (ctx.match.teamBuffs.saveBonus||0) + 0.15;
+      ctx.match.teamBuffs.buildupMalus = (ctx.match.teamBuffs.buildupMalus||0) + 0.10;
+    }
+  },
+  "nine_lives": (p, ctx) => {
+    if (ctx.event === 'oppGoal' && !p._usedNineLives) {
+      ctx.oppGoalCancelled = true;
+      p._usedNineLives = true;
+      ctx.log('🐱 ' + p.name + ' NEUN LEBEN — Tor annulliert!');
+    }
+  },
+  "intimidate": (p, ctx) => {
+    if (ctx.event === 'oppStatCompute' && ctx.oppRole === 'ST') ctx.oppStats.offense -= 5;
+  },
+  "bulldoze": (p, ctx) => {
+    if (ctx.event === 'oppShot' && rand() < 0.10) {
+      ctx.oppShotSaved = true;
+      ctx.match.counterPending = true;
+      ctx.log('🛡 ' + p.name + ' BULLDOZE — Ballgewinn + Konter!');
+    }
+  },
+  "captain_boost": (p, ctx) => {
+    if (ctx.event === 'statCompute') ctx.stats.composure += 3;
+  },
+  "blood_scent": (p, ctx) => {
+    if (ctx.event === 'afterOppGoal') {
+      p.stats.defense += 5; ctx.log('🩸 ' + p.name + ' BLUTRAUSCH +5 Def.');
+    }
+  },
+  "hard_tackle": (p, ctx) => {
+    if (ctx.event === 'oppAttack' && rand() < 0.20) {
+      ctx.oppAttackNegated = true;
+      ctx.match.counterPending = true;
+      ctx.log('🥾 ' + p.name + ' HARTES TACKLING — Konter!');
+    }
+  },
+  "whirlwind_rush": (p, ctx) => {
+    if (ctx.event === 'roundStart' && !p._whirlwindUsed && (ctx.match.round === 2 || ctx.match.round === 5)) {
+      ctx.match.teamBuffs.tempoBonus = (ctx.match.teamBuffs.tempoBonus||0) + 0.5;
+      p._whirlwindUsed = ctx.match.round <= 3 ? '1h' : '2h';
+      ctx.log('🌪 ' + p.name + ' WIRBELWIND — doppeltes Tempo!');
+    }
+  },
+  "build_from_back": (p, ctx) => {
+    if (ctx.event === 'statCompute' && ctx.player?.role === 'PM') ctx.stats.vision += 8;
+  },
+  "late_bloom": (p, ctx) => {
+    if (ctx.event === 'statCompute' && ctx.player === p && ctx.match.round >= 4) {
+      ctx.stats.offense += 10; ctx.stats.vision += 5;
+    }
+  },
+  "read_game": (p, ctx) => {
+    if (ctx.event === 'oppAttack' && !p._readGameUsed) {
+      ctx.oppAttackNegated = true; p._readGameUsed = true;
+      ctx.log('🧠 ' + p.name + ' liest das Spiel perfekt!');
+    }
+  },
+  "metronome_tempo": (p, ctx) => {
+    if (ctx.event === 'roundStart') {
+      p._metronomeBonus = (p._metronomeBonus||0) + 0.02;
+    }
+    if (ctx.event === 'ownAttack') {
+      ctx.attackBonus += (p._metronomeBonus||0);
+    }
+  },
+  "killer_pass": (p, ctx) => {
+    if (ctx.event === 'ownGoal' && rand() < 0.25) {
+      ctx.match.chainAttack = true;
+      ctx.log('⚡ ' + p.name + ' KILLER-PASS — nächste Runde Chain!');
+    }
+  },
+  "whisper_boost": (p, ctx) => {
+    if (ctx.event === 'statCompute' && ctx.player?.role === 'ST') {
+      ctx.stats.composure += 8; ctx.stats.offense += 4;
+    }
+  },
+  "hunter_press": (p, ctx) => {
+    if (ctx.event === 'roundStart' && rand() < 0.15) {
+      ctx.match.counterPending = true;
+      ctx.log('🏹 ' + p.name + ' PRESSING-GEWINN!');
+    }
+  },
+  "gegenpress_steal": (p, ctx) => {
+    if (ctx.event === 'oppAttackFailed') {
+      ctx.match.nextBuildupBonus = (ctx.match.nextBuildupBonus||0) + 0.15;
+    }
+  },
+  "shadow_strike": (p, ctx) => {
+    if (ctx.event === 'roundStart' && (ctx.match.round === 3 || ctx.match.round === 6) && rand() < 0.20) {
+      ctx.match.shadowStrikeTriggered = true;
+      ctx.log('👤 ' + p.name + ' SCHATTENSCHLAG — versteckter Angriff!');
+    }
+  },
+  "maestro_combo": (p, ctx) => {
+    if (ctx.event === 'ownGoal') {
+      ctx.match.comboCounter = (ctx.match.comboCounter||0) + 1;
+      if (ctx.match.comboCounter >= 3) {
+        ctx.match.doubleNextGoal = true;
+        ctx.match.comboCounter = 0;
+        ctx.log('🎼 ' + p.name + ' MAESTRO-COMBO — nächstes Tor ZÄHLT DOPPELT!');
+      }
+    }
+  },
+  "chess_predict": (p, ctx) => {
+    if (ctx.event === 'oppGoal' && !p._chessUsed) {
+      ctx.oppGoalCancelled = true; p._chessUsed = true;
+      ctx.log('♟ ' + p.name + ' CHESS PREDICT — Gegnertor vorhergesehen!');
+    }
+  },
+  "symphony_pass": (p, ctx) => {
+    if (ctx.event === 'ownAttack' && (ctx.match.triggersThisRound||0) >= 2) {
+      ctx.attackBonus += 0.10;
+    }
+  },
+  "speed_burst": (p, ctx) => {
+    if (ctx.event === 'ownAttack' && !p._speedBurstUsed) {
+      ctx.guaranteedBuildup = true; p._speedBurstUsed = true;
+      ctx.log('💨 ' + p.name + ' SPEED BURST — Aufbau garantiert!');
+    }
+    if (ctx.event === 'halftime') p._speedBurstUsed = false;
+  },
+  "launch_sequence": (p, ctx) => {
+    if (ctx.event === 'ownAttack' && ctx.match.round === 1) ctx.attackBonus += 0.20;
+  },
+  "unstoppable_run": (p, ctx) => {
+    if (ctx.event === 'ownAttack' && p.stats.tempo > (ctx.oppAvgDefense||60) && rand() < 0.10) {
+      ctx.autoGoal = true; ctx.log('🚀 ' + p.name + ' UNAUFHALTBAR — Tor ohne Gegenwehr!');
+    }
+  },
+  "dribble_chain": (p, ctx) => {
+    if (ctx.event === 'ownGoal') p._dribbleStack = Math.min(0.25, (p._dribbleStack||0) + 0.05);
+    if (ctx.event === 'ownAttack') ctx.attackBonus += (p._dribbleStack||0);
+  },
+  "street_trick": (p, ctx) => {
+    if (ctx.event === 'ownAttack' && rand() < 0.15) {
+      ctx.oppAvgDefense = Math.max(30, (ctx.oppAvgDefense||60) - 20);
+      ctx.log('🎨 ' + p.name + ' STREET-TRICK — VTer umspielt!');
+    }
+  },
+  "nutmeg": (p, ctx) => {
+    if (ctx.event === 'ownAttack' && rand() < 0.20) {
+      ctx.oppAvgDefense = 0;
+      ctx.log('🧦 ' + p.name + ' TUNNEL — Defense ignoriert!');
+    }
+  },
+  "ironman_stamina": (p, ctx) => {
+    if (ctx.event === 'statCompute' && ctx.match.round >= 5) {
+      ctx.stats.tempo += 2;
+    }
+  },
+  "dynamo_power": (p, ctx) => {
+    if (ctx.event === 'ownAttack' && ctx.match.round % 2 === 0) ctx.attackBonus += 0.06;
+  },
+  "never_stop": (p, ctx) => {
+    if (ctx.event === 'statCompute' && ctx.player === p) {
+      ctx.stats.offense += (ctx.match.scoreOpp || 0) * 8;
+    }
+  },
+  "silent_killer": (p, ctx) => {
+    if (ctx.event === 'ownAttack' && !ctx.match.firstShotTaken) {
+      ctx.attackBonus += 0.30;
+      ctx.match.firstShotTaken = true;
+      ctx.log('🎯 ' + p.name + ' SILENT KILLER — erster Schuss verstärkt!');
+    }
+  },
+  "predator_pounce": (p, ctx) => {
+    if (ctx.event === 'oppAttackFailed' && rand() < 0.25) {
+      ctx.match.pouncePending = true;
+      ctx.log('🐆 ' + p.name + ' HETZJAGD — sofort-Konter!');
+    }
+  },
+  "opportunity": (p, ctx) => {
+    if (ctx.event === 'ownBuildupSuccess') ctx.attackBonus += 0.03;
+  },
+  "cannon_blast": (p, ctx) => {
+    if (ctx.event === 'ownAttack') {
+      if (rand() < 0.10) { ctx.autoGoal = true; ctx.log('💥 ' + p.name + ' KANONENSCHUSS!'); }
+      else ctx.attackBonus -= 0.05;
+    }
+  },
+  "header_power": (p, ctx) => {
+    if (ctx.event === 'ownAttack') {
+      const teamVision = (ctx.match.squad||[]).reduce((s,pp)=>s+pp.stats.vision, 0) / 5;
+      if (teamVision > 60) ctx.attackBonus += 0.15;
+    }
+  },
+  "brick_hold": (p, ctx) => {
+    if (ctx.event === 'oppAttack' && rand() < 0.10) {
+      ctx.oppAttackNegated = true;
+      ctx.log('🧱 ' + p.name + ' BALLHALTEN — hält den Druck ab!');
+    }
+  },
+  "ghost_run": (p, ctx) => {
+    if (ctx.event === 'roundStart' && rand() < 0.15) {
+      ctx.match.ghostChancePending = true;
+      ctx.log('👻 ' + p.name + ' GEISTERLAUF — versteckte Chance!');
+    }
+  },
+  "puzzle_connect": (p, ctx) => {
+    if (ctx.event === 'ownGoal' && ctx.scorer?.role === 'PM') {
+      ctx.match.puzzleBonus = 0.25;
+    }
+    if (ctx.event === 'ownAttack' && ctx.match.puzzleBonus) {
+      ctx.attackBonus += ctx.match.puzzleBonus;
+      ctx.match.puzzleBonus = 0;
+      ctx.log('🧩 ' + p.name + ' PUZZLE VERBUNDEN!');
+    }
+  },
+  "chameleon_adapt": (p, ctx) => {
+    if (ctx.event === 'roundStart' && ctx.match.round === 4 && !p._chameleonUsed) {
+      const tmate = (ctx.match.squad||[])
+        .filter(pp => pp !== p && pp.traits.length)
+        .sort((a,b) => (b._triggerCount||0) - (a._triggerCount||0))[0];
+      if (tmate) {
+        p._chameleonTrait = tmate.traits[0];
+        p._chameleonUsed = true;
+        ctx.log('🦎 ' + p.name + ' kopiert ' + (DATA.traits[tmate.traits[0]]?.name || tmate.traits[0]) + '!');
+      }
+    }
+    if (p._chameleonTrait && TRIGGER_HANDLERS[p._chameleonTrait]) {
+      TRIGGER_HANDLERS[p._chameleonTrait](p, ctx);
+    }
+  }
+};
+function buildMasteryHandlers() {
+  for (const [traitKey, def] of Object.entries(DATA.traits)) {
+    if (!traitKey.endsWith('_mastery')) continue;
+    if (TRIGGER_HANDLERS[traitKey]) continue;
+    const evoId = traitKey.replace(/_mastery$/, '');
+    const evo = DATA.evoDetails[evoId];
+    if (!evo) continue;
+    const parentTrait = evo.parentTrait;
+    const parentHandler = TRIGGER_HANDLERS[parentTrait];
+    if (!parentHandler) continue;
+
+    TRIGGER_HANDLERS[traitKey] = (p, ctx) => {
+      const captureStats = ctx.stats ? { ...ctx.stats } : null;
+      const captureOppStats = ctx.oppStats ? { ...ctx.oppStats } : null;
+      const captureBuffs = ctx.match?.teamBuffs ? { ...ctx.match.teamBuffs } : null;
+      const prevAttackBonus = ctx.attackBonus || 0;
+
+      parentHandler(p, ctx);
+      const MASTERY_BOOST = 0.2;
+      if (ctx.stats && captureStats) {
+        for (const k of Object.keys(ctx.stats)) {
+          const delta = (ctx.stats[k] || 0) - (captureStats[k] || 0);
+          if (delta !== 0) ctx.stats[k] += delta * MASTERY_BOOST;
+        }
+      }
+      if (ctx.oppStats && captureOppStats) {
+        for (const k of Object.keys(ctx.oppStats)) {
+          const delta = (ctx.oppStats[k] || 0) - (captureOppStats[k] || 0);
+          if (delta !== 0) ctx.oppStats[k] += delta * MASTERY_BOOST;
+        }
+      }
+      if (ctx.match?.teamBuffs && captureBuffs) {
+        for (const k of Object.keys(ctx.match.teamBuffs)) {
+          const delta = (ctx.match.teamBuffs[k] || 0) - (captureBuffs[k] || 0);
+          if (delta !== 0) ctx.match.teamBuffs[k] += delta * MASTERY_BOOST;
+        }
+      }
+      if (ctx.attackBonus > prevAttackBonus) {
+        const delta = ctx.attackBonus - prevAttackBonus;
+        ctx.attackBonus += delta * MASTERY_BOOST;
+      }
+    };
+  }
+}
+buildMasteryHandlers();
+for (const [key, def] of Object.entries(LEGENDARY_TRAITS)) {
+  DATA.traits[key] = def;
+}
+TRIGGER_HANDLERS["god_mode"] = (p, ctx) => {
+  if (ctx.event === 'ownGoal' && !p._godModeUsed && ctx.match.scoreMe <= ctx.match.scoreOpp + 1) {
+    p._godModeUsed = true;
+    ctx.match.doubleNextGoal = true;
+    ctx.match.tripleNextGoal = true;
+    ctx.log('⭐ ' + p.name + ' GOD MODE — nächstes Tor x3!');
+  }
+};
+TRIGGER_HANDLERS["clutch_dna"] = (p, ctx) => {
+  if (ctx.event === 'statCompute' && ctx.player === p && ctx.match.round === 6) {
+    ctx.stats.offense += 20; ctx.stats.composure += 10;
+  }
+};
+TRIGGER_HANDLERS["field_general"] = (p, ctx) => {
+  if (ctx.event === 'statCompute') {
+    ctx.stats.offense += 4; ctx.stats.defense += 4;
+    ctx.stats.tempo += 4; ctx.stats.vision += 4; ctx.stats.composure += 4;
+  }
+};
+TRIGGER_HANDLERS["unbreakable"] = (p, ctx) => {
+  if (ctx.event === 'oppGoal' && !p._unbreakableUsed) {
+    p._unbreakableUsed = true;
+    ctx.oppGoalCancelled = true;
+    ctx.log('🛡 ' + p.name + ' UNZERBRECHLICH — Tor annulliert!');
+  }
+};
+TRIGGER_HANDLERS["big_game"] = (p, ctx) => {
+  if (ctx.event === 'statCompute' && ctx.player === p && ctx.match.opp?.isBoss) {
+    const focus = DATA.roles.find(r=>r.id===p.role)?.focusStat || 'offense';
+    ctx.stats[focus] += 15;
+  }
+};
+TRIGGER_HANDLERS["conductor"] = (p, ctx) => {
+  if (ctx.event === 'ownBuildupSuccess') {
+    ctx.match._conductorStack = (ctx.match._conductorStack||0) + 0.08;
+  }
+  if (ctx.event === 'ownAttack') {
+    ctx.attackBonus += (ctx.match._conductorStack||0);
+  }
+};
+TRIGGER_HANDLERS["phoenix"] = (p, ctx) => {
+  if (ctx.event === 'statCompute' && ctx.player === p) {
+    if ((ctx.match.scoreOpp - ctx.match.scoreMe) >= 2) {
+      ctx.stats.offense += 12;
+    }
+  }
+};
+TRIGGER_HANDLERS["ice_in_veins"] = (p, ctx) => {
+  if (ctx.event === 'statCompute' && ctx.player === p) {
+    ctx.stats.composure += 6;
+  }
+};
+const LEGENDARY_TRAIT_KEYS = new Set(Object.keys(LEGENDARY_TRAITS));
+function _snapshotTriggerState(ctx) {
+  const s = {
+    attackBonus: ctx.attackBonus,
+    oppGoalCancelled: ctx.oppGoalCancelled,
+    oppShotSaved: ctx.oppShotSaved,
+    oppAttackNegated: ctx.oppAttackNegated,
+    autoGoal: ctx.autoGoal,
+    oppAvgDefense: ctx.oppAvgDefense,
+    guaranteedBuildup: ctx.guaranteedBuildup
+  };
+  if (ctx.stats) s.statSum = (ctx.stats.offense||0)+(ctx.stats.defense||0)+(ctx.stats.tempo||0)+(ctx.stats.vision||0)+(ctx.stats.composure||0);
+  if (ctx.oppStats) s.oppStatSum = (ctx.oppStats.offense||0)+(ctx.oppStats.defense||0);
+  if (ctx.match) {
+    const m = ctx.match;
+    s.scoreMe = m.scoreMe;
+    s.scoreOpp = m.scoreOpp;
+    s.counterPending = m.counterPending;
+    s.chainAttack = m.chainAttack;
+    s.pouncePending = m.pouncePending;
+    s.shadowStrikeTriggered = m.shadowStrikeTriggered;
+    s.doubleNextGoal = m.doubleNextGoal;
+    s.tripleNextGoal = m.tripleNextGoal;
+    s.ghostChancePending = m.ghostChancePending;
+    s.nextBuildupBonus = m.nextBuildupBonus;
+    s.nextSaveBonus = m.nextSaveBonus;
+    s.puzzleBonus = m.puzzleBonus;
+    if (m.teamBuffs) s.buffSum = (m.teamBuffs.offense||0)+(m.teamBuffs.defense||0)+(m.teamBuffs.tempo||0)+(m.teamBuffs.vision||0)+(m.teamBuffs.composure||0);
+  }
+  return JSON.stringify(s);
+}
+
+function dispatchTrigger(type, ctx) {
+  ctx.event = type;
+  ctx.triggersThisRound = ctx.triggersThisRound || 0;
+  if (ctx.match && !ctx.match._triggerLogBuffer) ctx.match._triggerLogBuffer = [];
+  ctx.log = (msg) => {
+    if (ctx.match?._triggerLogBuffer) ctx.match._triggerLogBuffer.push(msg);
+  };
+  const squad = ctx.match?.squad || state?.squad || [];
+  for (const p of squad) {
+    if (!p.traits?.length) continue;
+    for (const traitId of p.traits) {
+      const handler = TRIGGER_HANDLERS[traitId];
+      if (!handler) continue;
+      const before = _snapshotTriggerState(ctx);
+      try {
+        handler(p, ctx);
+      } catch(e) {
+        if (typeof console !== 'undefined' && console.warn) {
+          console.warn('[Trait-Error]', traitId, 'on', p.name, '—', e.message);
+        }
+      }
+      const after = _snapshotTriggerState(ctx);
+      if (before !== after) {
+        ctx.triggersThisRound++;
+        p._triggerCount = (p._triggerCount||0) + 1;
+        if (ctx.match) {
+          ctx.match.stats.triggersFired = (ctx.match.stats.triggersFired||0) + 1;
+        }
+      }
+    }
+  }
+}
+async function flushTriggerLog(match, onEvent) {
+  if (!match?._triggerLogBuffer?.length) return;
+  const msgs = match._triggerLogBuffer.slice();
+  match._triggerLogBuffer.length = 0;
+  for (const msg of msgs) {
+    await log(onEvent, 'trigger', msg);
+  }
+}
+
+function computePlayerStats(player, match) {
+  const stats = { ...player.stats };
+  const focusStat = DATA.roles.find(r => r.id === player.role)?.focusStat;
+  if (focusStat && player.form) {
+    stats[focusStat] = (stats[focusStat] || 0) + player.form * 2;
+  }
+  if (match._teamFormBonus) {
+    for (const k of Object.keys(stats)) {
+      stats[k] += match._teamFormBonus;
+    }
+  }
+  const ctx = { stats, player, match };
+  dispatchTrigger('statCompute', ctx);
+  if (match.teamBuffs) {
+    for (const [k,v] of Object.entries(match.teamBuffs)) {
+      if (k in stats) stats[k] += v;
+    }
+  }
+  return stats;
+}
+
+function computeOppStats(opp, role, match) {
+  const base = { ...opp.stats };
+  const ctx = { oppStats: base, oppRole: role, match };
+  dispatchTrigger('oppStatCompute', ctx);
+  return base;
+}
+const OPP_TRAITS = [
+  { id:"sturm",       name:"Sturmwalze",        desc:"+8% Schuss-Genauigkeit." },
+  { id:"riegel",      name:"Riegelkette",       desc:"+5% Save-Verhinderung pro Runde." },
+  { id:"konter_opp",  name:"Konterstark",       desc:"Bei eigenem Aufbau-Fehler: 30% Chance auf direkten Schuss." },
+  { id:"presser_opp", name:"Pressing-Maschine", desc:"Eigene Aufbauten scheitern 10% häufiger." },
+  { id:"clutch_opp",  name:"Eiskalt",           desc:"Letzte 2 Runden: +10 Offense, +5 Tempo." },
+  { id:"lucky",       name:"Glückspilz",        desc:"Einmal pro Match: zufälliger Bonusangriff." },
+  { id:"ironwall",    name:"Eisenmauer",        desc:"Erste 2 Runden: +10 Defense." },
+  { id:"sniper",      name:"Scharfschütze",     desc:"+15% Schussgenauigkeit, aber -5 Tempo." }
+];
+function applyOppTraitEffect(opp, match, point, ctx={}) {
+  if (!opp.traits) return ctx;
+  for (const traitId of opp.traits) {
+    const t = OPP_TRAITS.find(x => x.id === traitId);
+    if (!t) continue;
+    if (point === 'oppShotChance') {
+      if (traitId === 'sturm')  ctx.bonus = (ctx.bonus || 0) + 0.08;
+      if (traitId === 'sniper') ctx.bonus = (ctx.bonus || 0) + 0.15;
+    }
+    if (point === 'savePenalty') {
+      if (traitId === 'riegel') ctx.penalty = (ctx.penalty || 0) + 0.05;
+    }
+    if (point === 'ownBuildupChance') {
+      if (traitId === 'presser_opp') ctx.malus = (ctx.malus || 0) + 0.10;
+    }
+    if (point === 'lateGameBoost') {
+      if (traitId === 'clutch_opp' && match.round >= 5) {
+        ctx.offense = (ctx.offense || 0) + 10;
+        ctx.tempo = (ctx.tempo || 0) + 5;
+      }
+    }
+    if (point === 'earlyDefense') {
+      if (traitId === 'ironwall' && match.round <= 2) {
+        ctx.defense = (ctx.defense || 0) + 10;
+      }
+    }
+    if (point === 'counterAttack') {
+      if (traitId === 'konter_opp' && rand() < 0.30) {
+        ctx.triggered = true;
+      }
+    }
+  }
+  return ctx;
+}
+
+function generateOpponent(matchNumber) {
+  const isBoss = CONFIG.bossMatches.includes(matchNumber);
+  const name = pick(DATA.opponents.prefixes) + pick(DATA.opponents.places);
+  let basePower = 235 + Math.round(matchNumber * 9.5 + Math.pow(matchNumber, 1.3));
+  if (matchNumber >= 10) basePower += (matchNumber - 9) * 5;
+  const bossBonus = isBoss ? 30 : 0;
+  const totalStat = basePower + bossBonus;
+  const special = pick(DATA.opponents.specials);
+  const SPECIAL_BIAS = {
+    offensive:  { offense: +0.04 },
+    defensive:  { defense: +0.04 },
+    pacey:      { tempo: +0.04 },
+    cerebral:   { vision: +0.04 },
+    stoic:      { defense: +0.02, composure: +0.02 },
+    balanced:   {}
+  };
+  const bias = SPECIAL_BIAS[special.id] || {};
+  const weights = {
+    offense:   0.22 + (rand() - 0.5) * 0.08 + (bias.offense || 0),
+    defense:   0.22 + (rand() - 0.5) * 0.08 + (bias.defense || 0),
+    tempo:     0.20 + (rand() - 0.5) * 0.08 + (bias.tempo   || 0),
+    vision:    0.18 + (rand() - 0.5) * 0.06 + (bias.vision  || 0),
+    composure: 0.18 + (rand() - 0.5) * 0.06 + (bias.composure || 0)
+  };
+  const wSum = Object.values(weights).reduce((a,b)=>a+b, 0);
+  for (const k in weights) weights[k] /= wSum;
+
+  const baseStats = {
+    offense:    Math.round(totalStat * weights.offense),
+    defense:    Math.round(totalStat * weights.defense),
+    tempo:      Math.round(totalStat * weights.tempo),
+    vision:     Math.round(totalStat * weights.vision),
+    composure:  Math.round(totalStat * weights.composure)
+  };
+  for (const k in baseStats) baseStats[k] = clamp(baseStats[k] + randi(-4, 4), 20, 120);
+  for (const [k,v] of Object.entries(special.stats || {})) baseStats[k] += v;
+  const actualPower = Object.values(baseStats).reduce((a,b) => a+b, 0);
+  let traitCount = 0;
+  if (matchNumber >= 8)  traitCount = 1;
+  if (matchNumber >= 11) traitCount = 2;
+  if (matchNumber >= 13) traitCount = 3;
+  if (isBoss && matchNumber >= 5) traitCount = Math.max(traitCount, 1);
+  const traits = traitCount > 0 ? pickN(OPP_TRAITS, traitCount).map(t => t.id) : [];
+
+  return {
+    name,
+    isBoss,
+    matchNumber,
+    power: actualPower,
+    stats: baseStats,
+    special,
+    traits,
+    avgDefense: baseStats.defense,
+    avgOffense: baseStats.offense
+  };
+}
+
+async function startMatch(squad, opp, onEvent) {
+  const match = {
+    round: 0,
+    scoreMe: 0,
+    scoreOpp: 0,
+    squad,
+    opp,
+    teamBuffs: { offense:0, defense:0, tempo:0, vision:0, composure:0 },
+    buffLayers: [],
+    log: [],
+    triggersThisRound: 0,
+    firstShotTaken: false,
+    counterPending: false,
+    chainAttack: false,
+    pouncePending: false,
+    shadowStrikeTriggered: false,
+    doubleNextGoal: false,
+    ghostChancePending: false,
+    comboCounter: 0,
+    nextBuildupBonus: 0,
+    nextSaveBonus: 0,
+    lastTactic: null,
+    halftimeAction: null,
+    finalAction: null,
+    puzzleBonus: 0,
+    stats: {
+      myShots: 0, myShotsOnTarget: 0, myBuildups: 0, myBuildupsSuccess: 0,
+      oppShots: 0, oppShotsOnTarget: 0, oppBuildups: 0, oppBuildupsSuccess: 0,
+      triggersFired: 0, saves: 0
+    },
+    triggerLog: []
+  };
+  for (const p of squad) {
+    delete p._usedAcrobat; delete p._usedNineLives;
+    delete p._readGameUsed; delete p._chessUsed;
+    delete p._speedBurstUsed; delete p._whirlwindUsed;
+    delete p._chameleonTrait; delete p._chameleonUsed;
+    delete p._metronomeBonus; delete p._dribbleStack;
+    delete p._triggerCount;
+  }
+  resetPlayerMatchStats(squad);
+  const teamFormAvg = squad.reduce((s, p) => s + (p.form || 0), 0) / squad.length;
+  if (teamFormAvg >= 2)       match._teamFormBonus = 3;
+  else if (teamFormAvg <= -2) match._teamFormBonus = -3;
+  else                        match._teamFormBonus = 0;
+  match._teamFormLabel = teamFormAvg >= 2 ? 'HEISSER LAUF' : (teamFormAvg <= -2 ? 'KRISE' : null);
+
+  await onEvent({ type:'matchStart', match });
+  await log(onEvent, 'kickoff', `🎮 ${getTeamDisplayName(squad)} vs ${opp.name}`);
+  if (match._teamFormLabel === 'HEISSER LAUF') {
+    await log(onEvent, 'trigger', `🔥 ${match._teamFormLabel} — Team in Topform! +3 alle Stats`);
+  } else if (match._teamFormLabel === 'KRISE') {
+    await log(onEvent, 'trigger', `❄ ${match._teamFormLabel} — Team angeschlagen! −3 alle Stats (bonus XP im Erfolg)`);
+  }
+  if (opp.special || opp.traits?.length) {
+    const parts = [];
+    if (opp.special) parts.push(opp.special.name);
+    if (opp.traits?.length) {
+      const tn = opp.traits.map(tid => OPP_TRAITS.find(x => x.id === tid)?.name || tid);
+      parts.push(...tn);
+    }
+    await log(onEvent, 'decision', `  ↳ Gegner: ${parts.join(' / ')}`);
+  }
+
+  for (let r = 1; r <= CONFIG.rounds; r++) {
+    match.round = r;
+    match.triggersThisRound = 0;
+    recomputeTeamBuffs(match);
+    const lateCtx = applyOppTraitEffect(match.opp, match, 'lateGameBoost', {});
+    const earlyCtx = applyOppTraitEffect(match.opp, match, 'earlyDefense', {});
+    match.opp._roundBuffs = {
+      offense:  (lateCtx.offense || 0),
+      tempo:    (lateCtx.tempo || 0),
+      defense:  (earlyCtx.defense || 0)
+    };
+    if (match.opp.traits?.includes('lucky') && !match.opp._luckyUsed && r >= 2 && rand() < 0.25) {
+      match.opp._luckyUsed = true;
+      match._oppLuckyPending = true;
+    }
+    if (r === 1) {
+      const tactic = await onEvent({ type:'interrupt', phase:'kickoff', match });
+      match.lastTactic = tactic;
+      applyTactic(match, tactic, 'kickoff');
+      await log(onEvent, 'decision', `  → Kickoff: ${tactic.name}`);
+    }
+    if (r === 4) {
+      const halftime = await onEvent({ type:'interrupt', phase:'halftime', match });
+      match.halftimeAction = halftime;
+      applyTactic(match, halftime, 'halftime');
+      await log(onEvent, 'round-header', '––– HALBZEIT –––');
+      await log(onEvent, 'decision', `  → Halbzeit: ${halftime.name}`);
+      for (const p of squad) { delete p._speedBurstUsed; }
+      dispatchTrigger('halftime', { match });
+      await flushTriggerLog(match, onEvent);
+    }
+    if (r === 6) {
+      const final = await onEvent({ type:'interrupt', phase:'final', match });
+      match.finalAction = final;
+      applyTactic(match, final, 'final');
+      await log(onEvent, 'decision', `  → Finale: ${final.name}`);
+    }
+
+    await log(onEvent, 'round-header', `RUNDE ${r}`);
+
+    dispatchTrigger('roundStart', { match });
+    await flushTriggerLog(match, onEvent);
+    if (match.shadowStrikeTriggered) {
+      await attemptAttack(match, squad, onEvent, { bonusAttack: 0.15 });
+      match.shadowStrikeTriggered = false;
+    }
+    if (match.ghostChancePending) {
+      await attemptAttack(match, squad, onEvent, { bonusAttack: 0.10 });
+      match.ghostChancePending = false;
+    }
+    const myAgg = aggregateTeamStats(squad);
+    const effMy = {
+      vision:    myAgg.vision + (match.teamBuffs?.vision || 0),
+      composure: myAgg.composure + (match.teamBuffs?.composure || 0),
+      tempo:     myAgg.tempo + (match.teamBuffs?.tempo || 0)
+    };
+    const rb = match.opp._roundBuffs || {};
+    const effOpp = {
+      vision:    match.opp.stats.vision,
+      composure: match.opp.stats.composure,
+      tempo:     match.opp.stats.tempo + (rb.tempo || 0)
+    };
+    const myControl  = effMy.vision + effMy.composure + effMy.tempo * 0.5;
+    const oppControl = effOpp.vision + effOpp.composure + effOpp.tempo * 0.5;
+    const myPossRaw = myControl / (myControl + oppControl);
+    const myPoss = clamp(myPossRaw, 0.25, 0.75);
+    match._lastPoss = Math.round(myPoss * 100);
+    match.stats.possAccum = (match.stats.possAccum || 0) + myPoss;
+    match.stats.possRounds = (match.stats.possRounds || 0) + 1;
+    let myAttacks = 1, oppAttacks = 1;
+    if (myPoss >= 0.60) {
+      if (rand() < (myPoss - 0.50) * 2.5) myAttacks = 2;
+    } else if (myPoss <= 0.40) {
+      if (rand() < (0.50 - myPoss) * 2.5) myAttacks = 0;
+    }
+    const oppPoss = 1 - myPoss;
+    if (oppPoss >= 0.60) {
+      if (rand() < (oppPoss - 0.50) * 2.5) oppAttacks = 2;
+    } else if (oppPoss <= 0.40) {
+      if (rand() < (0.50 - oppPoss) * 2.5) oppAttacks = 0;
+    }
+    if (myPoss >= 0.60)      await log(onEvent, 'decision', `  Ballbesitz: ${Math.round(myPoss*100)}%${myAttacks === 2 ? ' — Druckphase' : ''}`);
+    else if (myPoss <= 0.40) await log(onEvent, 'decision', `  Ballbesitz: ${Math.round(myPoss*100)}%${myAttacks === 0 ? ' — Gegner dominiert' : ''}`);
+    for (let a = 0; a < myAttacks; a++) {
+      await attemptAttack(match, squad, onEvent, a > 0 ? { bonusAttack: -0.05 } : {});
+    }
+    if (match.chainAttack) {
+      match.chainAttack = false;
+      await log(onEvent, 'trigger', '  ⚡ Chain-Angriff!');
+      await attemptAttack(match, squad, onEvent, { bonusAttack: 0.10 });
+    }
+    for (let a = 0; a < oppAttacks; a++) {
+      await attemptOppAttack(match, squad, onEvent);
+    }
+    if (match._oppLuckyPending) {
+      match._oppLuckyPending = false;
+      await log(onEvent, 'trigger', '  🍀 ' + match.opp.name + ' hat Glück — Doppelangriff!');
+      await attemptOppAttack(match, squad, onEvent);
+    }
+    if (match.counterPending || match.pouncePending) {
+      match.counterPending = false;
+      match.pouncePending = false;
+      const lfForCounter = squad.find(p => p.role === 'LF');
+      bumpPlayerStat(lfForCounter, 'counters');
+      await log(onEvent, 'trigger', '  🔁 Konter!');
+      await attemptAttack(match, squad, onEvent, { bonusAttack: 0.15 });
+    }
+
+    await onEvent({ type:'roundEnd', match });
+    if (match.fastSkip !== 'test') await sleep(match.fastSkip ? 100 : 700);
+  }
+  let result;
+  if (match.scoreMe > match.scoreOpp) result = 'win';
+  else if (match.scoreMe < match.scoreOpp) result = 'loss';
+  else result = 'draw';
+  const isLastMatch = match.opp.matchNumber === CONFIG.runLength;
+  if (result === 'draw' && isLastMatch) {
+    await log(onEvent, 'kickoff', `🏁 90 MIN. VORBEI — ${match.scoreMe}:${match.scoreOpp}`);
+    await log(onEvent, 'decision', '⚽ ELFMETERSCHIESSEN — kein Unentschieden in der letzten Partie!');
+    const myComposure = squad.reduce((s, p) => s + (p.stats.composure || 0), 0) / squad.length;
+    const oppComposure = match.opp.stats.composure || 60;
+    const diff = myComposure - oppComposure;
+    const myHitProb = clamp(0.72 + diff * 0.005, 0.55, 0.90);
+    const oppHitProb = clamp(0.72 - diff * 0.005, 0.55, 0.90);
+
+    let myPens = 0, oppPens = 0;
+    for (let i = 0; i < 5; i++) {
+      if (rand() < myHitProb)  { myPens++;  await log(onEvent, '', `  ${i+1}. ⚽ verwandelt — ${myPens}:${oppPens}`); }
+      else                     {            await log(onEvent, '', `  ${i+1}. ⚠ vorbei — ${myPens}:${oppPens}`); }
+      if (rand() < oppHitProb) { oppPens++; await log(onEvent, '', `  ${match.opp.name} trifft — ${myPens}:${oppPens}`); }
+      else                     {            await log(onEvent, '', `  ${match.opp.name} verschießt — ${myPens}:${oppPens}`); }
+      const remaining = 5 - i - 1;
+      if (Math.abs(myPens - oppPens) > remaining) break;
+    }
+    while (myPens === oppPens) {
+      const mHit = rand() < myHitProb;
+      const oHit = rand() < oppHitProb;
+      if (mHit) myPens++;
+      if (oHit) oppPens++;
+      if (mHit !== oHit) await log(onEvent, '', `  Sudden Death: ${myPens}:${oppPens}`);
+    }
+    match.scoreMe += myPens;
+    match.scoreOpp += oppPens;
+    if (myPens > oppPens) {
+      result = 'win';
+      await log(onEvent, 'goal-me', `🏆 SIEG IM ELFMETERSCHIESSEN`);
+    } else {
+      result = 'loss';
+      await log(onEvent, 'goal-opp', `💥 NIEDERLAGE IM ELFMETERSCHIESSEN`);
+    }
+  }
+
+  await log(onEvent, 'kickoff', `🏁 ABPFIFF — ${match.scoreMe}:${match.scoreOpp}`);
+  await onEvent({ type:'matchEnd', match, result });
+  return { scoreMe: match.scoreMe, scoreOpp: match.scoreOpp, result, match };
+}
+
+function applyTactic(match, tactic, phase) {
+  if (!tactic) return;
+  const RANGES = {
+    kickoff:  [1, 3],
+    halftime: [4, 6],
+    final:    [6, 6]
+  };
+  const range = RANGES[phase] || [1, 6];
+  const layer = { source: tactic.id + '@' + phase, range, stats: {}, special: null };
+
+  if (phase === 'kickoff') {
+    if (tactic.id === 'aggressive')  { layer.stats = { offense: 6, defense: -4 }; }
+    if (tactic.id === 'defensive')   { layer.stats = { defense: 6, offense: -4 }; }
+    if (tactic.id === 'balanced')    { layer.stats = { offense: 3, defense: 3, tempo: 3, vision: 3, composure: 3 }; }
+    if (tactic.id === 'tempo')       { layer.stats = { tempo: 8, composure: -3 }; }
+    if (tactic.id === 'pressing')    { layer.stats = { defense: 5, tempo: 4 }; }
+    if (tactic.id === 'possession')  { layer.stats = { vision: 6, composure: 4 }; }
+    if (tactic.id === 'counter')     { layer.stats = { defense: 8, tempo: 4, offense: -2 }; }
+    if (tactic.id === 'flank_play')  { layer.stats = { tempo: 5, offense: 5 }; }
+  }
+  if (phase === 'halftime') {
+    if (tactic.id === 'push')        { layer.stats = { offense: 8, defense: -6 }; }
+    if (tactic.id === 'stabilize')   { layer.stats = { defense: 6, composure: 4 }; }
+    if (tactic.id === 'shift')       {
+      const subject = pick(match.squad);
+      const focus = DATA.roles.find(r => r.id === subject.role)?.focusStat || 'offense';
+      subject.stats[focus] = clamp(subject.stats[focus] + 10, 20, 99);
+      match._shiftSubject = subject;
+      return;
+    }
+    if (tactic.id === 'rally')       { layer.special = 'rally'; }
+    if (tactic.id === 'reset')       { layer.stats = { offense: 5, defense: 5, tempo: 5, vision: 5, composure: 5 }; }
+    if (tactic.id === 'counter_h')   { layer.stats = { tempo: 10, defense: 5 }; }
+    if (tactic.id === 'high_press')  { layer.stats = { defense: 8, composure: -3 }; }
+    if (tactic.id === 'vision_play') { layer.stats = { vision: 8, offense: 4 }; }
+  }
+  if (phase === 'final') {
+    if (tactic.id === 'all_in')      { layer.stats = { offense: 15, defense: -15 }; }
+    if (tactic.id === 'park_bus')    { layer.stats = { defense: 15, offense: -10 }; }
+    if (tactic.id === 'hero_ball')   {
+      const hero = pick(match.squad);
+      const focus = DATA.roles.find(r => r.id === hero.role)?.focusStat || 'offense';
+      hero.stats[focus] = clamp(hero.stats[focus] + 20, 20, 99);
+      match._hero = hero;
+      return;
+    }
+    if (tactic.id === 'keep_cool')   { layer.stats = { composure: 8, vision: 5 }; }
+    if (tactic.id === 'final_press') { layer.stats = { tempo: 10, defense: 8, offense: -5 }; }
+    if (tactic.id === 'long_ball')   { layer.stats = { offense: 12, vision: -5 }; }
+    if (tactic.id === 'midfield')    { layer.stats = { vision: 8, tempo: 6, composure: 6 }; }
+    if (tactic.id === 'sneaky')      { layer.stats = { defense: 12, tempo: 8, offense: -8 }; }
+  }
+
+  match.buffLayers.push(layer);
+  recomputeTeamBuffs(match);
+}
+function recomputeTeamBuffs(match) {
+  const r = match.round || 1;
+  const agg = { offense:0, defense:0, tempo:0, vision:0, composure:0 };
+  for (const layer of match.buffLayers || []) {
+    if (r < layer.range[0] || r > layer.range[1]) continue;
+    for (const [k, v] of Object.entries(layer.stats || {})) {
+      agg[k] = (agg[k] || 0) + v;
+    }
+    if (layer.special === 'rally' && r >= 4) {
+      agg.offense += match.scoreOpp * 3;
+      agg.defense += match.scoreMe * 3;
+    }
+  }
+  match.teamBuffs = agg;
+}
+function bumpPlayerStat(player, key, delta=1) {
+  if (!player) return;
+  if (!player._matchStats) player._matchStats = {};
+  player._matchStats[key] = (player._matchStats[key] || 0) + delta;
+}
+
+function resetPlayerMatchStats(squad) {
+  for (const p of squad) {
+    p._matchStats = {
+      shots: 0,
+      shotsOnTarget: 0,
+      goals: 0,
+      buildups: 0,
+      buildupsOk: 0,
+      saves: 0,
+      goalsConceded: 0,
+      defendedAttacks: 0,
+      counters: 0
+    };
+  }
+}
+
+async function attemptAttack(match, squad, onEvent, extra={}) {
+  const st = squad.find(p => p.role === 'ST');
+  const lf = squad.find(p => p.role === 'LF');
+  const pm = squad.find(p => p.role === 'PM');
+  const vt = squad.find(p => p.role === 'VT');
+  if (!st) return;
+
+  const stStats = computePlayerStats(st, match);
+  const lfStats = lf ? computePlayerStats(lf, match) : stStats;
+  const pmStats = pm ? computePlayerStats(pm, match) : stStats;
+
+  const teamOffense = (stStats.offense * 0.45 + lfStats.offense * 0.35 + pmStats.vision * 0.20);
+  const teamTempo   = (lfStats.tempo * 0.5 + stStats.tempo * 0.3 + pmStats.tempo * 0.2);
+  const teamComposure = squad.reduce((s, p) => s + computePlayerStats(p, match).composure, 0) / squad.length;
+  const teamVision = (pmStats.vision * 0.5 + stStats.vision * 0.2 + lfStats.vision * 0.2
+                   + (vt ? computePlayerStats(vt, match).vision : 50) * 0.1);
+  const ctx = {
+    match, attackBonus: extra.bonusAttack || 0,
+    ownBuildupSuccess: false, guaranteedBuildup: false,
+    autoGoal: false, scorer: st, oppAvgDefense: match.opp.avgDefense + (match.opp._roundBuffs?.defense || 0)
+  };
+
+  dispatchTrigger('ownAttack', ctx);
+  await flushTriggerLog(match, onEvent);
+  const oppPressCtx = applyOppTraitEffect(match.opp, match, 'ownBuildupChance', { malus: 0 });
+  const buildupChance = clamp(
+    0.30 + (pmStats.vision - 55) * 0.006 + (match.nextBuildupBonus || 0) + (ctx.attackBonus * 0.5)
+    - (oppPressCtx.malus || 0),
+    0.05, 0.92
+  );
+  match.nextBuildupBonus = 0;
+  match.stats.myBuildups++;
+  bumpPlayerStat(pm, 'buildups');
+
+  const buildupOk = ctx.guaranteedBuildup || rand() < buildupChance;
+  if (!buildupOk) {
+    const failLines = [
+      `${pm?.name || 'Spielmacher'} verliert den Ball im Mittelfeld`,
+      `Gegner fängt den Pass von ${pm?.name || 'dem Aufbau'} ab`,
+      `Fehlpass von ${vt?.name || 'der Abwehr'} — Konter droht`,
+      `${pm?.name || 'Playmaker'}s Vertikalpass gerät zu lang`,
+      `Pressing zwingt ${pm?.name || 'uns'} zum Rückpass`,
+      `Ballverlust an der Mittellinie`
+    ];
+    await log(onEvent, '', `R${match.round}: ${pick(failLines)}`);
+    const counterCtx = applyOppTraitEffect(match.opp, match, 'counterAttack', {});
+    if (counterCtx.triggered) {
+      await log(onEvent, 'trigger', '  ⚡ ' + match.opp.name + ' kontert blitzschnell!');
+      await attemptOppAttack(match, squad, onEvent);
+    }
+    return;
+  }
+  match.stats.myBuildupsSuccess++;
+  bumpPlayerStat(pm, 'buildupsOk');
+  dispatchTrigger('ownBuildupSuccess', ctx);
+  await flushTriggerLog(match, onEvent);
+  const buildupLines = [
+    `${pm?.name || 'PM'} öffnet das Mittelfeld mit einem Steilpass`,
+    `${pm?.name || 'PM'} findet den Weg durch die Linien`,
+    `Schneller Doppelpass zwischen ${pm?.name || 'PM'} und ${lf?.name || 'Läufer'}`,
+    `${pm?.name || 'PM'} spielt diagonal auf die Außenbahn`,
+    `${lf?.name || 'Läufer'} zieht auf der Flanke durch`,
+    `${vt?.name || 'Abwehrchef'} eröffnet stark — ${pm?.name || 'PM'} nimmt auf`,
+    `${pm?.name || 'PM'} treibt den Ball ins letzte Drittel`
+  ];
+  await log(onEvent, '', `R${match.round}: ${pick(buildupLines)}`);
+  if (ctx.autoGoal) {
+    const autoScorer = ctx.scorer || st;
+    match.stats.myShots++; match.stats.myShotsOnTarget++;
+    bumpPlayerStat(autoScorer, 'shots');
+    bumpPlayerStat(autoScorer, 'shotsOnTarget');
+    await recordOwnGoal(match, squad, onEvent, autoScorer, ctx);
+    return;
+  }
+  const behindDeficit = Math.max(0, match.scoreOpp - match.scoreMe);
+  const isPressure = behindDeficit > 0 || match.round >= 5;
+  const composureAdvantage = isPressure
+    ? ((teamComposure - ctx.match.opp.stats.composure) * 0.0015)
+    : 0;
+  const visionAdvantage = (teamVision - ctx.match.opp.stats.vision) * 0.001;
+
+  const scoringChance = clamp(
+    CONFIG.attackBase +
+    (teamOffense - ctx.oppAvgDefense) * CONFIG.attackStatScale +
+    (teamTempo > ctx.match.opp.stats.tempo ? CONFIG.tempoAdvantage : -CONFIG.tempoAdvantage*0.5) +
+    composureAdvantage +
+    visionAdvantage +
+    ctx.attackBonus,
+    0.05, 0.90
+  );
+  const scorer = (lfStats.tempo > stStats.tempo + 10 && rand() < 0.35) ? lf : st;
+  ctx.scorer = scorer;
+  const chanceLines = [
+    `${scorer.name} kommt zum Abschluss...`,
+    `${scorer.name} setzt sich im Strafraum durch...`,
+    `${scorer.name} hat die Chance...`,
+    `${scorer.name} lauert vorm Tor...`,
+    `${scorer.name} wird im Strafraum angespielt...`
+  ];
+  await log(onEvent, '', `R${match.round}: ${pick(chanceLines)}`);
+
+  match.stats.myShots++;
+  bumpPlayerStat(scorer, 'shots');
+  if (rand() < scoringChance) {
+    match.stats.myShotsOnTarget++;
+    bumpPlayerStat(scorer, 'shotsOnTarget');
+    await recordOwnGoal(match, squad, onEvent, scorer, ctx);
+  } else {
+    const missLines = [
+      `${scorer.name} zielt knapp vorbei`,
+      `${scorer.name} trifft nur den Pfosten!`,
+      `Abschluss von ${scorer.name} zu zentral — Keeper hält`,
+      `${scorer.name} schießt drüber`,
+      `${scorer.name}s Schuss wird im letzten Moment geblockt`,
+      `${scorer.name} verzieht — Chance vertan`,
+      `${scorer.name} trifft die Latte!`
+    ];
+    await log(onEvent, '', `R${match.round}: ${pick(missLines)}`);
+  }
+}
+
+async function recordOwnGoal(match, squad, onEvent, scorer, ctx) {
+  let goalValue = 1;
+  let suffix = '';
+  if (match.tripleNextGoal) { goalValue = 3; match.tripleNextGoal = false; match.doubleNextGoal = false; suffix = ' (×3 GOD MODE!)'; }
+  else if (match.doubleNextGoal) { goalValue = 2; match.doubleNextGoal = false; suffix = ' (×2 COMBO!)'; }
+  match.scoreMe += goalValue;
+  scorer.goals += 1;
+  bumpPlayerStat(scorer, 'goals');
+  await log(onEvent, 'goal-me', `⚽ TOR ${scorer.name}!${suffix}   ${match.scoreMe}:${match.scoreOpp}`);
+  dispatchTrigger('ownGoal', { ...ctx, scorer });
+  await flushTriggerLog(match, onEvent);
+}
+
+async function attemptOppAttack(match, squad, onEvent) {
+  const ctx = { match, oppAttackNegated: false, oppShotSaved: false, oppGoalCancelled: false };
+  const opp = match.opp;
+  const vt = squad.find(p => p.role === 'VT');
+  const tw = squad.find(p => p.role === 'TW');
+
+  dispatchTrigger('oppAttack', ctx);
+  await flushTriggerLog(match, onEvent);
+  if (ctx.oppAttackNegated) {
+    dispatchTrigger('oppAttackFailed', { match });
+    await flushTriggerLog(match, onEvent);
+    return;
+  }
+  const oppBuildup = clamp(0.35 + (opp.stats.vision - 55) * 0.005, 0.15, 0.85);
+  match.stats.oppBuildups++;
+  if (rand() > oppBuildup) {
+    const failLines = [
+      `${opp.name} verliert den Ball im Aufbau`,
+      `${opp.name}s Pass landet im Niemandsland`,
+      `${vt?.name || 'Abwehr'} fängt ab`,
+      `${opp.name} wird beim Aufbau gestört`,
+      `Gegen-Pressing zwingt ${opp.name} zum Fehler`
+    ];
+    await log(onEvent, '', `R${match.round}: ${pick(failLines)}`);
+    bumpPlayerStat(vt, 'defendedAttacks');
+    dispatchTrigger('oppAttackFailed', { match });
+    await flushTriggerLog(match, onEvent);
+    return;
+  }
+  match.stats.oppBuildupsSuccess++;
+  const vtStats = vt ? computePlayerStats(vt, match) : { defense: 55 };
+  const twStats = tw ? computePlayerStats(tw, match) : { defense: 55 };
+
+  const rb = opp._roundBuffs || {};
+  const oppOff = (opp.stats.offense + (rb.offense || 0)) + (opp.stats.tempo + (rb.tempo || 0)) * 0.2;
+  const myDef = vtStats.defense * 0.45 + twStats.defense * 0.55 + (match.teamBuffs?.defense || 0);
+  const approachLines = [
+    `${opp.name} kommt über die Flanke`,
+    `${opp.name} zieht das Spiel schnell vor`,
+    `${opp.name} sucht den Abschluss`,
+    `Gegner-Stürmer enteilt der Abwehr`,
+    `${opp.name} spielt sich durchs Mittelfeld`
+  ];
+  await log(onEvent, '', `R${match.round}: ${pick(approachLines)}`);
+
+  match.stats.oppShots++;
+  dispatchTrigger('oppShot', ctx);
+  await flushTriggerLog(match, onEvent);
+  if (ctx.oppShotSaved) {
+    match.stats.saves++;
+    bumpPlayerStat(tw, 'saves');
+    dispatchTrigger('postSave', { match });
+    await flushTriggerLog(match, onEvent);
+    return;
+  }
+  const myComposure = squad.reduce((s, p) => s + computePlayerStats(p, match).composure, 0) / squad.length;
+  const composureDefBonus = (myComposure - opp.stats.composure) * 0.001;
+  const pmForDef = squad.find(p => p.role === 'PM');
+  const pmStatsForDef = pmForDef ? computePlayerStats(pmForDef, match) : { vision: 50 };
+  const myVisionForDef = (vtStats.vision || 50) * 0.35 + (twStats.vision || 50) * 0.4 + (pmStatsForDef.vision || 50) * 0.25;
+  const visionDefBonus = (myVisionForDef - opp.stats.vision) * 0.002;
+
+  let saveChance = 0.50 + (myDef - oppOff) * CONFIG.defenseStatScale
+                 + composureDefBonus + visionDefBonus
+                 + (match.nextSaveBonus || 0);
+  if (match.teamBuffs?.saveBonus) saveChance += match.teamBuffs.saveBonus;
+  if (match.teamBuffs?.buildupMalus) {  }
+  const oppShotCtx = applyOppTraitEffect(opp, match, 'oppShotChance', { bonus: 0 });
+  const oppSaveCtx = applyOppTraitEffect(opp, match, 'savePenalty', { penalty: 0 });
+  saveChance -= (oppShotCtx.bonus || 0);
+  saveChance -= (oppSaveCtx.penalty || 0);
+  saveChance = clamp(saveChance, 0.12, 0.92);
+  match.nextSaveBonus = 0;
+
+  if (rand() < saveChance) {
+    match.stats.saves++;
+    bumpPlayerStat(tw, 'saves');
+    const saveLines = [
+      `${tw?.name || 'Keeper'} pariert stark!`,
+      `${tw?.name || 'Keeper'} fängt sicher ab`,
+      `${vt?.name || 'Abwehr'} blockt den Schuss im letzten Moment`,
+      `Schuss zu ungenau — ${tw?.name || 'Keeper'} hat ihn`,
+      `${tw?.name || 'Keeper'} hält mit Glanzparade!`,
+      `Kopfball neben das Tor`
+    ];
+    await log(onEvent, '', `R${match.round}: ${pick(saveLines)}`);
+    dispatchTrigger('postSave', { match });
+    await flushTriggerLog(match, onEvent);
+  } else {
+    match.stats.oppShotsOnTarget++;
+    dispatchTrigger('oppGoal', ctx);
+    await flushTriggerLog(match, onEvent);
+    if (ctx.oppGoalCancelled) return;
+    match.scoreOpp += 1;
+    bumpPlayerStat(tw, 'goalsConceded');
+    bumpPlayerStat(vt, 'goalsConceded');
+    await log(onEvent, 'goal-opp', `💥 Gegentor — ${opp.name} trifft   ${match.scoreMe}:${match.scoreOpp}`);
+    dispatchTrigger('afterOppGoal', { match });
+    await flushTriggerLog(match, onEvent);
+  }
+}
+
+function log(onEvent, cls, msg) {
+  return onEvent({ type:'log', cls, msg });
+}
+
+function getTeamDisplayName(squad) {
+  return (typeof state !== 'undefined' && state?.teamName) || 'Eigenes Team';
+}
+
+window.getState = () => state;
+window.setState = (nextState) => { state = nextState; return state; };
+window.getLineup = getLineup;
+window.getBench = getBench;
+window.isLineupValid = isLineupValid;
+window.pickThemedTactics = pickThemedTactics;
+window.clamp = clamp;
+window.uid = uid;
+window.$ = $;
+window.$$ = $$;
+window.sleep = sleep;
+window.el = el;
+window.formIndicator = formIndicator;
+window.generateName = generateName;
+window.makePlayer = makePlayer;
+window.generateLegendaryPlayer = generateLegendaryPlayer;
+window.totalPower = totalPower;
+window.squadPowerAvg = squadPowerAvg;
+window.aggregateTeamStats = aggregateTeamStats;
+window.teamTotalPower = teamTotalPower;
+window.teamStrengthLabel = teamStrengthLabel;
+window.TRIGGER_HANDLERS = TRIGGER_HANDLERS;
+window.dispatchTrigger = dispatchTrigger;
+window.flushTriggerLog = flushTriggerLog;
+window.computePlayerStats = computePlayerStats;
+window.applyOppTraitEffect = applyOppTraitEffect;
+window.generateOpponent = generateOpponent;
+window.startMatch = startMatch;
+window.applyTactic = applyTactic;
+window.recomputeTeamBuffs = recomputeTeamBuffs;
+window.bumpPlayerStat = bumpPlayerStat;
+window.resetPlayerMatchStats = resetPlayerMatchStats;
+window.getTeamDisplayName = getTeamDisplayName;
