@@ -76,7 +76,7 @@ I18N.registerLocale('en', {
       buildup: 'Build-up %',
       saves: 'Saves',
       goals: 'Goals',
-      traitsTriggered: 'Traits Triggered',
+	abilitiesTriggered: 'Abilities Triggered',
       currentTeamStats: 'Current Team Stats',
       own: 'You',
       diff: 'Diff',
@@ -86,7 +86,7 @@ I18N.registerLocale('en', {
     evolution: {
       title: 'EVOLUTION!',
       reachedLevel: '{name} ({role}) reached level {level}',
-      traitLabel: 'Trait: {name}',
+      traitLabel: 'Ability: {name}',
       keepsTrait: 'keeps: {name} (+30%)'
     },
     flow: {

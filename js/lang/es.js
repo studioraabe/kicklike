@@ -76,7 +76,7 @@ I18N.registerLocale('es', {
       buildup: 'Salida %',
       saves: 'Paradas',
       goals: 'Goles',
-      traitsTriggered: 'Rasgos Activados',
+      abilitiesTriggered: 'Habilidades Activadas',
       currentTeamStats: 'Valores Actuales del Equipo',
       own: 'Tú',
       diff: 'Dif',
@@ -86,7 +86,7 @@ I18N.registerLocale('es', {
     evolution: {
       title: '¡EVOLUCIÓN!',
       reachedLevel: '{name} ({role}) alcanza el nivel {level}',
-      traitLabel: 'Rasgo: {name}',
+      traitLabel: 'Habilidad: {name}',
       keepsTrait: 'mantiene: {name} (+30%)'
     },
     flow: {

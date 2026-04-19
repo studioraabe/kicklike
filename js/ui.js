@@ -215,6 +215,7 @@ const UI = {
     });
     UI.showScreen('screen-recruit');
   },
+
   renderComparedStatBars(stats, compareAgainst, highlight={}, opts={}) {
     const wrap = el('div', { class: 'compared-bars' + (opts.compact ? ' compact' : '') });
     const keys = ['offense', 'defense', 'tempo', 'vision', 'composure'];
@@ -235,10 +236,28 @@ const UI = {
         else if (v < other) cmpClass = 'lower';
         else cmpClass = 'equal';
       }
+      // SVG trend arrows
       const trendVal = (highlight || {})[k] || 0;
       let trendEl = null;
-      if (trendVal > 0) trendEl = el('span', { class:'cb-trend trend-up' }, [trendVal >= 2 ? ' ^^' : ' ^']);
-      else if (trendVal < 0) trendEl = el('span', { class:'cb-trend trend-down' }, [trendVal <= -2 ? ' vv' : ' v']);
+      if (trendVal !== 0) {
+        const _isUp = trendVal > 0;
+        const _isDbl = Math.abs(trendVal) >= 2;
+        const _col = _isUp ? 'var(--good)' : 'var(--danger)';
+        // Style C: vertical line + open chevron tip. Double = two lines side by side.
+        let _svg;
+        if (!_isDbl) {
+          _svg = _isUp
+            ? `<line x1="4" y1="11" x2="4" y2="4" stroke="${_col}" stroke-width="1.2" stroke-linecap="round"/><path d="M1.5 7 L4 2.5 L6.5 7" fill="none" stroke="${_col}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>`
+            : `<line x1="4" y1="1" x2="4" y2="8" stroke="${_col}" stroke-width="1.2" stroke-linecap="round"/><path d="M1.5 5 L4 9.5 L6.5 5" fill="none" stroke="${_col}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>`;
+        } else {
+          _svg = _isUp
+            ? `<line x1="2" y1="11" x2="2" y2="4" stroke="${_col}" stroke-width="1.2" stroke-linecap="round"/><path d="M0 7 L2 2.5 L4 7" fill="none" stroke="${_col}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><line x1="6" y1="11" x2="6" y2="4" stroke="${_col}" stroke-width="1.2" stroke-linecap="round"/><path d="M4 7 L6 2.5 L8 7" fill="none" stroke="${_col}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>`
+            : `<line x1="2" y1="1" x2="2" y2="8" stroke="${_col}" stroke-width="1.2" stroke-linecap="round"/><path d="M0 5 L2 9.5 L4 5" fill="none" stroke="${_col}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><line x1="6" y1="1" x2="6" y2="8" stroke="${_col}" stroke-width="1.2" stroke-linecap="round"/><path d="M4 5 L6 9.5 L8 5" fill="none" stroke="${_col}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>`;
+        }
+        trendEl = el('span', { class:'cb-trend ' + (_isUp ? 'trend-up' : 'trend-down') });
+        trendEl.innerHTML = `<svg viewBox="0 0 8 12" width="8" height="12" style="vertical-align:middle;margin-left:4px;flex-shrink:0;overflow:visible">${_svg}</svg>`;
+      }
+
       const labelChildren = [labels[k]];
       if (trendEl) labelChildren.push(trendEl);
       const row = el('div', { class:'cb-row' }, [
@@ -254,6 +273,7 @@ const UI = {
     });
     return wrap;
   },
+
   renderPlayerCard(p, opts={}) {
     const stageSymbols = ['★', '★★', '★★★'];
     const classes = ['p-card'];
@@ -277,9 +297,30 @@ const UI = {
       el('div', { class:'xp-bar' }, [
         el('div', { class:'xp-fill', style:{ width: Math.min(100, (p.xp / p.xpToNext)*100) + '%' } })
       ]),
-      el('div', { class:'xp-label' }, [
-        `LV ${p.level} · ${p.xp}/${p.xpToNext} XP${p.goals ? ' · ' + p.goals + '⚽' : ''}${formIndicator(p.form)}`
-      ]),
+      el('div', { class:'xp-label' }, (() => {
+        const base = `LV ${p.level} · ${p.xp}/${p.xpToNext} XP${p.goals ? ' · ' + p.goals + '⚽' : ''}`;
+        const f = p.form || 0;
+        if (f === 0) return [base];
+        const isUp = f > 0, isDbl = Math.abs(f) >= 2;
+        const col = isUp ? 'var(--good)' : 'var(--danger)';
+        let svg;
+        if (!isDbl) {
+          svg = isUp
+            ? `<line x1="4" y1="11" x2="4" y2="4" stroke="${col}" stroke-width="1.2" stroke-linecap="round"/><path d="M1.5 7 L4 2.5 L6.5 7" fill="none" stroke="${col}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>`
+            : `<line x1="4" y1="1" x2="4" y2="8" stroke="${col}" stroke-width="1.2" stroke-linecap="round"/><path d="M1.5 5 L4 9.5 L6.5 5" fill="none" stroke="${col}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>`;
+        } else {
+          svg = isUp
+            ? `<line x1="2" y1="11" x2="2" y2="4" stroke="${col}" stroke-width="1.2" stroke-linecap="round"/><path d="M0 7 L2 2.5 L4 7" fill="none" stroke="${col}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><line x1="6" y1="11" x2="6" y2="4" stroke="${col}" stroke-width="1.2" stroke-linecap="round"/><path d="M4 7 L6 2.5 L8 7" fill="none" stroke="${col}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>`
+            : `<line x1="2" y1="1" x2="2" y2="8" stroke="${col}" stroke-width="1.2" stroke-linecap="round"/><path d="M0 5 L2 9.5 L4 5" fill="none" stroke="${col}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><line x1="6" y1="1" x2="6" y2="8" stroke="${col}" stroke-width="1.2" stroke-linecap="round"/><path d="M4 5 L6 9.5 L8 5" fill="none" stroke="${col}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>`;
+        }
+        const span = document.createElement('span');
+        span.style.cssText = 'display:inline-flex;align-items:center;gap:3px;';
+        span.textContent = base;
+        const icon = document.createElement('span');
+        icon.innerHTML = `<svg viewBox="0 0 8 12" width="8" height="12" style="vertical-align:middle;overflow:visible">${svg}</svg>`;
+        span.appendChild(icon);
+        return [span];
+      })()),
       p.traits.length ? el('div', { class:'traits' }, p.traits.map(t =>
         el('span', { class:'trait-dot', title: DATA.traits[t]?.desc || '' }, [DATA.traits[t]?.name || t])
       )) : null
@@ -347,6 +388,11 @@ const UI = {
   },
 
   appendLog(msg, cls='') {
+    // Screen effects on key events
+    if (window.FX) {
+      if (cls === 'goal-me') window.FX.goalMe();
+      else if (cls === 'goal-opp') window.FX.goalOpp();
+    }
     const log = $('#match-log');
     const line = el('div', { class:'log-line ' + cls }, [msg]);
     log.appendChild(line);
@@ -481,6 +527,11 @@ const UI = {
   },
 
   renderResult(result, scoreMe, scoreOpp, reward, match) {
+    // Screen effects
+    if (window.FX) {
+      if (result === 'win') window.FX.winResult();
+      else if (result === 'loss') window.FX.lossResult();
+    }
     const cls = result === 'win' ? 'win' : (result === 'loss' ? 'loss' : 'draw');
     const title = result === 'win' ? I18N.t('ui.result.win') : (result === 'loss' ? I18N.t('ui.result.loss') : I18N.t('ui.result.draw'));
     const content = $('#result-content');
@@ -506,7 +557,7 @@ const UI = {
         UI.renderMatchStatRow(I18N.t('ui.statsPanel.accuracy'), myAccuracy + '%', oppAccuracy + '%'),
         UI.renderMatchStatRow(I18N.t('ui.statsPanel.buildup'), myBuildupRate + '%', oppBuildupRate + '%'),
         UI.renderMatchStatRow(I18N.t('ui.statsPanel.saves'), s.saves, '–'),
-        UI.renderMatchStatRow(I18N.t('ui.statsPanel.traitsTriggered'), s.triggersFired || 0, '–')
+        UI.renderMatchStatRow(I18N.t('ui.statsPanel.abilitiesTriggered'), s.triggersFired || 0, '–')
       ]);
       content.appendChild(statsPanel);
       content.appendChild(UI.renderTeamStatsPanel(match));
@@ -522,14 +573,22 @@ const UI = {
         else if (p.role === 'VT') detail = I18N.t('ui.perf.defenses', { count: ms.defendedAttacks || 0 });
         else if (p.role === 'TW') detail = I18N.t('ui.perf.keeper', { saves: ms.saves || 0, conceded: ms.goalsConceded || 0 });
         const xpCls = xp >= 6 ? 'good' : (xp <= 2 ? 'bad' : 'dim');
-        const formArrow = formDelta > 0 ? '↑' : (formDelta < 0 ? '↓' : '');
-        const formArrowCls = formDelta > 0 ? 'good' : (formDelta < 0 ? 'bad' : '');
+        const formArrow = formDelta !== 0 ? (() => {
+          const isUp = formDelta > 0;
+          const col = isUp ? 'var(--good)' : 'var(--danger)';
+          const svg = isUp
+            ? `<line x1="4" y1="11" x2="4" y2="4" stroke="${col}" stroke-width="1.2" stroke-linecap="round"/><path d="M1.5 7 L4 2.5 L6.5 7" fill="none" stroke="${col}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>`
+            : `<line x1="4" y1="1" x2="4" y2="8" stroke="${col}" stroke-width="1.2" stroke-linecap="round"/><path d="M1.5 5 L4 9.5 L6.5 5" fill="none" stroke="${col}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>`;
+          const s = document.createElement('span');
+          s.innerHTML = `<svg viewBox="0 0 8 12" width="8" height="12" style="vertical-align:middle;overflow:visible">${svg}</svg>`;
+          return s;
+        })() : null;
         const row = el('div', { class:'result-perf-row' }, [
           el('span', { class:'perf-role' }, [p.role]),
           el('span', { class:'perf-name' }, [p.name]),
           el('span', { class:'perf-detail' }, [detail]),
           el('span', { class:'perf-xp ' + xpCls }, [`+${xp} XP`]),
-          formArrow ? el('span', { class:'perf-form ' + formArrowCls }, [formArrow]) : el('span', {}, [''])
+          formArrow ? el('span', { class:'perf-form' }, [formArrow]) : el('span', {}, [''])
         ]);
         perfList.appendChild(row);
       }
