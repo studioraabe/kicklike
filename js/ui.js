@@ -36,7 +36,6 @@ const UI = {
     UI.showScreen('screen-draft');
   },
 
-  // Feature 1: Build opponent tell string from special + traits
   _buildOppTell(opp) {
     const parts = [];
     const locTells = I18N.locale().data?.oppTells || {};
@@ -131,8 +130,6 @@ const UI = {
       ])
     ];
     oppBox.appendChild(el('div', { class:'matchup-meta' }, oppMeta));
-
-    // Feature 1: Opponent tell
     const tell = UI._buildOppTell(opp);
     if (tell) {
       oppBox.appendChild(el('div', {
@@ -149,7 +146,6 @@ const UI = {
         }
       }, ['⚠ ' + tell]));
     }
-
     oppBox.appendChild(UI.renderComparedStatBars(opp.stats, teamStats, {}, { compact:true }));
     const sqBox = $('#hub-squad');
     sqBox.innerHTML = '';
@@ -164,7 +160,6 @@ const UI = {
     } else {
       benchWrap.style.display = 'none';
     }
-
     UI.showScreen('screen-hub');
   },
 
@@ -199,7 +194,6 @@ const UI = {
     } else {
       hint.textContent = I18N.t('ui.lineup.defaultHint');
     }
-
     UI.showScreen('screen-lineup');
   },
 
@@ -286,7 +280,6 @@ const UI = {
         trendEl = el('span', { class:'cb-trend ' + (_isUp ? 'trend-up' : 'trend-down') });
         trendEl.innerHTML = `<svg viewBox="0 0 8 12" width="8" height="12" style="vertical-align:middle;margin-left:4px;flex-shrink:0;overflow:visible">${_svg}</svg>`;
       }
-
       const labelChildren = [labels[k]];
       if (trendEl) labelChildren.push(trendEl);
       const row = el('div', { class:'cb-row' }, [
@@ -427,6 +420,92 @@ const UI = {
     log.scrollTop = log.scrollHeight;
   },
 
+  // ── Halftime summary panel ────────────────────────────────────────────────
+  renderHalftimeSummary(match) {
+    const s = match.stats;
+    const myAcc  = s.myShots  ? Math.round(s.myShotsOnTarget  / s.myShots  * 100) : null;
+    const oppAcc = s.oppShots ? Math.round(s.oppShotsOnTarget / s.oppShots * 100) : null;
+    const myBR   = s.myBuildups ? Math.round(s.myBuildupsSuccess / s.myBuildups * 100) : null;
+    const oppBR  = s.oppBuildups ? Math.round(s.oppBuildupsSuccess / s.oppBuildups * 100) : null;
+    const poss   = s.possRounds ? Math.round((s.possAccum / s.possRounds) * 100) : 50;
+
+    // colour helpers — only compare when both sides have data
+    const shotCol  = s.myShots > s.oppShots ? 'var(--accent)' : s.myShots < s.oppShots ? 'var(--accent-2)' : 'var(--fg)';
+    const accCol   = (myAcc !== null && oppAcc !== null) ? (myAcc > oppAcc ? 'var(--accent)' : myAcc < oppAcc ? 'var(--accent-2)' : 'var(--fg)') : 'var(--fg)';
+    const brCol    = (myBR  !== null && oppBR  !== null) ? (myBR  > oppBR  ? 'var(--accent)' : myBR  < oppBR  ? 'var(--accent-2)' : 'var(--fg)') : 'var(--fg)';
+    const saveCol  = (s.saves || 0) > 0 ? 'var(--good)' : 'var(--fg)';
+
+    // Active mechanic tags carrying into 2nd half
+    const mechanics = [];
+    if (match.autoCounterRoundsLeft > 0) mechanics.push({ icon:'⚡', label: I18N.t('ui.ht.mechanicCounter') });
+    if (match.pressingRoundsLeft    > 0) mechanics.push({ icon:'🏃', label: I18N.t('ui.ht.mechanicPressing') });
+    if (match.possessionActive)          mechanics.push({ icon:'🎯', label: I18N.t('ui.ht.mechanicPossession') });
+    if (match.aggressiveRoundsLeft  > 0) mechanics.push({ icon:'💥', label: I18N.t('ui.ht.mechanicAggressive') });
+    if (match.flankRoundsLeft       > 0) mechanics.push({ icon:'🏃', label: I18N.t('ui.ht.mechanicFlank') });
+    if (match._rallyActive)              mechanics.push({ icon:'💢', label: I18N.t('ui.ht.mechanicRally') });
+
+    // What the mechanics actually did in the first half
+    const happened = [];
+    if ((match._htPressingBlocks || 0) > 0)
+      happened.push(`🛡 ${I18N.t('ui.ht.pressBlocked', { n: match._htPressingBlocks })}`);
+    if ((match._htCountersFired || 0) > 0)
+      happened.push(`⚡ ${I18N.t('ui.ht.countersFired', { n: match._htCountersFired })}`);
+    if ((match.momentumCounter || 0) >= 2)
+      happened.push(`🔄 ${I18N.t('ui.ht.momentumActive', { bonus: 15 })}`);
+
+    const panel = el('div', { class:'interrupt-panel ht-summary' }, [
+      el('div', { class:'ip-title' }, [I18N.t('ui.ht.title')]),
+
+      // Score + possession strip
+      el('div', { class:'ht-score-strip' }, [
+        el('div', { class:'ht-score-me' }, [String(match.scoreMe)]),
+        el('div', { class:'ht-score-mid' }, [
+          el('div', { class:'ht-poss-bar' }, [
+            el('div', { class:'ht-poss-fill', style:{ width: poss + '%' } })
+          ]),
+          el('div', { class:'ht-poss-label' }, [`${poss}% — ${I18N.t('ui.statsPanel.possession')}`])
+        ]),
+        el('div', { class:'ht-score-opp' }, [String(match.scoreOpp)])
+      ]),
+
+      // 4 key numbers with opponent context and colour coding
+      el('div', { class:'ht-stats-row' }, [
+        el('div', { class:'ht-stat' }, [
+          el('div', { class:'ht-stat-val', style:{ color: shotCol } }, [`${s.myShots}`]),
+          el('div', { class:'ht-stat-sub' }, [`vs ${s.oppShots}`]),
+          el('div', { class:'ht-stat-label' }, [I18N.t('ui.statsPanel.shots')])
+        ]),
+        el('div', { class:'ht-stat' }, [
+          el('div', { class:'ht-stat-val', style:{ color: accCol } }, [myAcc !== null ? `${myAcc}%` : '—']),
+          el('div', { class:'ht-stat-sub' }, [oppAcc !== null ? `vs ${oppAcc}%` : '']),
+          el('div', { class:'ht-stat-label' }, [I18N.t('ui.statsPanel.accuracy')])
+        ]),
+        el('div', { class:'ht-stat' }, [
+          el('div', { class:'ht-stat-val', style:{ color: brCol } }, [myBR !== null ? `${myBR}%` : '—']),
+          el('div', { class:'ht-stat-sub' }, [oppBR !== null ? `vs ${oppBR}%` : '']),
+          el('div', { class:'ht-stat-label' }, [I18N.t('ui.statsPanel.buildup')])
+        ]),
+        el('div', { class:'ht-stat' }, [
+          el('div', { class:'ht-stat-val', style:{ color: saveCol } }, [String(s.saves || 0)]),
+          el('div', { class:'ht-stat-sub' }, ['']),
+          el('div', { class:'ht-stat-label' }, [I18N.t('ui.statsPanel.saves')])
+        ])
+      ]),
+
+      // What mechanics fired — only shown if something actually happened
+      happened.length ? el('div', { class:'ht-happened' },
+        happened.map(h => el('div', { class:'ht-happened-item' }, [h]))
+      ) : null,
+
+      // Active mechanics carrying into 2nd half
+      mechanics.length ? el('div', { class:'ht-mechanics' }, [
+        el('div', { class:'ht-mechanics-title' }, [I18N.t('ui.ht.activeIntoSecondHalf')]),
+        ...mechanics.map(m => el('div', { class:'ht-mechanic-tag' }, [m.icon + ' ' + m.label]))
+      ]) : null
+    ]);
+    return panel;
+  },
+
   showInterrupt(title, subtitle, options, onPick, match, phase) {
     const modal = $('#interrupt-modal');
     modal.innerHTML = '';
@@ -445,13 +524,20 @@ const UI = {
       list.appendChild(btn);
     });
     modal.appendChild(list);
+
     if (match) {
-      const stack = el('div', { class:'interrupt-panel-stack' });
-      stack.appendChild(UI.renderTeamStatsPanel(match));
-      if (phase !== 'kickoff') {
-        stack.appendChild(UI.renderMatchStatsPanel(match));
+      if (phase === 'halftime') {
+        // ── Halftime: replace generic panels with match summary ─────────────
+        modal.appendChild(UI.renderHalftimeSummary(match));
+      } else {
+        // ── Kickoff / Final: keep existing stat panels ───────────────────────
+        const stack = el('div', { class:'interrupt-panel-stack' });
+        stack.appendChild(UI.renderTeamStatsPanel(match));
+        if (phase !== 'kickoff') {
+          stack.appendChild(UI.renderMatchStatsPanel(match));
+        }
+        modal.appendChild(stack);
       }
-      modal.appendChild(stack);
     }
 
     $('#interrupt-overlay').classList.add('active');
@@ -464,7 +550,6 @@ const UI = {
     const myBuildupRate = s.myBuildups ? Math.round(s.myBuildupsSuccess / s.myBuildups * 100) : 0;
     const oppBuildupRate = s.oppBuildups ? Math.round(s.oppBuildupsSuccess / s.oppBuildups * 100) : 0;
     const possession = s.possRounds ? Math.round((s.possAccum / s.possRounds) * 100) : 50;
-
     const panel = el('div', { class:'interrupt-panel' }, [
       el('div', { class:'ip-title' }, [I18N.t('ui.result.analysis')]),
       UI.renderMatchStatRow(I18N.t('ui.statsPanel.possession'), possession + '%', (100-possession) + '%'),
@@ -490,7 +575,6 @@ const UI = {
     const formBonus = match._teamFormBonus || 0;
     const keys = ['offense','defense','tempo','vision','composure'];
     const labels = { offense:I18N.t('stats.offense'), defense:I18N.t('stats.defense'), tempo:I18N.t('stats.tempo'), vision:I18N.t('stats.vision'), composure:I18N.t('stats.composure') };
-
     const rows = keys.map(k => {
       const base = baseStats[k];
       const buff = (buffs[k] || 0) + formBonus;
@@ -507,7 +591,6 @@ const UI = {
         el('span', { class:'ip-stat-opp' }, [String(oppVal)])
       ]);
     });
-
     return el('div', { class:'interrupt-panel' }, [
       el('div', { class:'ip-title' }, [I18N.t('ui.statsPanel.currentTeamStats')]),
       el('div', { class:'ip-stat-header' }, [
@@ -567,7 +650,6 @@ const UI = {
       el('h1', { class: cls }, [title]),
       el('div', { class:'big-score' }, [`${scoreMe} : ${scoreOpp}`]),
       reward ? el('div', { class:'reward' }, [reward]) : null,
-      // Feature 5: show sacrifice consequence
       match?._sacrificeVictim ? el('div', { style:{ color:'var(--accent-2)', fontFamily:'var(--font-display)', fontSize:'11px', marginTop:'8px' } },
         [I18N.t('ui.result.sacrificeNote', { name: match._sacrificeVictim.name })]) : null
     ]));
@@ -578,7 +660,6 @@ const UI = {
       const myBuildupRate = s.myBuildups ? Math.round(s.myBuildupsSuccess / s.myBuildups * 100) : 0;
       const oppBuildupRate = s.oppBuildups ? Math.round(s.oppBuildupsSuccess / s.oppBuildups * 100) : 0;
       const possession = s.possRounds ? Math.round((s.possAccum / s.possRounds) * 100) : 50;
-
       const statsPanel = el('div', { class:'interrupt-panel', style:{ margin:'0 0 16px' } }, [
         el('div', { class:'ip-title' }, [I18N.t('ui.result.analysis')]),
         UI.renderMatchStatRow(I18N.t('ui.statsPanel.possession'), possession + '%', (100 - possession) + '%'),
@@ -625,7 +706,6 @@ const UI = {
       content.appendChild(perfTitle);
       content.appendChild(perfList);
     }
-
     content.appendChild(el('div', { class:'btn-row', style:{ justifyContent:'center', marginTop:'24px' } }, [
       el('button', { class:'btn primary', onClick: () => FLOW.continueRun() }, [I18N.t('ui.result.continue')])
     ]));

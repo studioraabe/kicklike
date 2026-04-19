@@ -202,21 +202,19 @@ function computeSynergyBonus(squad, activeTacticTags) {
     for (const traitId of (p.traits || [])) {
       const traitDef = DATA.traits[traitId];
       if (!traitDef) continue;
-      // Check tag overlap via tactic pools
       const allTactics = [...DATA.kickoffTactics, ...DATA.halftimeOptions, ...DATA.finalOptions];
       for (const tactic of allTactics) {
         if (!(tactic.tags || []).some(t => tagSet.has(t))) continue;
-        // trait and tactic share a tag — synergy found
         const overlap = (tactic.tags || []).filter(t => tagSet.has(t)).length;
         if (overlap > 0) {
           bonus += overlap * 0.03;
           logLines.push(I18N.t('ui.log.synergyBonus', { name: p.name, trait: traitDef.name, bonus: Math.round(overlap * 3) }));
-          break; // only one synergy per player per call
+          break;
         }
       }
     }
   }
-  bonus = Math.min(bonus, 0.20); // cap at 20%
+  bonus = Math.min(bonus, 0.20);
   return { bonus, logLines };
 }
 
@@ -845,6 +843,20 @@ async function startMatch(squad, opp, onEvent) {
     finalAction: null,
     puzzleBonus: 0,
     activeTacticTags: [],
+    // ── Mechanic switches ──────────────────────────────────────────────────
+    autoCounterRoundsLeft: 0,    // counter/counter_h: failed opp attack → auto own attack
+    doubleCounterPending: false, // counter: opp had 2 attacks both failed → double counter
+    pressingRoundsLeft: 0,       // pressing/high_press: caps oppAttacks to 1, raises buildup fail
+    possessionActive: false,     // possession/vision_play: caps oppAttacks, decouples myAttacks from poss
+    aggressiveRoundsLeft: 0,     // aggressive/tempo: myAttacks can reach 3, opp buildup rises after
+    flankRoundsLeft: 0,          // flank_play: LF gets extra shot attempt regardless of buildup
+    rallyReactionPending: false, // rally: after opp goal, one free counter attack
+    momentumCounter: 0,          // balanced: consecutive control rounds → buildup bonus
+    guaranteedFirstBuildup: false, // balanced kickoff: first buildup guaranteed
+    // Halftime summary tracking
+    _htPressingBlocks: 0,        // how many opp attacks pressing blocked this half
+    _htCountersFired: 0,         // how many auto-counters fired this half
+    // ───────────────────────────────────────────────────────────────────────
     stats: {
       myShots: 0, myShotsOnTarget: 0, myBuildups: 0, myBuildupsSuccess: 0,
       oppShots: 0, oppShotsOnTarget: 0, oppBuildups: 0, oppBuildupsSuccess: 0,
@@ -889,7 +901,12 @@ async function startMatch(squad, opp, onEvent) {
     match.triggersThisRound = 0;
     recomputeTeamBuffs(match);
 
-    // Feature 2: Log active buffs when significant
+    // Decrement mechanic switch counters
+    if (match.autoCounterRoundsLeft > 0) match.autoCounterRoundsLeft--;
+    if (match.pressingRoundsLeft > 0)    match.pressingRoundsLeft--;
+    if (match.aggressiveRoundsLeft > 0)  match.aggressiveRoundsLeft--;
+    if (match.flankRoundsLeft > 0)       match.flankRoundsLeft--;
+
     if (r > 1) {
       const buffEntries = Object.entries(match.teamBuffs).filter(([k,v]) => Math.abs(v) >= 5 && ['offense','defense','tempo','vision','composure'].includes(k));
       if (buffEntries.length > 0) {
@@ -914,16 +931,39 @@ async function startMatch(squad, opp, onEvent) {
       match.lastTactic = tactic;
       applyTactic(match, tactic, 'kickoff');
       match.activeTacticTags = [...(tactic.tags || [])];
-      await log(onEvent, 'decision', I18N.t('ui.log.kickoffChoice', { name: tactic.name }));
+      // ── Log with effective stat delta ──────────────────────────────────
+      recomputeTeamBuffs(match);
+      const buffAfter = match.teamBuffs;
+      const buffStr = Object.entries(buffAfter)
+        .filter(([k,v]) => Math.abs(v) >= 3 && ['offense','defense','tempo','vision','composure'].includes(k))
+        .map(([k,v]) => `${k.substring(0,3).toUpperCase()} ${v>0?'+':''}${v}`)
+        .join('  ');
+      await log(onEvent, 'decision', I18N.t('ui.log.kickoffChoice', { name: tactic.name }) + (buffStr ? `  [${buffStr}]` : ''));
       await dispatchTacticTrigger(tactic.tacticTrigger, match, squad, onEvent);
     }
     if (r === 4) {
+      // ── Halftime summary: what actually happened ──────────────────────────
+      const htParts = [];
+      if (match._htPressingBlocks > 0) htParts.push(I18N.t('ui.log.htSummaryPressing', { n: match._htPressingBlocks }));
+      if (match._htCountersFired > 0)  htParts.push(I18N.t('ui.log.htSummaryCounters', { n: match._htCountersFired }));
+      if (match.momentumCounter >= 2)  htParts.push(I18N.t('ui.log.htSummaryMomentum'));
+      if (htParts.length) await log(onEvent, 'decision', '  📋 ' + htParts.join(' · '));
+      // Reset first-half counters
+      match._htPressingBlocks = 0;
+      match._htCountersFired  = 0;
+
       const halftime = await onEvent({ type:'interrupt', phase:'halftime', match });
       match.halftimeAction = halftime;
       applyTactic(match, halftime, 'halftime');
       for (const tag of (halftime.tags || [])) { if (!match.activeTacticTags.includes(tag)) match.activeTacticTags.push(tag); }
       await log(onEvent, 'round-header', I18N.t('ui.log.halftimeHeader'));
-      await log(onEvent, 'decision', I18N.t('ui.log.halftimeChoice', { name: halftime.name }));
+      recomputeTeamBuffs(match);
+      const buffAfter = match.teamBuffs;
+      const buffStr = Object.entries(buffAfter)
+        .filter(([k,v]) => Math.abs(v) >= 3 && ['offense','defense','tempo','vision','composure'].includes(k))
+        .map(([k,v]) => `${k.substring(0,3).toUpperCase()} ${v>0?'+':''}${v}`)
+        .join('  ');
+      await log(onEvent, 'decision', I18N.t('ui.log.halftimeChoice', { name: halftime.name }) + (buffStr ? `  [${buffStr}]` : ''));
       for (const p of squad) { delete p._speedBurstUsed; }
       dispatchTrigger('halftime', { match });
       await flushTriggerLog(match, onEvent);
@@ -934,7 +974,13 @@ async function startMatch(squad, opp, onEvent) {
       match.finalAction = final;
       applyTactic(match, final, 'final', squad, onEvent);
       for (const tag of (final.tags || [])) { if (!match.activeTacticTags.includes(tag)) match.activeTacticTags.push(tag); }
-      await log(onEvent, 'decision', I18N.t('ui.log.finalChoice', { name: final.name }));
+      recomputeTeamBuffs(match);
+      const buffAfter = match.teamBuffs;
+      const buffStr = Object.entries(buffAfter)
+        .filter(([k,v]) => Math.abs(v) >= 3 && ['offense','defense','tempo','vision','composure'].includes(k))
+        .map(([k,v]) => `${k.substring(0,3).toUpperCase()} ${v>0?'+':''}${v}`)
+        .join('  ');
+      await log(onEvent, 'decision', I18N.t('ui.log.finalChoice', { name: final.name }) + (buffStr ? `  [${buffStr}]` : ''));
       await dispatchTacticTrigger(final.tacticTrigger, match, squad, onEvent);
     }
 
@@ -970,19 +1016,45 @@ async function startMatch(squad, opp, onEvent) {
     match.stats.possAccum = (match.stats.possAccum || 0) + myPoss;
     match.stats.possRounds = (match.stats.possRounds || 0) + 1;
     let myAttacks = 1, oppAttacks = 1;
-    if (myPoss >= 0.60) {
-      if (rand() < (myPoss - 0.50) * 2.5) myAttacks = 2;
-    } else if (myPoss <= 0.40) {
-      if (rand() < (0.50 - myPoss) * 2.5) myAttacks = 0;
+
+    // ── POSSESSION: decouple myAttacks from possession, cap oppAttacks ────
+    if (match.possessionActive) {
+      const myVis = aggregateTeamStats(squad).vision + (match.teamBuffs?.vision || 0);
+      myAttacks = myVis > match.opp.stats.vision + 10 ? 2 : 1; // vision edge = guaranteed 2nd chance
+      oppAttacks = 1; // hard cap — possession stifles their threat
+    } else {
+      if (myPoss >= 0.60) {
+        if (rand() < (myPoss - 0.50) * 2.5) myAttacks = 2;
+      } else if (myPoss <= 0.40) {
+        if (rand() < (0.50 - myPoss) * 2.5) myAttacks = 0;
+      }
+      const oppPoss2 = 1 - myPoss;
+      if (oppPoss2 >= 0.60) {
+        if (rand() < (oppPoss2 - 0.50) * 2.5) oppAttacks = 2;
+      } else if (oppPoss2 <= 0.40) {
+        if (rand() < (0.50 - oppPoss2) * 2.5) oppAttacks = 0;
+      }
     }
-    const oppPoss = 1 - myPoss;
-    if (oppPoss >= 0.60) {
-      if (rand() < (oppPoss - 0.50) * 2.5) oppAttacks = 2;
-    } else if (oppPoss <= 0.40) {
-      if (rand() < (0.50 - oppPoss) * 2.5) oppAttacks = 0;
+
+    // ── PRESSING: cap oppAttacks to 1 ─────────────────────────────────────
+    if (match.pressingRoundsLeft > 0 && oppAttacks > 1) {
+      oppAttacks = 1;
+      await log(onEvent, 'trigger', I18N.t('ui.log.pressingCap'));
     }
+
+    // ── AGGRESSIVE/TEMPO: myAttacks can reach 3, but exhaustion accumulates ─
+    if (match.aggressiveRoundsLeft > 0) {
+      if (myAttacks === 2 && rand() < 0.40) {
+        myAttacks = 3;
+        await log(onEvent, 'trigger', I18N.t('ui.log.aggressiveThird'));
+      }
+      // Fatigue: opp buildup chance rises slightly after this round
+      match._aggressiveFatigue = (match._aggressiveFatigue || 0) + 0.04;
+    }
+
     if (myPoss >= 0.60)      await log(onEvent, 'decision', I18N.t('ui.log.possessionPressure', { pct: Math.round(myPoss*100) }));
     else if (myPoss <= 0.40) await log(onEvent, 'decision', I18N.t('ui.log.possessionDominated', { pct: Math.round(myPoss*100) }));
+
     for (let a = 0; a < myAttacks; a++) {
       await attemptAttack(match, squad, onEvent, a > 0 ? { bonusAttack: -0.05 } : {});
     }
@@ -991,9 +1063,22 @@ async function startMatch(squad, opp, onEvent) {
       await log(onEvent, 'trigger', I18N.t('ui.log.chainAttack'));
       await attemptAttack(match, squad, onEvent, { bonusAttack: 0.10 });
     }
+
+    // ── Track oppAttacks this round for double-counter check ─────────────
+    const oppAttacksThisRound = oppAttacks;
+    let oppAttacksFailed = 0;
     for (let a = 0; a < oppAttacks; a++) {
+      const beforeOppScore = match.scoreOpp;
       await attemptOppAttack(match, squad, onEvent);
+      if (match.scoreOpp === beforeOppScore) oppAttacksFailed++;
     }
+
+    // ── DOUBLE COUNTER: opp had 2 attacks, both failed ────────────────────
+    if (match.autoCounterRoundsLeft > 0 && oppAttacksThisRound >= 2 && oppAttacksFailed >= 2) {
+      await log(onEvent, 'trigger', I18N.t('ui.log.doubleCounter'));
+      await attemptAttack(match, squad, onEvent, { bonusAttack: 0.25 });
+    }
+
     if (match._oppLuckyPending) {
       match._oppLuckyPending = false;
       await log(onEvent, 'trigger', I18N.t('ui.log.luckyDouble', { name: match.opp.name }));
@@ -1006,6 +1091,49 @@ async function startMatch(squad, opp, onEvent) {
       bumpPlayerStat(lfForCounter, 'counters');
       await log(onEvent, 'trigger', I18N.t('ui.log.counter'));
       await attemptAttack(match, squad, onEvent, { bonusAttack: 0.15 });
+    }
+
+    // ── RALLY reaction: after opp goal, free counter ──────────────────────
+    if (match.rallyReactionPending) {
+      match.rallyReactionPending = false;
+      await log(onEvent, 'trigger', I18N.t('ui.log.rallyReaction'));
+      await attemptAttack(match, squad, onEvent, { bonusAttack: 0.12 });
+    }
+
+    // ── FLANK PLAY: LF gets extra shot attempt via wing run ───────────────
+    if (match.flankRoundsLeft > 0) {
+      const lf = squad.find(p => p.role === 'LF');
+      if (lf) {
+        const lfStats = computePlayerStats(lf, match);
+        const flankChance = clamp(0.25 + (lfStats.tempo - match.opp.stats.tempo) * 0.006, 0.10, 0.65);
+        if (rand() < flankChance) {
+          await log(onEvent, 'trigger', I18N.t('ui.log.flankRun', { name: lf.name }));
+          match.stats.myShots++;
+          bumpPlayerStat(lf, 'shots');
+          const flankScore = clamp(0.28 + lfStats.offense * 0.004, 0.15, 0.55);
+          if (rand() < flankScore) {
+            match.stats.myShotsOnTarget++;
+            bumpPlayerStat(lf, 'shotsOnTarget');
+            await recordOwnGoal(match, squad, onEvent, lf, { match, attackBonus: 0, scorer: lf });
+          } else {
+            await log(onEvent, '', `R${match.round}: ${lf.name} fires from the wing — off target.`);
+          }
+        }
+      }
+    }
+
+    // ── BALANCED momentum: track consecutive control rounds ───────────────
+    if (match.guaranteedFirstBuildup !== undefined) {
+      const hadControl = (myAttacks >= 1 && oppAttacksFailed >= oppAttacksThisRound * 0.5);
+      if (hadControl) {
+        match.momentumCounter = (match.momentumCounter || 0) + 1;
+        if (match.momentumCounter >= 2) {
+          match.nextBuildupBonus = (match.nextBuildupBonus || 0) + 0.15;
+          if (match.momentumCounter === 2) await log(onEvent, 'trigger', I18N.t('ui.log.momentumBuilt'));
+        }
+      } else {
+        match.momentumCounter = 0;
+      }
     }
 
     await onEvent({ type:'roundEnd', match });
@@ -1067,60 +1195,107 @@ function applyTactic(match, tactic, phase, squad, onEvent) {
   const range = RANGES[phase] || [1, 6];
   const layer = { source: tactic.id + '@' + phase, range, stats: {}, special: null };
 
+  // ── Convenience: score context for scaling ────────────────────────────────
+  const deficit  = Math.max(0, match.scoreOpp - match.scoreMe);
+  const lead     = Math.max(0, match.scoreMe  - match.scoreOpp);
+  const isTrailing = deficit > 0;
+  const isLeading  = lead  > 0;
+
   if (phase === 'kickoff') {
-    if (tactic.id === 'aggressive')  { layer.stats = { offense: 6, defense: -4 }; }
-    if (tactic.id === 'defensive')   { layer.stats = { defense: 6, offense: -4 }; }
-    if (tactic.id === 'balanced')    { layer.stats = { offense: 3, defense: 3, tempo: 3, vision: 3, composure: 3 }; }
-    if (tactic.id === 'tempo')       { layer.stats = { tempo: 8, composure: -3 }; }
-    if (tactic.id === 'pressing')    { layer.stats = { defense: 5, tempo: 4 }; }
-    if (tactic.id === 'possession')  { layer.stats = { vision: 6, composure: 4 }; }
-    if (tactic.id === 'counter')     { layer.stats = { defense: 8, tempo: 4, offense: -2 }; }
-    if (tactic.id === 'flank_play')  { layer.stats = { tempo: 5, offense: 5 }; }
+    if (tactic.id === 'aggressive') {
+      layer.stats = { offense: 18, defense: -8 };
+      match.aggressiveRoundsLeft = 3;   // enables 3rd attack roll
+    }
+    if (tactic.id === 'defensive')  { layer.stats = { defense: 18, offense: -8 }; }
+    if (tactic.id === 'balanced') {
+      layer.stats = { offense: 8, defense: 8, tempo: 8, vision: 8, composure: 8 };
+      match.guaranteedFirstBuildup = true;
+      match.momentumCounter = 0;        // start tracking momentum
+    }
+    if (tactic.id === 'tempo') {
+      layer.stats = { tempo: 22, composure: -6 };
+      match.aggressiveRoundsLeft = 3;   // same extra-shot mechanic as aggressive
+    }
+    if (tactic.id === 'pressing') {
+      layer.stats = { defense: 14, tempo: 10 };
+      match.pressingRoundsLeft = 3;     // caps oppAttacks to 1 for 3 rounds
+    }
+    if (tactic.id === 'possession') {
+      layer.stats = { vision: 18, composure: 10 };
+      match.possessionActive = true;    // decouples myAttacks from poss, caps oppAttacks
+    }
+    if (tactic.id === 'counter') {
+      layer.stats = { defense: 22, tempo: 10, offense: -6 };
+      match.autoCounterRoundsLeft = 3;  // failed opp attack → auto own attack
+    }
+    if (tactic.id === 'flank_play') {
+      layer.stats = { tempo: 14, offense: 14 };
+      match.flankRoundsLeft = 3;        // LF gets extra wing-shot each round
+    }
   }
   if (phase === 'halftime') {
-    if (tactic.id === 'push')        { layer.stats = { offense: 8, defense: -6 }; }
-    if (tactic.id === 'stabilize')   { layer.stats = { defense: 6, composure: 4 }; }
-    if (tactic.id === 'shift')       {
+    if (tactic.id === 'push') {
+      const offBoost = 20 + deficit * 8;
+      layer.stats = { offense: offBoost, defense: -10 };
+      match.aggressiveRoundsLeft = 3;   // push enables triple-attack roll in 2nd half
+    }
+    if (tactic.id === 'stabilize') {
+      const defBoost = 18 + lead * 6;
+      layer.stats = { defense: defBoost, composure: 10 };
+      // mechanic: opp attacks capped to 1 per round when leading
+      if (isLeading) match.pressingRoundsLeft = Math.max(match.pressingRoundsLeft, 3);
+    }
+    if (tactic.id === 'shift') {
       const subject = pick(match.squad);
       const focus = DATA.roles.find(r => r.id === subject.role)?.focusStat || 'offense';
-      subject.stats[focus] = clamp(subject.stats[focus] + 10, 20, 99);
+      subject.stats[focus] = clamp(subject.stats[focus] + 18, 20, 99);
       match._shiftSubject = subject;
       return;
     }
-    if (tactic.id === 'rally')       { layer.special = 'rally'; }
-    if (tactic.id === 'reset')       { layer.stats = { offense: 5, defense: 5, tempo: 5, vision: 5, composure: 5 }; }
-    if (tactic.id === 'counter_h')   { layer.stats = { tempo: 10, defense: 5 }; }
-    if (tactic.id === 'high_press')  { layer.stats = { defense: 8, composure: -3 }; }
-    if (tactic.id === 'vision_play') { layer.stats = { vision: 8, offense: 4 }; }
+    if (tactic.id === 'rally') {
+      layer.special = 'rally';
+      match.rallyReactionPending = false; // will be set true after each opp goal
+      match._rallyActive = true;          // flag checked in attemptOppAttack
+    }
+    if (tactic.id === 'reset') { layer.stats = { offense: 12, defense: 12, tempo: 12, vision: 12, composure: 12 }; }
+    if (tactic.id === 'counter_h') {
+      layer.stats = { tempo: 24, defense: 14 };
+      match.autoCounterRoundsLeft = 3;
+    }
+    if (tactic.id === 'high_press') {
+      layer.stats = { defense: 22, composure: -6 };
+      match.pressingRoundsLeft = 3;
+    }
+    if (tactic.id === 'vision_play') {
+      layer.stats = { vision: 22, offense: 10 };
+      match.possessionActive = true;      // vision play also decouples attack count
+    }
   }
   if (phase === 'final') {
-    // Feature 5: condition-based scaling
     if (tactic.condition) {
       layer.stats = tactic.condition(match);
     } else {
-      if (tactic.id === 'keep_cool')   { layer.stats = { composure: 8, vision: 5 }; }
-      if (tactic.id === 'long_ball')   { layer.stats = { offense: 12, vision: -5 }; }
-      if (tactic.id === 'midfield')    { layer.stats = { vision: 8, tempo: 6, composure: 6 }; }
-      if (tactic.id === 'sneaky')      { layer.stats = { defense: 12, tempo: 8, offense: -8 }; }
-      if (tactic.id === 'final_press') { layer.stats = { tempo: 10, defense: 8, offense: -5 }; }
+      if (tactic.id === 'keep_cool')   { layer.stats = { composure: 20, vision: 12 }; }
+      if (tactic.id === 'long_ball')   { layer.stats = { offense: 28, vision: -10 }; }
+      if (tactic.id === 'midfield')    { layer.stats = { vision: 20, tempo: 16, composure: 14 }; }
+      if (tactic.id === 'sneaky')      { layer.stats = { defense: 28, tempo: 18, offense: -14 }; }
+      if (tactic.id === 'final_press') { layer.stats = { tempo: 24, defense: 18, offense: -10 }; }
     }
-    // Feature 5: hero_ball picks player with highest form
     if (tactic.id === 'hero_ball') {
       const heroSquad = match.squad || (squad || []);
       const hero = heroSquad.slice().sort((a,b) => (b.form||0) - (a.form||0))[0] || pick(heroSquad);
       const focus = DATA.roles.find(r => r.id === hero.role)?.focusStat || 'offense';
-      hero.stats[focus] = clamp(hero.stats[focus] + 20, 20, 99);
+      hero.stats[focus] = clamp(hero.stats[focus] + 30, 20, 99);
       match._hero = hero;
       return;
     }
-    // Feature 5: sacrifice — permanent stat loss for huge short-term gain
     if (tactic.id === 'sacrifice') {
       const heroSquad = match.squad || (squad || []);
       const victim = heroSquad.slice().sort((a,b) => (b.form||0) - (a.form||0))[0] || pick(heroSquad);
       const focus = DATA.roles.find(r => r.id === victim.role)?.focusStat || 'offense';
       victim.stats[focus] = Math.max(20, victim.stats[focus] - 15);
       match._sacrificeVictim = victim;
-      layer.stats = { offense: 25 };
+      layer.stats = { offense: 35 };
       return match.buffLayers.push(layer) && recomputeTeamBuffs(match);
     }
   }
@@ -1137,8 +1312,9 @@ function recomputeTeamBuffs(match) {
       agg[k] = (agg[k] || 0) + v;
     }
     if (layer.special === 'rally' && r >= 4) {
-      agg.offense += match.scoreOpp * 3;
-      agg.defense += match.scoreMe * 3;
+      // ── Doubled rally scaling ─────────────────────────────────────────────
+      agg.offense += match.scoreOpp * 6;
+      agg.defense += match.scoreMe  * 6;
     }
   }
   match.teamBuffs = agg;
@@ -1187,7 +1363,12 @@ async function attemptAttack(match, squad, onEvent, extra={}) {
     autoGoal: false, scorer: st, oppAvgDefense: match.opp.avgDefense + (match.opp._roundBuffs?.defense || 0)
   };
 
-  // Feature 4: synergy bonus
+  // ── Guaranteed first buildup from balanced tactic ────────────────────────
+  if (match.guaranteedFirstBuildup && match.stats.myBuildups === 0) {
+    ctx.guaranteedBuildup = true;
+    match.guaranteedFirstBuildup = false;
+  }
+
   const synergy = computeSynergyBonus(squad, match.activeTacticTags);
   if (synergy.bonus > 0) {
     ctx.attackBonus += synergy.bonus;
@@ -1199,6 +1380,8 @@ async function attemptAttack(match, squad, onEvent, extra={}) {
   dispatchTrigger('ownAttack', ctx);
   await flushTriggerLog(match, onEvent);
   const oppPressCtx = applyOppTraitEffect(match.opp, match, 'ownBuildupChance', { malus: 0 });
+  // ── pressing tactic reduces opp buildup chance against us ────────────────
+  // (pressing affects OPP build, not own — handled in attemptOppAttack)
   const buildupChance = clamp(
     0.30 + (pmStats.vision - 55) * 0.006 + (match.nextBuildupBonus || 0) + (ctx.attackBonus * 0.5)
     - (oppPressCtx.malus || 0),
@@ -1284,15 +1467,40 @@ async function attemptOppAttack(match, squad, onEvent) {
   dispatchTrigger('oppAttack', ctx);
   await flushTriggerLog(match, onEvent);
   if (ctx.oppAttackNegated) {
+    if (match.pressingRoundsLeft > 0) {
+      match._htPressingBlocks = (match._htPressingBlocks || 0) + 1;
+    }
+    if (match.autoCounterRoundsLeft > 0) {
+      match._htCountersFired = (match._htCountersFired || 0) + 1;
+      const lf = squad.find(p => p.role === 'LF');
+      bumpPlayerStat(lf, 'counters');
+      await log(onEvent, 'trigger', I18N.t('ui.log.autoCounter'));
+      await attemptAttack(match, squad, onEvent, { bonusAttack: 0.20 });
+    }
     dispatchTrigger('oppAttackFailed', { match });
     await flushTriggerLog(match, onEvent);
     return;
   }
-  const oppBuildup = clamp(0.35 + (opp.stats.vision - 55) * 0.005, 0.15, 0.85);
+
+  // ── Pressing tactic: harder for opp to build up ──────────────────────────
+  const pressMalus = match.pressingRoundsLeft > 0 ? 0.20 : 0;
+  // ── Aggressive fatigue: opp finds gaps as our defense tires ─────────────
+  const fatigueMalus = -(match._aggressiveFatigue || 0);
+  const oppBuildup = clamp(0.35 + (opp.stats.vision - 55) * 0.005 - pressMalus + fatigueMalus, 0.10, 0.85);
   match.stats.oppBuildups++;
   if (rand() > oppBuildup) {
     await log(onEvent, '', `R${match.round}: ${pickLog('logs.oppBuildFail', { opp: opp.name, vt: vt?.name || 'Defense' })}`);
     bumpPlayerStat(vt, 'defendedAttacks');
+    if (match.pressingRoundsLeft > 0) {
+      match._htPressingBlocks = (match._htPressingBlocks || 0) + 1;
+    }
+    if (match.autoCounterRoundsLeft > 0) {
+      match._htCountersFired = (match._htCountersFired || 0) + 1;
+      const lf = squad.find(p => p.role === 'LF');
+      bumpPlayerStat(lf, 'counters');
+      await log(onEvent, 'trigger', I18N.t('ui.log.autoCounter'));
+      await attemptAttack(match, squad, onEvent, { bonusAttack: 0.20 });
+    }
     dispatchTrigger('oppAttackFailed', { match });
     await flushTriggerLog(match, onEvent);
     return;
@@ -1349,6 +1557,8 @@ async function attemptOppAttack(match, squad, onEvent) {
     bumpPlayerStat(tw, 'goalsConceded');
     bumpPlayerStat(vt, 'goalsConceded');
     await log(onEvent, 'goal-opp', I18N.t('ui.log.oppGoal', { name: opp.name, me: match.scoreMe, opp: match.scoreOpp }));
+    // ── Rally: opp goal triggers a free reaction attack next ──────────────
+    if (match._rallyActive) match.rallyReactionPending = true;
     dispatchTrigger('afterOppGoal', { match });
     await flushTriggerLog(match, onEvent);
   }

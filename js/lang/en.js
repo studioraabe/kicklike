@@ -117,6 +117,19 @@ I18N.registerLocale('en', {
       defenses: '{count} stops',
       keeper: '{saves} saves  {conceded} conceded'
     },
+    ht: {
+      title: 'HALF TIME',
+      pressBlocked: 'Pressing blocked {n} attacks',
+      countersFired: 'Counter system fired {n}×',
+      momentumActive: 'Momentum: +{bonus}% build-up bonus next round',
+      activeIntoSecondHalf: 'Active into 2nd half →',
+      mechanicCounter: 'Counter trap live',
+      mechanicPressing: 'Pressing active',
+      mechanicPossession: 'Possession lock',
+      mechanicAggressive: 'Attack surge',
+      mechanicFlank: 'Wing runs',
+      mechanicRally: 'Rally mode'
+    },
     log: {
       opponentIntro: '  ↳ Opponent: {parts}',
       kickoffChoice: '  → Kickoff: {name}',
@@ -128,6 +141,16 @@ I18N.registerLocale('en', {
       chainAttack: '  ⚡ Chain attack!',
       luckyDouble: '  🍀 {name} gets lucky — double attack!',
       counter: '  🔁 Counterattack!',
+      autoCounter: '  ⚡ COUNTER SYSTEM LIVE — their mistake, our attack!',
+      doubleCounter: '  ⚡⚡ DOUBLE COUNTER — two failed attacks, two chances!',
+      pressingCap: '  🏃 Pressing — capped their attack to one threat.',
+      aggressiveThird: '  💥 All-out pressure — third attack wave incoming!',
+      rallyReaction: '  💢 RALLY — instant reaction after their goal!',
+      flankRun: '  🏃 {name} bursts down the wing — extra chance!',
+      momentumBuilt: '  🔄 Momentum building — consecutive control rounds paying off.',
+      htSummaryPressing: 'Pressing blocked {n} attacks',
+      htSummaryCounters: 'Counter system fired {n}x',
+      htSummaryMomentum: 'Momentum active',
       activeBuffs: '  📊 Active buffs: {buffs}',
       synergyBonus: '  🔗 Synergy: {name} ({trait}) +{bonus}% attack',
       tacticPressingTrigger: '  🏃 Pressing pays off — turnover and counter!',
@@ -392,35 +415,35 @@ I18N.registerLocale('en', {
     },
     tactics: {
       kickoff: {
-        aggressive: { name: 'Aggressive Start', desc: '+6 attack in rounds 1-3, -4 defense.' },
-        defensive: { name: 'Defensive Start', desc: '+6 defense in rounds 1-3, -4 attack.' },
-        balanced: { name: 'Balanced', desc: '+3 to all stats in rounds 1-3.' },
-        tempo: { name: 'Tempo Game', desc: '+8 tempo in rounds 1-3, -3 composure.' },
-        pressing: { name: 'Pressing', desc: '+5 defense and +4 tempo in rounds 1-3. Chance for a counter.' },
-        possession: { name: 'Possession', desc: '+6 vision and +4 composure in rounds 1-3.' },
-        counter: { name: 'Counter Trap', desc: '+8 defense, +4 tempo in rounds 1-3, -2 attack. Build-up bonus.' },
-        flank_play: { name: 'Wing Play', desc: '+5 tempo and +5 attack in rounds 1-3.' }
+        aggressive: { name: 'Aggressive Start', desc: '+18 attack in rounds 1-3, -8 defense. All-out pressure from the first whistle.' },
+        defensive: { name: 'Defensive Start', desc: '+18 defense in rounds 1-3, -8 attack. Invite them on and hit on the break.' },
+        balanced: { name: 'Balanced', desc: '+8 to ALL stats in rounds 1-3. First build-up is guaranteed — no cold start.' },
+        tempo: { name: 'Tempo Game', desc: '+22 tempo in rounds 1-3, -6 composure. Overwhelm with pace before they settle.' },
+        pressing: { name: 'Pressing', desc: '+14 defense, +10 tempo in rounds 1-3. Their build-up success rate drops hard for 3 rounds.' },
+        possession: { name: 'Possession', desc: '+18 vision, +10 composure in rounds 1-3. Control the game before hunting for the chance.' },
+        counter: { name: 'Counter Trap', desc: '+22 defense, +10 tempo in rounds 1-3, -6 attack. Every failed enemy attack triggers an automatic counter for 3 rounds.' },
+        flank_play: { name: 'Wing Play', desc: '+14 tempo, +14 attack in rounds 1-3. Wide and fast from the off.' }
       },
       halftime: {
-        push: { name: 'Risk Push', desc: '+8 attack in rounds 4-6, -6 defense.' },
-        stabilize: { name: 'Stabilize', desc: '+6 defense and +4 composure in rounds 4-6.' },
-        shift: { name: 'Reassign', desc: 'One player permanently gains +10 to their focus stat.' },
-        rally: { name: 'Rally', desc: '+3 attack per goal conceded, +3 defense per goal scored. Stronger when trailing.' },
-        reset: { name: 'Reset Shape', desc: '+5 to all stats in rounds 4-6.' },
-        counter_h: { name: 'Lean Into Counters', desc: '+10 tempo and +5 defense in rounds 4-6. Build-up bonus.' },
-        high_press: { name: 'High Press', desc: '+8 defense in rounds 4-6, -3 composure. Chance to win the ball.' },
-        vision_play: { name: 'Open the Game', desc: '+8 vision and +4 attack in rounds 4-6.' }
+        push: { name: 'Risk Push', desc: '+20 attack in rounds 4-6, -10 defense. If trailing, the attack boost grows with every goal owed.' },
+        stabilize: { name: 'Stabilize', desc: '+18 defense, +10 composure in rounds 4-6. If leading, the defense wall grows higher for every goal ahead.' },
+        shift: { name: 'Reassign', desc: 'One player permanently gains +18 to their focus stat right now.' },
+        rally: { name: 'Rally', desc: '+6 attack per goal conceded, +6 defense per goal scored. Massive swing potential from behind.' },
+        reset: { name: 'Reset Shape', desc: '+12 to ALL stats in rounds 4-6. Wipe the slate clean.' },
+        counter_h: { name: 'Lean Into Counters', desc: '+24 tempo, +14 defense in rounds 4-6. Every failed enemy attack triggers an automatic counter for 3 rounds.' },
+        high_press: { name: 'High Press', desc: '+22 defense in rounds 4-6, -6 composure. Their build-up is squeezed even harder in the second half.' },
+        vision_play: { name: 'Open the Game', desc: '+22 vision, +10 attack in rounds 4-6. Create the gaps and pick them apart.' }
       },
       final: {
-        all_in: { name: 'All In', desc: 'Final round: +15 attack, -15 defense. Even stronger when trailing.' },
-        park_bus: { name: 'Park the Bus', desc: 'Final round: +15 defense, -10 attack. Even stronger when leading.' },
-        hero_ball: { name: 'Hero Ball', desc: 'Player with the best form permanently gains +20 focus stat.' },
-        keep_cool: { name: 'Stay Cool', desc: 'Final round: +8 composure and +5 vision.' },
-        final_press: { name: 'Final Press', desc: 'Final round: +10 tempo and +8 defense, -5 attack. High counter chance.' },
-        long_ball: { name: 'Long Balls', desc: 'Final round: +12 attack, -5 vision.' },
-        midfield: { name: 'Midfield Control', desc: 'Final round: +8 vision, +6 tempo, +6 composure.' },
-        sneaky: { name: 'Ambush', desc: 'Final round: +12 defense, +8 tempo, -8 attack.' },
-        sacrifice: { name: 'Sacrifice', desc: 'One player permanently loses 15 focus stat. Team: +25 offense right now.' }
+        all_in: { name: 'All In', desc: 'Final round: +15 attack, -15 defense. Scales up sharply with every goal owed.' },
+        park_bus: { name: 'Park the Bus', desc: 'Final round: +15 defense, -10 attack. Scales up sharply with every goal in hand.' },
+        hero_ball: { name: 'Hero Ball', desc: 'Player with the best form permanently gains +30 to their focus stat right now.' },
+        keep_cool: { name: 'Stay Cool', desc: 'Final round: +20 composure, +12 vision. Nerves of steel when it matters most.' },
+        final_press: { name: 'Final Press', desc: 'Final round: +24 tempo, +18 defense, -10 attack. High counter chance.' },
+        long_ball: { name: 'Long Balls', desc: 'Final round: +28 attack, -10 vision. Hit them hard and direct.' },
+        midfield: { name: 'Midfield Control', desc: 'Final round: +20 vision, +16 tempo, +14 composure. Suffocate them with quality.' },
+        sneaky: { name: 'Ambush', desc: 'Final round: +28 defense, +18 tempo, -14 attack. Lure them in and pounce.' },
+        sacrifice: { name: 'Sacrifice', desc: 'One player permanently loses 15 focus stat. Team: +35 offense right now. Desperate times.' }
       }
     },
     teamNamePools: {
