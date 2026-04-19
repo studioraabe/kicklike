@@ -332,6 +332,9 @@ function deriveStage2Details() {
 }
 function capitalizeFirst(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 deriveStage2Details();
+if (window.I18N) {
+  I18N.decorateConfigData(DATA);
+}
 const HIGHSCORE_KEY = 'kicklike_highscore_v1';
 
 function loadHighscore() {

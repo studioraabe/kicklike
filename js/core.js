@@ -33,6 +33,9 @@ const uid    = (prefix='x') => prefix + '_' + Math.random().toString(36).slice(2
 const $      = (sel, root=document) => root.querySelector(sel);
 const $$     = (sel, root=document) => Array.from(root.querySelectorAll(sel));
 const sleep  = (ms) => new Promise(r => setTimeout(r, ms));
+const tt     = (path, vars={}) => I18N.t(path, vars);
+const pickLog = (path, vars={}) => I18N.pickText(path, vars);
+const localeData = () => I18N.locale().data || {};
 
 function el(tag, attrs={}, children=[]) {
   const e = document.createElement(tag);
@@ -52,38 +55,22 @@ function el(tag, attrs={}, children=[]) {
 }
 function formIndicator(form) {
   if (!form) return '';
-  if (form >= 2)  return ' · 🔥↑↑';
-  if (form === 1) return ' · ↑';
-  if (form <= -2) return ' · ❄↓↓';
-  if (form === -1) return ' · ↓';
+  if (form >= 2)  return ' ^^';
+  if (form === 1) return ' ^';
+  if (form <= -2) return ' vv';
+  if (form === -1) return ' v';
   return '';
 }
-const TEAM_NAME_POOLS = {
-  konter: {
-    first: ["Fox","Jet","Ash","Kai","Zed","Rex","Vex","Nyx","Rook","Swift","Blaze","Corvo","Dash","Echo","Ravi","Slate","Volt","Zane","Kit","Milo"],
-    last: ["Sharp","Cross","Dash","Skye","Reeve","Blaze","Quinn","Striker","Fall","Rush","Edge","Swift","Hale","Stryder","Vortex","Flicker","Cipher"]
-  },
-  pressing: {
-    first: ["Grim","Vargr","Krag","Brax","Thor","Raze","Grunt","Bjorn","Krogh","Ulf","Magnus","Ragnar","Brokk","Vidar","Harald","Ivor","Orin","Knut"],
-    last: ["Bulk","Crush","Wolf","Blood","Steel","Fang","Claw","Bane","Hammer","Iron","Stone","Mauler","Tusk","Growl","Graf","Forge","Grimwald"]
-  },
-  technik: {
-    first: ["Luca","Nico","Rafa","Mateo","Dante","Enzo","Alessio","Marco","Giovani","Xavi","Theo","Renzo","Leandro","Diego","Seb","Liam","Silas"],
-    last: ["Bellucci","Corelli","Ferrando","Moretti","Salvatore","Laurent","Rossi","Valenti","Monti","Rinaldi","Serra","Piazza","Viale","Lionheart","Delacroix"]
-  },
-  kraft: {
-    first: ["Bernd","Horst","Reinhold","Klaus","Kurt","Manfred","Detlef","Siegfried","Hartmut","Werner","Friedhelm","Heinrich","Günter","Egon","Rolf","Ulli"],
-    last: ["Donnerberg","Eisenfaust","Steinbruck","Stahlhammer","Sturmwald","Rabenhorst","Wolfsberg","Ackermann","Rothmann","Schmied","Gruber","Bollwerk","Hartstein"]
-  }
-};
+const TEAM_NAME_POOLS = () => localeData().teamNamePools || {};
 
 function generateName(teamId) {
-  const pool = teamId && TEAM_NAME_POOLS[teamId] ? TEAM_NAME_POOLS[teamId] : null;
+  const pools = TEAM_NAME_POOLS();
+  const pool = teamId && pools[teamId] ? pools[teamId] : null;
   if (pool) {
     return `${pick(pool.first)} ${pick(pool.last)}`;
   }
-  const allFirst = Object.values(TEAM_NAME_POOLS).flatMap(p => p.first);
-  const allLast  = Object.values(TEAM_NAME_POOLS).flatMap(p => p.last);
+  const allFirst = Object.values(pools).flatMap(p => p.first);
+  const allLast  = Object.values(pools).flatMap(p => p.last);
   return `${pick(allFirst)} ${pick(allLast)}`;
 }
 
@@ -114,16 +101,7 @@ function makePlayer(archetypeId, opts={}) {
     lastPerformance: 0
   };
 }
-const LEGENDARY_TRAITS = {
-  "god_mode":        { name:"God Mode",         desc:"Einmal pro Match: nächstes Tor zählt dreifach." },
-  "clutch_dna":      { name:"Clutch-DNA",       desc:"In letzter Runde: +20 Offense, +10 Composure." },
-  "field_general":   { name:"Feldgeneral",      desc:"Gesamtes Team: +4 auf alle Stats." },
-  "unbreakable":     { name:"Unzerbrechlich",   desc:"Erstes kassiertes Tor pro Match: annulliert." },
-  "big_game":        { name:"Big-Game-Player",  desc:"Gegen Boss: +15 auf Fokus-Stat." },
-  "conductor":       { name:"Orchestrator",     desc:"Pro erfolgreichem Aufbau: +8% nächstes Tor." },
-  "phoenix":         { name:"Phönix",           desc:"Bei Rückstand 2+: +12 Offense dauerhaft dieses Match." },
-  "ice_in_veins":    { name:"Eis in den Adern", desc:"Ignoriert Gegner-Composure-Buffs komplett." }
-};
+const LEGENDARY_TRAITS = localeData().legendaryTraits || {};
 
 function generateLegendaryPlayer() {
   const role = pick(['TW','VT','PM','LF','ST']);
@@ -138,11 +116,7 @@ function generateLegendaryPlayer() {
   if (md >= 15) { stage = 2; level = 10; }
   const player = {
     id: uid('leg'),
-    name: pick([
-      "Nikolaus Vega","Rasmus Orth","Idris Storm","Jago Sand","Milo Rivera","Octavian Kross",
-      "Darian Lux","Suren Vex","Leon Trax","Rune Kainz","Ashe Quandt","Zephyr Böhm",
-      "Malik Kroos","Nils Falk","Sovereign Reinhardt","Maksim Thoma"
-    ]),
+    name: pick(localeData().legendaryNames || ['Nikolaus Vega']),
     role,
     archetype: evoId,
     label: evo.label + " ⚜",
@@ -212,10 +186,10 @@ function teamTotalPower(lineup) {
 function teamStrengthLabel(teamStats) {
   const entries = Object.entries(teamStats).sort((a,b) => b[1] - a[1]);
   const labels = {
-    offense:'Offensiv', defense:'Defensiv', tempo:'Tempo-orientiert',
-    vision:'Spielintelligent', composure:'Nervenstark'
+    offense:I18N.t('stats.offense'), defense:I18N.t('stats.defense'), tempo:I18N.t('stats.tempo'),
+    vision:I18N.t('stats.vision'), composure:I18N.t('stats.composure')
   };
-  return labels[entries[0][0]] || 'Ausgewogen';
+  return labels[entries[0][0]] || I18N.t('ui.labels.standard');
 }
 
 const TRIGGER_HANDLERS = {
@@ -238,7 +212,7 @@ const TRIGGER_HANDLERS = {
   "laser_pass": (p, ctx) => {
     if (ctx.event === 'postSave' && rand() < 0.20) {
       ctx.match.counterPending = true;
-      ctx.log('🎯 ' + p.name + ' LASER-PASS — Konter eingeleitet!');
+      ctx.log(I18N.t('ui.log.laserPass', { name: p.name }));
     }
   },
   "offside_trap": (p, ctx) => {
@@ -263,7 +237,7 @@ const TRIGGER_HANDLERS = {
     if (ctx.event === 'oppGoal' && !p._usedNineLives) {
       ctx.oppGoalCancelled = true;
       p._usedNineLives = true;
-      ctx.log('🐱 ' + p.name + ' NEUN LEBEN — Tor annulliert!');
+      ctx.log(I18N.t('ui.log.nineLives', { name: p.name }));
     }
   },
   "intimidate": (p, ctx) => {
@@ -273,7 +247,7 @@ const TRIGGER_HANDLERS = {
     if (ctx.event === 'oppShot' && rand() < 0.10) {
       ctx.oppShotSaved = true;
       ctx.match.counterPending = true;
-      ctx.log('🛡 ' + p.name + ' BULLDOZE — Ballgewinn + Konter!');
+      ctx.log(I18N.t('ui.log.bulldoze', { name: p.name }));
     }
   },
   "captain_boost": (p, ctx) => {
@@ -288,7 +262,7 @@ const TRIGGER_HANDLERS = {
     if (ctx.event === 'oppAttack' && rand() < 0.20) {
       ctx.oppAttackNegated = true;
       ctx.match.counterPending = true;
-      ctx.log('🥾 ' + p.name + ' HARTES TACKLING — Konter!');
+      ctx.log(I18N.t('ui.log.hardTackle', { name: p.name }));
     }
   },
   "whirlwind_rush": (p, ctx) => {
@@ -323,7 +297,7 @@ const TRIGGER_HANDLERS = {
   "killer_pass": (p, ctx) => {
     if (ctx.event === 'ownGoal' && rand() < 0.25) {
       ctx.match.chainAttack = true;
-      ctx.log('⚡ ' + p.name + ' KILLER-PASS — nächste Runde Chain!');
+      ctx.log(I18N.t('ui.log.killerPass', { name: p.name }));
     }
   },
   "whisper_boost": (p, ctx) => {
@@ -345,7 +319,7 @@ const TRIGGER_HANDLERS = {
   "shadow_strike": (p, ctx) => {
     if (ctx.event === 'roundStart' && (ctx.match.round === 3 || ctx.match.round === 6) && rand() < 0.20) {
       ctx.match.shadowStrikeTriggered = true;
-      ctx.log('👤 ' + p.name + ' SCHATTENSCHLAG — versteckter Angriff!');
+      ctx.log(I18N.t('ui.log.shadowStrike', { name: p.name }));
     }
   },
   "maestro_combo": (p, ctx) => {
@@ -354,14 +328,14 @@ const TRIGGER_HANDLERS = {
       if (ctx.match.comboCounter >= 3) {
         ctx.match.doubleNextGoal = true;
         ctx.match.comboCounter = 0;
-        ctx.log('🎼 ' + p.name + ' MAESTRO-COMBO — nächstes Tor ZÄHLT DOPPELT!');
+        ctx.log(I18N.t('ui.log.maestroCombo', { name: p.name }));
       }
     }
   },
   "chess_predict": (p, ctx) => {
     if (ctx.event === 'oppGoal' && !p._chessUsed) {
       ctx.oppGoalCancelled = true; p._chessUsed = true;
-      ctx.log('♟ ' + p.name + ' CHESS PREDICT — Gegnertor vorhergesehen!');
+      ctx.log(I18N.t('ui.log.chessPredict', { name: p.name }));
     }
   },
   "symphony_pass": (p, ctx) => {
@@ -372,7 +346,7 @@ const TRIGGER_HANDLERS = {
   "speed_burst": (p, ctx) => {
     if (ctx.event === 'ownAttack' && !p._speedBurstUsed) {
       ctx.guaranteedBuildup = true; p._speedBurstUsed = true;
-      ctx.log('💨 ' + p.name + ' SPEED BURST — Aufbau garantiert!');
+      ctx.log(I18N.t('ui.log.speedBurst', { name: p.name }));
     }
     if (ctx.event === 'halftime') p._speedBurstUsed = false;
   },
@@ -381,7 +355,7 @@ const TRIGGER_HANDLERS = {
   },
   "unstoppable_run": (p, ctx) => {
     if (ctx.event === 'ownAttack' && p.stats.tempo > (ctx.oppAvgDefense||60) && rand() < 0.10) {
-      ctx.autoGoal = true; ctx.log('🚀 ' + p.name + ' UNAUFHALTBAR — Tor ohne Gegenwehr!');
+      ctx.autoGoal = true; ctx.log(I18N.t('ui.log.unstoppable', { name: p.name }));
     }
   },
   "dribble_chain": (p, ctx) => {
@@ -391,7 +365,7 @@ const TRIGGER_HANDLERS = {
   "street_trick": (p, ctx) => {
     if (ctx.event === 'ownAttack' && rand() < 0.15) {
       ctx.oppAvgDefense = Math.max(30, (ctx.oppAvgDefense||60) - 20);
-      ctx.log('🎨 ' + p.name + ' STREET-TRICK — VTer umspielt!');
+      ctx.log(I18N.t('ui.log.streetTrick', { name: p.name }));
     }
   },
   "nutmeg": (p, ctx) => {
@@ -417,13 +391,13 @@ const TRIGGER_HANDLERS = {
     if (ctx.event === 'ownAttack' && !ctx.match.firstShotTaken) {
       ctx.attackBonus += 0.30;
       ctx.match.firstShotTaken = true;
-      ctx.log('🎯 ' + p.name + ' SILENT KILLER — erster Schuss verstärkt!');
+      ctx.log(I18N.t('ui.log.silentKiller', { name: p.name }));
     }
   },
   "predator_pounce": (p, ctx) => {
     if (ctx.event === 'oppAttackFailed' && rand() < 0.25) {
       ctx.match.pouncePending = true;
-      ctx.log('🐆 ' + p.name + ' HETZJAGD — sofort-Konter!');
+      ctx.log(I18N.t('ui.log.pounce', { name: p.name }));
     }
   },
   "opportunity": (p, ctx) => {
@@ -431,7 +405,7 @@ const TRIGGER_HANDLERS = {
   },
   "cannon_blast": (p, ctx) => {
     if (ctx.event === 'ownAttack') {
-      if (rand() < 0.10) { ctx.autoGoal = true; ctx.log('💥 ' + p.name + ' KANONENSCHUSS!'); }
+      if (rand() < 0.10) { ctx.autoGoal = true; ctx.log(I18N.t('ui.log.cannonBlast', { name: p.name })); }
       else ctx.attackBonus -= 0.05;
     }
   },
@@ -450,7 +424,7 @@ const TRIGGER_HANDLERS = {
   "ghost_run": (p, ctx) => {
     if (ctx.event === 'roundStart' && rand() < 0.15) {
       ctx.match.ghostChancePending = true;
-      ctx.log('👻 ' + p.name + ' GEISTERLAUF — versteckte Chance!');
+      ctx.log(I18N.t('ui.log.ghostRun', { name: p.name }));
     }
   },
   "puzzle_connect": (p, ctx) => {
@@ -460,7 +434,7 @@ const TRIGGER_HANDLERS = {
     if (ctx.event === 'ownAttack' && ctx.match.puzzleBonus) {
       ctx.attackBonus += ctx.match.puzzleBonus;
       ctx.match.puzzleBonus = 0;
-      ctx.log('🧩 ' + p.name + ' PUZZLE VERBUNDEN!');
+      ctx.log(I18N.t('ui.log.puzzleConnect', { name: p.name }));
     }
   },
   "chameleon_adapt": (p, ctx) => {
@@ -532,7 +506,7 @@ TRIGGER_HANDLERS["god_mode"] = (p, ctx) => {
     p._godModeUsed = true;
     ctx.match.doubleNextGoal = true;
     ctx.match.tripleNextGoal = true;
-    ctx.log('⭐ ' + p.name + ' GOD MODE — nächstes Tor x3!');
+    ctx.log(I18N.t('ui.log.godMode', { name: p.name }));
   }
 };
 TRIGGER_HANDLERS["clutch_dna"] = (p, ctx) => {
@@ -550,7 +524,7 @@ TRIGGER_HANDLERS["unbreakable"] = (p, ctx) => {
   if (ctx.event === 'oppGoal' && !p._unbreakableUsed) {
     p._unbreakableUsed = true;
     ctx.oppGoalCancelled = true;
-    ctx.log('🛡 ' + p.name + ' UNZERBRECHLICH — Tor annulliert!');
+    ctx.log(I18N.t('ui.log.unbreakable', { name: p.name }));
   }
 };
 TRIGGER_HANDLERS["big_game"] = (p, ctx) => {
@@ -679,16 +653,7 @@ function computeOppStats(opp, role, match) {
   dispatchTrigger('oppStatCompute', ctx);
   return base;
 }
-const OPP_TRAITS = [
-  { id:"sturm",       name:"Sturmwalze",        desc:"+8% Schuss-Genauigkeit." },
-  { id:"riegel",      name:"Riegelkette",       desc:"+5% Save-Verhinderung pro Runde." },
-  { id:"konter_opp",  name:"Konterstark",       desc:"Bei eigenem Aufbau-Fehler: 30% Chance auf direkten Schuss." },
-  { id:"presser_opp", name:"Pressing-Maschine", desc:"Eigene Aufbauten scheitern 10% häufiger." },
-  { id:"clutch_opp",  name:"Eiskalt",           desc:"Letzte 2 Runden: +10 Offense, +5 Tempo." },
-  { id:"lucky",       name:"Glückspilz",        desc:"Einmal pro Match: zufälliger Bonusangriff." },
-  { id:"ironwall",    name:"Eisenmauer",        desc:"Erste 2 Runden: +10 Defense." },
-  { id:"sniper",      name:"Scharfschütze",     desc:"+15% Schussgenauigkeit, aber -5 Tempo." }
-];
+const OPP_TRAITS = Object.entries(localeData().oppTraits || {}).map(([id, def]) => ({ id, ...def }));
 function applyOppTraitEffect(opp, match, point, ctx={}) {
   if (!opp.traits) return ctx;
   for (const traitId of opp.traits) {
@@ -842,7 +807,7 @@ async function startMatch(squad, opp, onEvent) {
       const tn = opp.traits.map(tid => OPP_TRAITS.find(x => x.id === tid)?.name || tid);
       parts.push(...tn);
     }
-    await log(onEvent, 'decision', `  ↳ Gegner: ${parts.join(' / ')}`);
+    await log(onEvent, 'decision', I18N.t('ui.log.opponentIntro', { parts: parts.join(' / ') }));
   }
 
   for (let r = 1; r <= CONFIG.rounds; r++) {
@@ -864,14 +829,14 @@ async function startMatch(squad, opp, onEvent) {
       const tactic = await onEvent({ type:'interrupt', phase:'kickoff', match });
       match.lastTactic = tactic;
       applyTactic(match, tactic, 'kickoff');
-      await log(onEvent, 'decision', `  → Kickoff: ${tactic.name}`);
+      await log(onEvent, 'decision', I18N.t('ui.log.kickoffChoice', { name: tactic.name }));
     }
     if (r === 4) {
       const halftime = await onEvent({ type:'interrupt', phase:'halftime', match });
       match.halftimeAction = halftime;
       applyTactic(match, halftime, 'halftime');
-      await log(onEvent, 'round-header', '––– HALBZEIT –––');
-      await log(onEvent, 'decision', `  → Halbzeit: ${halftime.name}`);
+      await log(onEvent, 'round-header', I18N.t('ui.log.halftimeHeader'));
+      await log(onEvent, 'decision', I18N.t('ui.log.halftimeChoice', { name: halftime.name }));
       for (const p of squad) { delete p._speedBurstUsed; }
       dispatchTrigger('halftime', { match });
       await flushTriggerLog(match, onEvent);
@@ -880,10 +845,10 @@ async function startMatch(squad, opp, onEvent) {
       const final = await onEvent({ type:'interrupt', phase:'final', match });
       match.finalAction = final;
       applyTactic(match, final, 'final');
-      await log(onEvent, 'decision', `  → Finale: ${final.name}`);
+      await log(onEvent, 'decision', I18N.t('ui.log.finalChoice', { name: final.name }));
     }
 
-    await log(onEvent, 'round-header', `RUNDE ${r}`);
+    await log(onEvent, 'round-header', I18N.t('ui.log.roundHeader', { round: r }));
 
     dispatchTrigger('roundStart', { match });
     await flushTriggerLog(match, onEvent);
@@ -926,14 +891,14 @@ async function startMatch(squad, opp, onEvent) {
     } else if (oppPoss <= 0.40) {
       if (rand() < (0.50 - oppPoss) * 2.5) oppAttacks = 0;
     }
-    if (myPoss >= 0.60)      await log(onEvent, 'decision', `  Ballbesitz: ${Math.round(myPoss*100)}%${myAttacks === 2 ? ' — Druckphase' : ''}`);
-    else if (myPoss <= 0.40) await log(onEvent, 'decision', `  Ballbesitz: ${Math.round(myPoss*100)}%${myAttacks === 0 ? ' — Gegner dominiert' : ''}`);
+    if (myPoss >= 0.60)      await log(onEvent, 'decision', I18N.t('ui.log.possessionPressure', { pct: Math.round(myPoss*100) }));
+    else if (myPoss <= 0.40) await log(onEvent, 'decision', I18N.t('ui.log.possessionDominated', { pct: Math.round(myPoss*100) }));
     for (let a = 0; a < myAttacks; a++) {
       await attemptAttack(match, squad, onEvent, a > 0 ? { bonusAttack: -0.05 } : {});
     }
     if (match.chainAttack) {
       match.chainAttack = false;
-      await log(onEvent, 'trigger', '  ⚡ Chain-Angriff!');
+      await log(onEvent, 'trigger', I18N.t('ui.log.chainAttack'));
       await attemptAttack(match, squad, onEvent, { bonusAttack: 0.10 });
     }
     for (let a = 0; a < oppAttacks; a++) {
@@ -941,7 +906,7 @@ async function startMatch(squad, opp, onEvent) {
     }
     if (match._oppLuckyPending) {
       match._oppLuckyPending = false;
-      await log(onEvent, 'trigger', '  🍀 ' + match.opp.name + ' hat Glück — Doppelangriff!');
+      await log(onEvent, 'trigger', I18N.t('ui.log.luckyDouble', { name: match.opp.name }));
       await attemptOppAttack(match, squad, onEvent);
     }
     if (match.counterPending || match.pouncePending) {
@@ -949,7 +914,7 @@ async function startMatch(squad, opp, onEvent) {
       match.pouncePending = false;
       const lfForCounter = squad.find(p => p.role === 'LF');
       bumpPlayerStat(lfForCounter, 'counters');
-      await log(onEvent, 'trigger', '  🔁 Konter!');
+      await log(onEvent, 'trigger', I18N.t('ui.log.counter'));
       await attemptAttack(match, squad, onEvent, { bonusAttack: 0.15 });
     }
 
@@ -962,8 +927,8 @@ async function startMatch(squad, opp, onEvent) {
   else result = 'draw';
   const isLastMatch = match.opp.matchNumber === CONFIG.runLength;
   if (result === 'draw' && isLastMatch) {
-    await log(onEvent, 'kickoff', `🏁 90 MIN. VORBEI — ${match.scoreMe}:${match.scoreOpp}`);
-    await log(onEvent, 'decision', '⚽ ELFMETERSCHIESSEN — kein Unentschieden in der letzten Partie!');
+    await log(onEvent, 'kickoff', I18N.t('ui.log.penaltiesIntro', { me: match.scoreMe, opp: match.scoreOpp }));
+    await log(onEvent, 'decision', I18N.t('ui.log.penaltiesTitle'));
     const myComposure = squad.reduce((s, p) => s + (p.stats.composure || 0), 0) / squad.length;
     const oppComposure = match.opp.stats.composure || 60;
     const diff = myComposure - oppComposure;
@@ -972,10 +937,10 @@ async function startMatch(squad, opp, onEvent) {
 
     let myPens = 0, oppPens = 0;
     for (let i = 0; i < 5; i++) {
-      if (rand() < myHitProb)  { myPens++;  await log(onEvent, '', `  ${i+1}. ⚽ verwandelt — ${myPens}:${oppPens}`); }
-      else                     {            await log(onEvent, '', `  ${i+1}. ⚠ vorbei — ${myPens}:${oppPens}`); }
-      if (rand() < oppHitProb) { oppPens++; await log(onEvent, '', `  ${match.opp.name} trifft — ${myPens}:${oppPens}`); }
-      else                     {            await log(onEvent, '', `  ${match.opp.name} verschießt — ${myPens}:${oppPens}`); }
+      if (rand() < myHitProb)  { myPens++;  await log(onEvent, '', I18N.t('ui.log.penaltyScored', { num: i + 1, me: myPens, opp: oppPens })); }
+      else                     {            await log(onEvent, '', I18N.t('ui.log.penaltyMissed', { num: i + 1, me: myPens, opp: oppPens })); }
+      if (rand() < oppHitProb) { oppPens++; await log(onEvent, '', I18N.t('ui.log.oppPenaltyScored', { name: match.opp.name, me: myPens, opp: oppPens })); }
+      else                     {            await log(onEvent, '', I18N.t('ui.log.oppPenaltyMissed', { name: match.opp.name, me: myPens, opp: oppPens })); }
       const remaining = 5 - i - 1;
       if (Math.abs(myPens - oppPens) > remaining) break;
     }
@@ -984,20 +949,20 @@ async function startMatch(squad, opp, onEvent) {
       const oHit = rand() < oppHitProb;
       if (mHit) myPens++;
       if (oHit) oppPens++;
-      if (mHit !== oHit) await log(onEvent, '', `  Sudden Death: ${myPens}:${oppPens}`);
+      if (mHit !== oHit) await log(onEvent, '', I18N.t('ui.log.suddenDeath', { me: myPens, opp: oppPens }));
     }
     match.scoreMe += myPens;
     match.scoreOpp += oppPens;
     if (myPens > oppPens) {
       result = 'win';
-      await log(onEvent, 'goal-me', `🏆 SIEG IM ELFMETERSCHIESSEN`);
+      await log(onEvent, 'goal-me', I18N.t('ui.log.penaltiesWin'));
     } else {
       result = 'loss';
-      await log(onEvent, 'goal-opp', `💥 NIEDERLAGE IM ELFMETERSCHIESSEN`);
+      await log(onEvent, 'goal-opp', I18N.t('ui.log.penaltiesLoss'));
     }
   }
 
-  await log(onEvent, 'kickoff', `🏁 ABPFIFF — ${match.scoreMe}:${match.scoreOpp}`);
+  await log(onEvent, 'kickoff', I18N.t('ui.log.fullTime', { me: match.scoreMe, opp: match.scoreOpp }));
   await onEvent({ type:'matchEnd', match, result });
   return { scoreMe: match.scoreMe, scoreOpp: match.scoreOpp, result, match };
 }
@@ -1131,18 +1096,10 @@ async function attemptAttack(match, squad, onEvent, extra={}) {
 
   const buildupOk = ctx.guaranteedBuildup || rand() < buildupChance;
   if (!buildupOk) {
-    const failLines = [
-      `${pm?.name || 'Spielmacher'} verliert den Ball im Mittelfeld`,
-      `Gegner fängt den Pass von ${pm?.name || 'dem Aufbau'} ab`,
-      `Fehlpass von ${vt?.name || 'der Abwehr'} — Konter droht`,
-      `${pm?.name || 'Playmaker'}s Vertikalpass gerät zu lang`,
-      `Pressing zwingt ${pm?.name || 'uns'} zum Rückpass`,
-      `Ballverlust an der Mittellinie`
-    ];
-    await log(onEvent, '', `R${match.round}: ${pick(failLines)}`);
+    await log(onEvent, '', `R${match.round}: ${pickLog('logs.ownBuildFail', { pm: pm?.name || 'PM', vt: vt?.name || 'Defense' })}`);
     const counterCtx = applyOppTraitEffect(match.opp, match, 'counterAttack', {});
     if (counterCtx.triggered) {
-      await log(onEvent, 'trigger', '  ⚡ ' + match.opp.name + ' kontert blitzschnell!');
+      await log(onEvent, 'trigger', I18N.t('ui.log.oppBlitzCounter', { name: match.opp.name }));
       await attemptOppAttack(match, squad, onEvent);
     }
     return;
@@ -1151,16 +1108,7 @@ async function attemptAttack(match, squad, onEvent, extra={}) {
   bumpPlayerStat(pm, 'buildupsOk');
   dispatchTrigger('ownBuildupSuccess', ctx);
   await flushTriggerLog(match, onEvent);
-  const buildupLines = [
-    `${pm?.name || 'PM'} öffnet das Mittelfeld mit einem Steilpass`,
-    `${pm?.name || 'PM'} findet den Weg durch die Linien`,
-    `Schneller Doppelpass zwischen ${pm?.name || 'PM'} und ${lf?.name || 'Läufer'}`,
-    `${pm?.name || 'PM'} spielt diagonal auf die Außenbahn`,
-    `${lf?.name || 'Läufer'} zieht auf der Flanke durch`,
-    `${vt?.name || 'Abwehrchef'} eröffnet stark — ${pm?.name || 'PM'} nimmt auf`,
-    `${pm?.name || 'PM'} treibt den Ball ins letzte Drittel`
-  ];
-  await log(onEvent, '', `R${match.round}: ${pick(buildupLines)}`);
+  await log(onEvent, '', `R${match.round}: ${pickLog('logs.ownBuildSuccess', { pm: pm?.name || 'PM', lf: lf?.name || 'Runner', vt: vt?.name || 'Defender' })}`);
   if (ctx.autoGoal) {
     const autoScorer = ctx.scorer || st;
     match.stats.myShots++; match.stats.myShotsOnTarget++;
@@ -1187,14 +1135,7 @@ async function attemptAttack(match, squad, onEvent, extra={}) {
   );
   const scorer = (lfStats.tempo > stStats.tempo + 10 && rand() < 0.35) ? lf : st;
   ctx.scorer = scorer;
-  const chanceLines = [
-    `${scorer.name} kommt zum Abschluss...`,
-    `${scorer.name} setzt sich im Strafraum durch...`,
-    `${scorer.name} hat die Chance...`,
-    `${scorer.name} lauert vorm Tor...`,
-    `${scorer.name} wird im Strafraum angespielt...`
-  ];
-  await log(onEvent, '', `R${match.round}: ${pick(chanceLines)}`);
+  await log(onEvent, '', `R${match.round}: ${pickLog('logs.chance', { scorer: scorer.name })}`);
 
   match.stats.myShots++;
   bumpPlayerStat(scorer, 'shots');
@@ -1203,16 +1144,7 @@ async function attemptAttack(match, squad, onEvent, extra={}) {
     bumpPlayerStat(scorer, 'shotsOnTarget');
     await recordOwnGoal(match, squad, onEvent, scorer, ctx);
   } else {
-    const missLines = [
-      `${scorer.name} zielt knapp vorbei`,
-      `${scorer.name} trifft nur den Pfosten!`,
-      `Abschluss von ${scorer.name} zu zentral — Keeper hält`,
-      `${scorer.name} schießt drüber`,
-      `${scorer.name}s Schuss wird im letzten Moment geblockt`,
-      `${scorer.name} verzieht — Chance vertan`,
-      `${scorer.name} trifft die Latte!`
-    ];
-    await log(onEvent, '', `R${match.round}: ${pick(missLines)}`);
+    await log(onEvent, '', `R${match.round}: ${pickLog('logs.miss', { scorer: scorer.name })}`);
   }
 }
 
@@ -1224,7 +1156,7 @@ async function recordOwnGoal(match, squad, onEvent, scorer, ctx) {
   match.scoreMe += goalValue;
   scorer.goals += 1;
   bumpPlayerStat(scorer, 'goals');
-  await log(onEvent, 'goal-me', `⚽ TOR ${scorer.name}!${suffix}   ${match.scoreMe}:${match.scoreOpp}`);
+  await log(onEvent, 'goal-me', I18N.t('ui.log.ownGoal', { name: scorer.name, suffix, me: match.scoreMe, opp: match.scoreOpp }));
   dispatchTrigger('ownGoal', { ...ctx, scorer });
   await flushTriggerLog(match, onEvent);
 }
@@ -1245,14 +1177,7 @@ async function attemptOppAttack(match, squad, onEvent) {
   const oppBuildup = clamp(0.35 + (opp.stats.vision - 55) * 0.005, 0.15, 0.85);
   match.stats.oppBuildups++;
   if (rand() > oppBuildup) {
-    const failLines = [
-      `${opp.name} verliert den Ball im Aufbau`,
-      `${opp.name}s Pass landet im Niemandsland`,
-      `${vt?.name || 'Abwehr'} fängt ab`,
-      `${opp.name} wird beim Aufbau gestört`,
-      `Gegen-Pressing zwingt ${opp.name} zum Fehler`
-    ];
-    await log(onEvent, '', `R${match.round}: ${pick(failLines)}`);
+    await log(onEvent, '', `R${match.round}: ${pickLog('logs.oppBuildFail', { opp: opp.name, vt: vt?.name || 'Defense' })}`);
     bumpPlayerStat(vt, 'defendedAttacks');
     dispatchTrigger('oppAttackFailed', { match });
     await flushTriggerLog(match, onEvent);
@@ -1265,14 +1190,7 @@ async function attemptOppAttack(match, squad, onEvent) {
   const rb = opp._roundBuffs || {};
   const oppOff = (opp.stats.offense + (rb.offense || 0)) + (opp.stats.tempo + (rb.tempo || 0)) * 0.2;
   const myDef = vtStats.defense * 0.45 + twStats.defense * 0.55 + (match.teamBuffs?.defense || 0);
-  const approachLines = [
-    `${opp.name} kommt über die Flanke`,
-    `${opp.name} zieht das Spiel schnell vor`,
-    `${opp.name} sucht den Abschluss`,
-    `Gegner-Stürmer enteilt der Abwehr`,
-    `${opp.name} spielt sich durchs Mittelfeld`
-  ];
-  await log(onEvent, '', `R${match.round}: ${pick(approachLines)}`);
+  await log(onEvent, '', `R${match.round}: ${pickLog('logs.oppApproach', { opp: opp.name })}`);
 
   match.stats.oppShots++;
   dispatchTrigger('oppShot', ctx);
@@ -1306,15 +1224,7 @@ async function attemptOppAttack(match, squad, onEvent) {
   if (rand() < saveChance) {
     match.stats.saves++;
     bumpPlayerStat(tw, 'saves');
-    const saveLines = [
-      `${tw?.name || 'Keeper'} pariert stark!`,
-      `${tw?.name || 'Keeper'} fängt sicher ab`,
-      `${vt?.name || 'Abwehr'} blockt den Schuss im letzten Moment`,
-      `Schuss zu ungenau — ${tw?.name || 'Keeper'} hat ihn`,
-      `${tw?.name || 'Keeper'} hält mit Glanzparade!`,
-      `Kopfball neben das Tor`
-    ];
-    await log(onEvent, '', `R${match.round}: ${pick(saveLines)}`);
+    await log(onEvent, '', `R${match.round}: ${pickLog('logs.save', { tw: tw?.name || 'Keeper', vt: vt?.name || 'Defense' })}`);
     dispatchTrigger('postSave', { match });
     await flushTriggerLog(match, onEvent);
   } else {
@@ -1325,7 +1235,7 @@ async function attemptOppAttack(match, squad, onEvent) {
     match.scoreOpp += 1;
     bumpPlayerStat(tw, 'goalsConceded');
     bumpPlayerStat(vt, 'goalsConceded');
-    await log(onEvent, 'goal-opp', `💥 Gegentor — ${opp.name} trifft   ${match.scoreMe}:${match.scoreOpp}`);
+    await log(onEvent, 'goal-opp', I18N.t('ui.log.oppGoal', { name: opp.name, me: match.scoreMe, opp: match.scoreOpp }));
     dispatchTrigger('afterOppGoal', { match });
     await flushTriggerLog(match, onEvent);
   }
@@ -1336,7 +1246,7 @@ function log(onEvent, cls, msg) {
 }
 
 function getTeamDisplayName(squad) {
-  return (typeof state !== 'undefined' && state?.teamName) || 'Eigenes Team';
+  return (typeof state !== 'undefined' && state?.teamName) || tt('ui.hub.yourTeam');
 }
 
 window.getState = () => state;
@@ -1372,3 +1282,7 @@ window.recomputeTeamBuffs = recomputeTeamBuffs;
 window.bumpPlayerStat = bumpPlayerStat;
 window.resetPlayerMatchStats = resetPlayerMatchStats;
 window.getTeamDisplayName = getTeamDisplayName;
+
+
+
+

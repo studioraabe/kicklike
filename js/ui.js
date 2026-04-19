@@ -9,8 +9,8 @@ const UI = {
     if (hsEl) {
       const best = loadHighscore();
       if (best) {
-        const outcomeLabel = { champion:'Champion', survivor:'Klasse gehalten', fired:'Entlassen' }[best.outcome] || '';
-        hsEl.textContent = `✦ BESTWERT: ${best.points} PKT · ${best.wins}S-${best.draws}U-${best.losses}N · ${outcomeLabel} ✦`;
+        const outcomeLabel = I18N.t(`ui.labels.outcome${best.outcome.charAt(0).toUpperCase() + best.outcome.slice(1)}`);
+        hsEl.textContent = I18N.t('ui.labels.highscore', { points: best.points, wins: best.wins, draws: best.draws, losses: best.losses, outcome: outcomeLabel });
       } else {
         hsEl.textContent = '';
       }
@@ -57,7 +57,7 @@ const UI = {
         cell.classList.add('done');
         const hist = state.matchHistory[i];
         cell.classList.add(hist.result);
-        cell.title = `Match ${i+1}: ${hist.scoreMe}:${hist.scoreOpp} vs ${hist.opp}`;
+        cell.title = I18N.t('ui.labels.matchLabel', { num: i + 1, me: hist.scoreMe, opp: hist.scoreOpp, name: hist.opp });
       } else if (i === state.matchNumber) {
         cell.classList.add('current');
       }
@@ -68,18 +68,18 @@ const UI = {
     const teamStats = aggregateTeamStats(lineup);
     const teamPower = teamTotalPower(lineup);
     const teamTheme = teamStrengthLabel(teamStats);
-    $('#hub-team-meta').textContent = `${lineup.length} + ${getBench().length}B`;
+    $('#hub-team-meta').textContent = I18N.t('ui.labels.compactTeamMeta', { lineup: lineup.length, bench: getBench().length });
     const sumBox = $('#hub-team-summary');
     sumBox.innerHTML = '';
     const teamFormAvg = lineup.reduce((s, p) => s + (p.form || 0), 0) / Math.max(1, lineup.length);
     let teamFormText = '';
-    if (teamFormAvg >= 2)       teamFormText = ' · 🔥 HEISSER LAUF';
-    else if (teamFormAvg >= 1)  teamFormText = ' · ↑ Gute Form';
-    else if (teamFormAvg <= -2) teamFormText = ' · ❄ KRISE';
-    else if (teamFormAvg <= -1) teamFormText = ' · ↓ Schlechte Form';
+    if (teamFormAvg >= 2)       teamFormText = ' · 🔥 ' + I18N.t('ui.labels.hotStreak');
+    else if (teamFormAvg >= 1)  teamFormText = ' · ↑ ' + I18N.t('ui.labels.goodForm');
+    else if (teamFormAvg <= -2) teamFormText = ' · ❄ ' + I18N.t('ui.labels.crisis');
+    else if (teamFormAvg <= -1) teamFormText = ' · ↓ ' + I18N.t('ui.labels.badForm');
     sumBox.appendChild(el('div', { class:'matchup-meta' }, [
-      el('div', { class:'name me' }, [state.teamName || 'Dein Team']),
-      el('div', { class:'meta-line' }, [`Power ${teamPower} · ${teamTheme}${teamFormText}`])
+      el('div', { class:'name me' }, [state.teamName || I18N.t('ui.hub.yourTeam')]),
+      el('div', { class:'meta-line' }, [`${I18N.t('ui.labels.power')} ${teamPower} · ${teamTheme}${teamFormText}`])
     ]));
     if (state.currentLossStreak === 2) {
       sumBox.appendChild(el('div', {
@@ -94,7 +94,7 @@ const UI = {
           textTransform: 'uppercase',
           fontFamily: 'var(--font-display)'
         }
-      }, ['⚠ 2 Niederlagen in Folge — nächste = Trainer entlassen!']));
+      }, [I18N.t('ui.labels.losingWarning')]));
     }
     const teamTrends = {};
     for (const p of lineup) {
@@ -108,14 +108,14 @@ const UI = {
     const traitNames = (opp.traits || [])
       .map(tid => OPP_TRAITS.find(x => x.id === tid)?.name)
       .filter(Boolean);
-    const ausrichtungParts = [opp.special?.name || 'Standard'];
+    const ausrichtungParts = [opp.special?.name || I18N.t('ui.labels.standard')];
     if (traitNames.length) ausrichtungParts.push(...traitNames);
     const oppMeta = [
       el('div', { class:'name ' + (opp.isBoss ? 'boss' : 'opp') }, [
         (opp.isBoss ? '🏆 ' : '') + opp.name
       ]),
       el('div', { class:'meta-line' }, [
-        `Power ${opp.power} · ${ausrichtungParts.join(' / ')}`
+        `${I18N.t('ui.labels.power')} ${opp.power} · ${ausrichtungParts.join(' / ')}`
       ])
     ];
     oppBox.appendChild(el('div', { class:'matchup-meta' }, oppMeta));
@@ -148,11 +148,11 @@ const UI = {
       if (state._swapSelected === p.id) card.classList.add('selected');
       slotsBox.appendChild(card);
     });
-    $('#bench-count').textContent = `${bench.length} / ${CONFIG.maxBench} Plätze`;
+    $('#bench-count').textContent = I18N.t('ui.labels.benchSlots', { count: bench.length, max: CONFIG.maxBench });
     const benchBox = $('#lineup-bench');
     benchBox.innerHTML = '';
     if (bench.length === 0) {
-      benchBox.appendChild(el('div', { class:'slot-empty' }, ['Keine Bank-Spieler — gewinne einen Boss!']));
+      benchBox.appendChild(el('div', { class:'slot-empty' }, [I18N.t('ui.labels.noBench')]));
     } else {
       bench.forEach(p => {
         const card = UI.renderPlayerCard(p, { swapTarget: true, bench: true });
@@ -164,9 +164,9 @@ const UI = {
     const hint = $('#lineup-hint');
     if (state._swapSelected) {
       const sel = state.roster.find(p => p.id === state._swapSelected);
-      hint.textContent = `→ ${sel.name} ausgewählt. Klicke einen anderen Spieler um zu tauschen.`;
+      hint.textContent = I18N.t('ui.labels.swapSelected', { name: sel.name });
     } else {
-      hint.textContent = 'Klicke einen Startelf-Spieler, dann einen Bank-Spieler um zu tauschen. Keeper (TW) ist Pflicht.';
+      hint.textContent = I18N.t('ui.lineup.defaultHint');
     }
 
     UI.showScreen('screen-lineup');
@@ -196,7 +196,7 @@ const UI = {
         if (isLineupValid(newLineupIds)) {
           state.lineupIds = newLineupIds;
         } else {
-          alert('Swap abgelehnt: Aufstellung bräuchte genau 1 Keeper.');
+          alert(I18N.t('ui.labels.swapRejected'));
         }
         state._swapSelected = null;
       }
@@ -219,11 +219,11 @@ const UI = {
     const wrap = el('div', { class: 'compared-bars' + (opts.compact ? ' compact' : '') });
     const keys = ['offense', 'defense', 'tempo', 'vision', 'composure'];
     const labels = {
-      offense: 'Angriff',
-      defense: 'Abwehr',
-      tempo: 'Tempo',
-      vision: 'Übersicht',
-      composure: 'Nerven'
+      offense: I18N.t('stats.offense'),
+      defense: I18N.t('stats.defense'),
+      tempo: I18N.t('stats.tempo'),
+      vision: I18N.t('stats.vision'),
+      composure: I18N.t('stats.composure')
     };
     keys.forEach(k => {
       const v = stats[k] || 0;
@@ -237,8 +237,8 @@ const UI = {
       }
       const trendVal = (highlight || {})[k] || 0;
       let trendEl = null;
-      if (trendVal > 0) trendEl = el('span', { class:'cb-trend trend-up' }, [trendVal >= 2 ? ' ⬆⬆' : ' ⬆']);
-      else if (trendVal < 0) trendEl = el('span', { class:'cb-trend trend-down' }, [trendVal <= -2 ? ' ⬇⬇' : ' ⬇']);
+      if (trendVal > 0) trendEl = el('span', { class:'cb-trend trend-up' }, [trendVal >= 2 ? ' ^^' : ' ^']);
+      else if (trendVal < 0) trendEl = el('span', { class:'cb-trend trend-down' }, [trendVal <= -2 ? ' vv' : ' v']);
       const labelChildren = [labels[k]];
       if (trendEl) labelChildren.push(trendEl);
       const row = el('div', { class:'cb-row' }, [
@@ -392,12 +392,12 @@ const UI = {
     const possession = s.possRounds ? Math.round((s.possAccum / s.possRounds) * 100) : 50;
 
     const panel = el('div', { class:'interrupt-panel' }, [
-      el('div', { class:'ip-title' }, ['Match-Analyse']),
-      UI.renderMatchStatRow('Ballbesitz', possession + '%', (100-possession) + '%'),
-      UI.renderMatchStatRow('Schüsse', s.myShots, s.oppShots),
-      UI.renderMatchStatRow('Präzision', myAccuracy + '%', oppAccuracy + '%'),
-      UI.renderMatchStatRow('Aufbau-%', myBuildupRate + '%', oppBuildupRate + '%'),
-      UI.renderMatchStatRow('Paraden', s.saves, '–')
+      el('div', { class:'ip-title' }, [I18N.t('ui.result.analysis')]),
+      UI.renderMatchStatRow(I18N.t('ui.statsPanel.possession'), possession + '%', (100-possession) + '%'),
+      UI.renderMatchStatRow(I18N.t('ui.statsPanel.shots'), s.myShots, s.oppShots),
+      UI.renderMatchStatRow(I18N.t('ui.statsPanel.accuracy'), myAccuracy + '%', oppAccuracy + '%'),
+      UI.renderMatchStatRow(I18N.t('ui.statsPanel.buildup'), myBuildupRate + '%', oppBuildupRate + '%'),
+      UI.renderMatchStatRow(I18N.t('ui.statsPanel.saves'), s.saves, '–')
     ]);
     return panel;
   },
@@ -415,7 +415,7 @@ const UI = {
     const buffs = match.teamBuffs || {};
     const formBonus = match._teamFormBonus || 0;
     const keys = ['offense','defense','tempo','vision','composure'];
-    const labels = { offense:'Angriff', defense:'Abwehr', tempo:'Tempo', vision:'Übersicht', composure:'Nerven' };
+    const labels = { offense:I18N.t('stats.offense'), defense:I18N.t('stats.defense'), tempo:I18N.t('stats.tempo'), vision:I18N.t('stats.vision'), composure:I18N.t('stats.composure') };
 
     const rows = keys.map(k => {
       const base = baseStats[k];
@@ -435,23 +435,23 @@ const UI = {
     });
 
     return el('div', { class:'interrupt-panel' }, [
-      el('div', { class:'ip-title' }, ['Team-Werte (aktuell)']),
+      el('div', { class:'ip-title' }, [I18N.t('ui.statsPanel.currentTeamStats')]),
       el('div', { class:'ip-stat-header' }, [
         el('span', {}, ['']),
-        el('span', {}, ['Eigen']),
-        el('span', {}, ['Diff']),
-        el('span', {}, ['Gegner'])
+        el('span', {}, [I18N.t('ui.statsPanel.own')]),
+        el('span', {}, [I18N.t('ui.statsPanel.diff')]),
+        el('span', {}, [I18N.t('ui.statsPanel.opponent')])
       ]),
       ...rows,
-      el('div', { class:'ip-footnote' }, ['Buffs addieren sich über Kickoff + Halbzeit + Finale'])
+      el('div', { class:'ip-footnote' }, [I18N.t('ui.statsPanel.buffsFootnote')])
     ]);
   },
 
   showEvolution(player, options, onPick) {
     const modal = $('#interrupt-modal');
     modal.innerHTML = '';
-    modal.appendChild(el('h2', { style:{ color:'var(--gold)' } }, ['EVOLUTION!']));
-    modal.appendChild(el('div', { class:'sub' }, [`${player.name} (${DATA.roles.find(r=>r.id===player.role)?.label}) erreicht Level ${player.level}`]));
+    modal.appendChild(el('h2', { style:{ color:'var(--gold)' } }, [I18N.t('ui.evolution.title')]));
+    modal.appendChild(el('div', { class:'sub' }, [I18N.t('ui.evolution.reachedLevel', { name: player.name, role: DATA.roles.find(r=>r.id===player.role)?.label, level: player.level })]));
     const opts = el('div', { class:'evo-options' });
     options.forEach(evoId => {
       const evo = DATA.evoDetails[evoId];
@@ -463,11 +463,11 @@ const UI = {
         el('div', { class:'evo-role' }, [DATA.roles.find(r=>r.id===evo.role)?.label || evo.role]),
         el('div', { class:'evo-boost' }, [boostText]),
         traitDef ? el('div', { class:'evo-trait' }, [
-          el('b', {}, ['Trait: ' + traitDef.name]),
+          el('b', {}, [I18N.t('ui.evolution.traitLabel', { name: traitDef.name })]),
           el('span', {}, [traitDef.desc])
         ]) : null,
         evo.parentTrait ? el('div', { class:'mono-sm', style:{ marginTop:'6px', color:'var(--accent-2)' } }, [
-          'behält: ' + (DATA.traits[evo.parentTrait]?.name || evo.parentTrait) + ' (+30%)'
+          I18N.t('ui.evolution.keepsTrait', { name: DATA.traits[evo.parentTrait]?.name || evo.parentTrait })
         ]) : null
       ]);
       card.addEventListener('click', () => {
@@ -482,7 +482,7 @@ const UI = {
 
   renderResult(result, scoreMe, scoreOpp, reward, match) {
     const cls = result === 'win' ? 'win' : (result === 'loss' ? 'loss' : 'draw');
-    const title = result === 'win' ? 'SIEG' : (result === 'loss' ? 'NIEDERLAGE' : 'UNENTSCHIEDEN');
+    const title = result === 'win' ? I18N.t('ui.result.win') : (result === 'loss' ? I18N.t('ui.result.loss') : I18N.t('ui.result.draw'));
     const content = $('#result-content');
     content.innerHTML = '';
     content.appendChild(el('div', { class:'result-big', style:{ paddingBottom:'16px' } }, [
@@ -499,18 +499,18 @@ const UI = {
       const possession = s.possRounds ? Math.round((s.possAccum / s.possRounds) * 100) : 50;
 
       const statsPanel = el('div', { class:'interrupt-panel', style:{ margin:'0 0 16px' } }, [
-        el('div', { class:'ip-title' }, ['Match-Bilanz']),
-        UI.renderMatchStatRow('Ballbesitz', possession + '%', (100 - possession) + '%'),
-        UI.renderMatchStatRow('Tore', scoreMe, scoreOpp),
-        UI.renderMatchStatRow('Schüsse', s.myShots, s.oppShots),
-        UI.renderMatchStatRow('Präzision', myAccuracy + '%', oppAccuracy + '%'),
-        UI.renderMatchStatRow('Aufbau-%', myBuildupRate + '%', oppBuildupRate + '%'),
-        UI.renderMatchStatRow('Paraden', s.saves, '–'),
-        UI.renderMatchStatRow('Traits gefeuert', s.triggersFired || 0, '–')
+        el('div', { class:'ip-title' }, [I18N.t('ui.result.analysis')]),
+        UI.renderMatchStatRow(I18N.t('ui.statsPanel.possession'), possession + '%', (100 - possession) + '%'),
+        UI.renderMatchStatRow(I18N.t('ui.statsPanel.goals'), scoreMe, scoreOpp),
+        UI.renderMatchStatRow(I18N.t('ui.statsPanel.shots'), s.myShots, s.oppShots),
+        UI.renderMatchStatRow(I18N.t('ui.statsPanel.accuracy'), myAccuracy + '%', oppAccuracy + '%'),
+        UI.renderMatchStatRow(I18N.t('ui.statsPanel.buildup'), myBuildupRate + '%', oppBuildupRate + '%'),
+        UI.renderMatchStatRow(I18N.t('ui.statsPanel.saves'), s.saves, '–'),
+        UI.renderMatchStatRow(I18N.t('ui.statsPanel.traitsTriggered'), s.triggersFired || 0, '–')
       ]);
       content.appendChild(statsPanel);
       content.appendChild(UI.renderTeamStatsPanel(match));
-      const perfTitle = el('div', { class:'card-title', style:{ marginTop:'16px' } }, ['Spieler-Bilanz']);
+      const perfTitle = el('div', { class:'card-title', style:{ marginTop:'16px' } }, [I18N.t('ui.result.players')]);
       const perfList = el('div', { class:'result-perf-list' });
       for (const p of match.squad) {
         const xp = p._lastMatchXp || 0;
@@ -518,9 +518,9 @@ const UI = {
         const formDelta = p._formDelta || 0;
         let detail = '';
         if (p.role === 'ST' || p.role === 'LF') detail = `${ms.goals || 0}⚽  ${ms.shotsOnTarget || 0}/${ms.shots || 0}🎯`;
-        else if (p.role === 'PM') detail = `${ms.buildupsOk || 0}/${ms.buildups || 0} Aufbauten`;
-        else if (p.role === 'VT') detail = `${ms.defendedAttacks || 0} Abwehren`;
-        else if (p.role === 'TW') detail = `${ms.saves || 0} Paraden  ${ms.goalsConceded || 0} kassiert`;
+        else if (p.role === 'PM') detail = I18N.t('ui.perf.buildups', { ok: ms.buildupsOk || 0, all: ms.buildups || 0 });
+        else if (p.role === 'VT') detail = I18N.t('ui.perf.defenses', { count: ms.defendedAttacks || 0 });
+        else if (p.role === 'TW') detail = I18N.t('ui.perf.keeper', { saves: ms.saves || 0, conceded: ms.goalsConceded || 0 });
         const xpCls = xp >= 6 ? 'good' : (xp <= 2 ? 'bad' : 'dim');
         const formArrow = formDelta > 0 ? '↑' : (formDelta < 0 ? '↓' : '');
         const formArrowCls = formDelta > 0 ? 'good' : (formDelta < 0 ? 'bad' : '');
@@ -538,7 +538,7 @@ const UI = {
     }
 
     content.appendChild(el('div', { class:'btn-row', style:{ justifyContent:'center', marginTop:'24px' } }, [
-      el('button', { class:'btn primary', onClick: () => FLOW.continueRun() }, ['▶ Weiter'])
+      el('button', { class:'btn primary', onClick: () => FLOW.continueRun() }, [I18N.t('ui.result.continue')])
     ]));
     UI.showScreen('screen-result');
   }

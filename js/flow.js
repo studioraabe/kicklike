@@ -27,7 +27,7 @@ const FLOW = {
     const opp = state.currentOpponent;
     const lineup = getLineup();
     if (lineup.length !== CONFIG.teamSize) {
-      alert('Aufstellung unvollständig! Bitte 5 Spieler wählen.');
+      alert(I18N.t('ui.flow.lineupIncomplete'));
       return;
     }
     UI.renderMatch(opp, lineup);
@@ -35,9 +35,9 @@ const FLOW = {
     state._paused = false;
     state._preKickoff = true;
     const pb = document.getElementById('match-pause-btn');
-    if (pb) pb.textContent = '⏸ Pause';
+    if (pb) pb.textContent = I18N.t('ui.match.pause');
     const sb = document.getElementById('match-speed-btn');
-    if (sb) sb.textContent = '⏩ Speed';
+    if (sb) sb.textContent = I18N.t('ui.match.speed');
 
     const result = await startMatch(lineup, opp, async (ev) => {
       if (state._skipAnim) ev.match && (ev.match.fastSkip = true);
@@ -120,7 +120,7 @@ const FLOW = {
       p.goals = 0;
       totalAwarded += xp;
     }
-    const reward = `Ø ${(totalAwarded / state.roster.length).toFixed(1)} XP/Spieler — Performance-basiert`;
+    const reward = I18N.t('ui.flow.reward', { avg: (totalAwarded / state.roster.length).toFixed(1) });
     await sleep(400);
     UI.renderResult(result.result, result.scoreMe, result.scoreOpp, reward, result.match);
     if (result.result === 'win' && CONFIG.bossMatches.includes(state.matchNumber) && getBench().length < CONFIG.maxBench) {
@@ -128,12 +128,12 @@ const FLOW = {
     }
     if (state.currentLossStreak >= 3) {
       await sleep(1500);
-      FLOW.gameOver(`3 Niederlagen in Folge — Trainer entlassen!`);
+      FLOW.gameOver(I18N.t('ui.flow.gameOverStreak'));
       return;
     }
     if (state.losses >= 6) {
       await sleep(1500);
-      FLOW.gameOver(`${state.losses} Niederlagen angesammelt — Saisonabbruch.`);
+      FLOW.gameOver(I18N.t('ui.flow.gameOverLosses', { losses: state.losses }));
       return;
     }
   },
@@ -176,11 +176,11 @@ const FLOW = {
           };
         }
         if (ev.phase === 'kickoff') {
-          title = 'Kickoff-Taktik'; sub = 'Wie starten?'; options = m._tacticPools.kickoff;
+          title = I18N.t('ui.flow.kickoffTitle'); sub = I18N.t('ui.flow.kickoffSubtitle'); options = m._tacticPools.kickoff;
         } else if (ev.phase === 'halftime') {
-          title = 'Halbzeit-Anpassung'; sub = `Stand: ${m.scoreMe}:${m.scoreOpp}`; options = m._tacticPools.halftime;
+          title = I18N.t('ui.flow.halftimeTitle'); sub = I18N.t('ui.flow.scoreSubtitle', { me: m.scoreMe, opp: m.scoreOpp }); options = m._tacticPools.halftime;
         } else {
-          title = 'Finale Entscheidung'; sub = `Runde 6 — Stand: ${m.scoreMe}:${m.scoreOpp}`; options = m._tacticPools.final;
+          title = I18N.t('ui.flow.finalTitle'); sub = I18N.t('ui.flow.roundScoreSubtitle', { me: m.scoreMe, opp: m.scoreOpp }); options = m._tacticPools.final;
         }
         UI.showInterrupt(title, sub, options, (pick) => resolve(pick), m, ev.phase);
       });
@@ -244,7 +244,7 @@ const FLOW = {
 
   pickRecruit(player) {
     if (getBench().length >= CONFIG.maxBench) {
-      alert('Bank ist voll!');
+      alert(I18N.t('ui.flow.benchFull'));
       return;
     }
     state.roster.push(player);
@@ -263,7 +263,7 @@ const FLOW = {
 
   closeLineup() {
     if (!isLineupValid(state.lineupIds)) {
-      alert('Aufstellung ungültig! Du brauchst genau 1 Keeper und 5 Spieler insgesamt.');
+      alert(I18N.t('ui.flow.lineupInvalid'));
       return;
     }
     UI.renderHub();
@@ -284,8 +284,8 @@ const FLOW = {
     const pts = state.seasonPoints;
     let outcome, title, titleColor;
     if (pts >= 36) { outcome = 'champion'; title = 'CHAMPION!'; titleColor = 'win'; }
-    else if (pts >= 24) { outcome = 'survivor'; title = 'KLASSE GEHALTEN'; titleColor = 'draw'; }
-    else { outcome = 'survivor'; title = 'KNAPP GERETTET'; titleColor = 'draw'; }
+    else if (pts >= 24) { outcome = 'survivor'; title = I18N.t('ui.flow.safe'); titleColor = 'draw'; }
+    else { outcome = 'survivor'; title = I18N.t('ui.flow.rescued'); titleColor = 'draw'; }
 
     const entry = buildHighscoreEntry(state, outcome);
     const isNewBest = saveHighscore(entry);
@@ -298,13 +298,13 @@ const FLOW = {
 
     const statsBox = el('div', { class:'pixel', style:{ color:'var(--fg)', marginBottom:'16px', lineHeight:'1.6' } }, [
       el('div', { style:{ fontFamily:'var(--font-display)', fontSize:'14px', color:'var(--accent)', marginBottom:'8px' } },
-        [`${pts} PUNKTE`]),
-      el('div', {}, [`Bilanz: ${state.wins}S  ${state.draws}U  ${state.losses}N`]),
-      el('div', {}, [`Tore: ${state.goalsFor} : ${state.goalsAgainst}  (Diff ${(state.goalsFor - state.goalsAgainst >= 0 ? '+' : '') + (state.goalsFor - state.goalsAgainst)})`]),
+        [I18N.t('ui.flow.points', { points: pts })]),
+      el('div', {}, [`${state.wins}S  ${state.draws}U  ${state.losses}N`]),
+      el('div', {}, [`${I18N.t('ui.statsPanel.goals')}: ${state.goalsFor} : ${state.goalsAgainst}  (Diff ${(state.goalsFor - state.goalsAgainst >= 0 ? '+' : '') + (state.goalsFor - state.goalsAgainst)})`]),
       isNewBest
-        ? el('div', { style:{ color:'var(--gold)', marginTop:'12px', fontFamily:'var(--font-display)', fontSize:'12px' } }, ['✦ NEUER REKORD ✦'])
+        ? el('div', { style:{ color:'var(--gold)', marginTop:'12px', fontFamily:'var(--font-display)', fontSize:'12px' } }, [I18N.t('ui.flow.record')])
         : (best ? el('div', { style:{ color:'var(--muted)', marginTop:'8px', fontSize:'12px' } },
-            [`Bestwert: ${best.points} Pkt (${best.teamName})`]) : null)
+            [I18N.t('ui.flow.bestScore', { points: best.points, team: best.teamName })]) : null)
     ]);
     summary.appendChild(statsBox);
     const sq = el('div', { class:'squad-display' });
@@ -321,15 +321,15 @@ const FLOW = {
     reasonEl.innerHTML = '';
     reasonEl.appendChild(el('div', {}, [reason]));
     reasonEl.appendChild(el('div', { style:{ marginTop:'16px', color:'var(--fg)', fontFamily:'var(--font-display)' } },
-      [`${state.seasonPoints} Punkte nach ${state.matchNumber} Spielen`]));
+      [I18N.t('ui.flow.afterMatches', { points: state.seasonPoints, matches: state.matchNumber })]));
     reasonEl.appendChild(el('div', { style:{ fontSize:'11px' } },
-      [`${state.wins}S ${state.draws}U ${state.losses}N · Tore ${state.goalsFor}:${state.goalsAgainst}`]));
+      [`${state.wins}S ${state.draws}U ${state.losses}N · ${I18N.t('ui.statsPanel.goals')} ${state.goalsFor}:${state.goalsAgainst}`]));
     if (isNewBest) {
       reasonEl.appendChild(el('div', { style:{ color:'var(--gold)', marginTop:'12px', fontFamily:'var(--font-display)' } },
-        ['✦ Neue Bestleistung ✦']));
+        [I18N.t('ui.flow.bestRun')]));
     } else if (best) {
       reasonEl.appendChild(el('div', { style:{ color:'var(--muted)', marginTop:'8px', fontSize:'10px' } },
-        [`Bestwert: ${best.points} Pkt (${best.teamName})`]));
+        [I18N.t('ui.flow.bestScore', { points: best.points, team: best.teamName })]));
     }
     UI.showScreen('screen-gameover');
   },
@@ -337,17 +337,17 @@ const FLOW = {
   togglePause() {
     state._paused = !state._paused;
     const btn = document.getElementById('match-pause-btn');
-    if (btn) btn.textContent = state._paused ? '▶ Weiter' : '⏸ Pause';
+    if (btn) btn.textContent = state._paused ? I18N.t('ui.match.resume') : I18N.t('ui.match.pause');
   },
 
   toggleSpeed() {
     state._skipAnim = !state._skipAnim;
     const btn = document.getElementById('match-speed-btn');
-    if (btn) btn.textContent = state._skipAnim ? '⏩ Schnell' : '⏩ Speed';
+    if (btn) btn.textContent = state._skipAnim ? I18N.t('ui.match.fast') : I18N.t('ui.match.speed');
     if (state._skipAnim && state._paused) {
       state._paused = false;
       const pb = document.getElementById('match-pause-btn');
-      if (pb) pb.textContent = '⏸ Pause';
+      if (pb) pb.textContent = I18N.t('ui.match.pause');
     }
   },
 
@@ -355,6 +355,7 @@ const FLOW = {
 };
 document.addEventListener('DOMContentLoaded', () => {
   setState(freshState());
+  I18N.applyDom();
   UI.renderStart();
 });
 

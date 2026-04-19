@@ -1,0 +1,440 @@
+I18N.registerLocale('es', {
+  ui: {
+    meta: { title: 'KICKLIKE · Autobattler de 5 jugadores' },
+    start: {
+      tagline: '> autobattler de 5 jugadores_',
+      sub: '15 partidos · 4 equipos iniciales · sinergias emergentes',
+      newRun: '▶ Nueva Partida',
+      howTitle: 'Cómo funciona:',
+      howBody: 'Elige un equipo inicial entre 4 conceptos. Cada uno de tus 5 jugadores evoluciona por una de 3 rutas durante la partida. Los encuentros se juegan como auto-battles, pero tú decides el rumbo en 3 momentos clave. Los rasgos se activan entre sí. Consigue puntos (3 por victoria, 1 por empate) y evita 3 derrotas seguidas. Objetivo: 36+ puntos = Campeón, 24+ puntos = Permanencia.'
+    },
+    draft: {
+      title: 'Elige tu equipo inicial',
+      body: 'Cada equipo tiene un tema, una fortaleza y una debilidad. Su identidad se define después mediante evoluciones.'
+    },
+    hub: {
+      yourTeam: 'Tu Equipo',
+      opponent: 'Rival',
+      squad: 'Plantilla',
+      bench: 'Banquillo',
+      lineup: '⚙ Alineación',
+      startMatch: '▶ Empezar Partido'
+    },
+    lineup: {
+      title: 'ALINEACIÓN',
+      tapToSwap: 'Toca jugadores para cambiar',
+      defaultHint: 'Haz clic en un titular y luego en un suplente para intercambiarlos. El portero (POR) es obligatorio.',
+      starters: 'Titulares',
+      bench: 'Banquillo',
+      done: '✓ Listo'
+    },
+    recruit: {
+      title: 'ELECCIÓN LEGENDARIA',
+      subtitle: '> jefe derrotado — un nuevo héroe elige tu club_',
+      body: 'Elige un jugador. Irá al banquillo — máximo 2 plazas.',
+      decline: 'Rechazar'
+    },
+    match: {
+      pause: '⏸ Pausa',
+      resume: '▶ Seguir',
+      speed: '⏩ Velocidad',
+      fast: '⏩ Rápido'
+    },
+    result: {
+      win: 'VICTORIA',
+      loss: 'DERROTA',
+      draw: 'EMPATE',
+      continue: '▶ Continuar',
+      analysis: 'Resumen del Partido',
+      players: 'Resumen de Jugadores'
+    },
+    gameover: { title: 'GAME OVER' },
+    victory: { survived: '15 partidos superados' },
+    labels: {
+      power: 'Poder',
+      standard: 'Estándar',
+      hotStreak: 'RACHA ARDIENTE',
+      goodForm: 'Buen Momento',
+      crisis: 'CRISIS',
+      badForm: 'Mal Momento',
+      losingWarning: '⚠ 2 derrotas seguidas — otra más y despiden al entrenador.',
+      noBench: 'Aún no hay suplentes — gana a un jefe para conseguir uno.',
+      swapSelected: '→ {name} seleccionado. Haz clic en otro jugador para intercambiar.',
+      swapRejected: 'Cambio rechazado: la alineación necesita exactamente 1 portero.',
+      benchSlots: '{count} / {max} plazas',
+      highscore: '✦ MEJOR MARCA: {points} PTS · {wins}V-{draws}E-{losses}D · {outcome} ✦',
+      outcomeChampion: 'Campeón',
+      outcomeSurvivor: 'Permanencia',
+      outcomeFired: 'Despedido',
+      compactTeamMeta: '{lineup} + {bench}B',
+      matchLabel: 'Partido {num}: {me}:{opp} vs {name}'
+    },
+    statsPanel: {
+      possession: 'Posesión',
+      shots: 'Tiros',
+      accuracy: 'Precisión',
+      buildup: 'Salida %',
+      saves: 'Paradas',
+      goals: 'Goles',
+      traitsTriggered: 'Rasgos Activados',
+      currentTeamStats: 'Valores Actuales del Equipo',
+      own: 'Tú',
+      diff: 'Dif',
+      opponent: 'Rival',
+      buffsFootnote: 'Los buffs se acumulan entre inicio, descanso y fase final'
+    },
+    evolution: {
+      title: '¡EVOLUCIÓN!',
+      reachedLevel: '{name} ({role}) alcanza el nivel {level}',
+      traitLabel: 'Rasgo: {name}',
+      keepsTrait: 'mantiene: {name} (+30%)'
+    },
+    flow: {
+      lineupIncomplete: '¡Alineación incompleta! Elige 5 jugadores.',
+      benchFull: '¡El banquillo está lleno!',
+      lineupInvalid: '¡Alineación inválida! Necesitas exactamente 1 portero y 5 jugadores en total.',
+      kickoffTitle: 'Táctica Inicial',
+      kickoffSubtitle: '¿Cómo empezamos?',
+      halftimeTitle: 'Ajuste al Descanso',
+      scoreSubtitle: 'Marcador: {me}:{opp}',
+      finalTitle: 'Decisión Final',
+      roundScoreSubtitle: 'Ronda 6 — Marcador: {me}:{opp}',
+      reward: 'Ø {avg} XP/jugador — según rendimiento',
+      gameOverStreak: '3 derrotas seguidas — ¡entrenador despedido!',
+      gameOverLosses: '{losses} derrotas acumuladas — temporada terminada.',
+      safe: 'SALVADO',
+      rescued: 'SALVADO POR POCO',
+      points: '{points} PUNTOS',
+      record: '✦ NUEVO RÉCORD ✦',
+      bestScore: 'Mejor marca: {points} pts ({team})',
+      afterMatches: '{points} puntos tras {matches} partidos',
+      bestRun: '✦ Nueva mejor campaña ✦'
+    },
+    perf: {
+      buildups: '{ok}/{all} salidas',
+      defenses: '{count} despejes',
+      keeper: '{saves} paradas  {conceded} encajados'
+    },
+    log: {
+      opponentIntro: '  ↳ Rival: {parts}',
+      kickoffChoice: '  → Inicio: {name}',
+      halftimeHeader: '––– DESCANSO –––',
+      halftimeChoice: '  → Descanso: {name}',
+      finalChoice: '  → Fase final: {name}',
+      possessionPressure: '  Posesión: {pct}% — fase de presión',
+      possessionDominated: '  Posesión: {pct}% — domina el rival',
+      chainAttack: '  ⚡ ¡Ataque en cadena!',
+      luckyDouble: '  🍀 {name} tiene suerte — ¡doble ataque!',
+      counter: '  🔁 ¡Contraataque!',
+      laserPass: '🎯 {name} PASE LÁSER — ¡contra activada!',
+      bulldoze: '🛡 {name} BULLDOZE — robo y contraataque!',
+      hardTackle: '🥾 {name} ENTRADA DURA — ¡contra!',
+      chessPredict: '♟ {name} CHESS PREDICT — leyó el gol rival!',
+      speedBurst: '💨 {name} SPEED BURST — salida garantizada!',
+      pounce: '🐆 {name} INSTINTO DE CAZA — ¡contra inmediata!',
+      oppBlitzCounter: '  ⚡ {name} sale disparado al contraataque!',
+      shadowStrike: '{name} GOLPE SOMBRA - ataque oculto!',
+      streetTrick: '{name} TRUCO CALLEJERO - defensor superado!',
+      silentKiller: '{name} ASESINO SILENCIOSO - primer disparo potenciado!',
+      cannonBlast: '{name} CANONAZO!',
+      ghostRun: '{name} CARRERA FANTASMA - ocasion oculta!',
+      puzzleConnect: '{name} PUZLE CONECTADO!',
+      nineLives: '🐱 {name} NUEVE VIDAS — ¡gol anulado!',
+      killerPass: '⚡ {name} PASE LETAL — ¡cadena en la siguiente ronda!',
+      maestroCombo: '🎼 {name} COMBO MAESTRO — ¡el próximo gol vale doble!',
+      unstoppable: '🚀 {name} IMPARABLE — ¡gol sin respuesta!',
+      godMode: '⭐ {name} MODO DIOS — ¡siguiente gol x3!',
+      unbreakable: '🛡 {name} IRROMPIBLE — ¡gol anulado!',
+      roundHeader: 'RONDA {round}',
+      ownGoal: '⚽ GOL {name}!{suffix}   {me}:{opp}',
+      oppGoal: '💥 Gol encajado — marca {name}   {me}:{opp}',
+      fullTime: '🏁 FINAL — {me}:{opp}',
+      penaltiesIntro: '🏁 90 MINUTOS TERMINADOS — {me}:{opp}',
+      penaltiesTitle: '⚽ TANDA DE PENALTIS — ¡no hay empate en el último partido!',
+      penaltyScored: '  {num}. ⚽ convertido — {me}:{opp}',
+      penaltyMissed: '  {num}. ⚠ fallado — {me}:{opp}',
+      oppPenaltyScored: '  {name} marca — {me}:{opp}',
+      oppPenaltyMissed: '  {name} falla — {me}:{opp}',
+      suddenDeath: '  Muerte súbita: {me}:{opp}',
+      penaltiesWin: '🏆 VICTORIA EN LOS PENALTIS',
+      penaltiesLoss: '💥 DERROTA EN LOS PENALTIS'
+    }
+  },
+  stats: {
+    offense: 'Ataque',
+    defense: 'Defensa',
+    tempo: 'Ritmo',
+    vision: 'Visión',
+    composure: 'Temple'
+  },
+  generated: {
+    masteryName: 'Maestría de {label}',
+    masteryDesc: 'Evolución desde {parent}: potencia {stats}. El rasgo anterior es un 30% más fuerte.'
+  },
+  logs: {
+    ownBuildFail: [
+      '{pm} pierde el balón en el medio',
+      'El rival intercepta el pase de {pm}',
+      'Un mal pase de {vt} deja espacio para la contra',
+      '{pm} se pasa con el balón vertical',
+      'La presión obliga a {pm} a jugar hacia atrás',
+      'Pérdida en la línea de medio campo'
+    ],
+    ownBuildSuccess: [
+      '{pm} rompe líneas con un pase filtrado',
+      '{pm} encuentra el hueco entre líneas',
+      'Pared rápida entre {pm} y {lf}',
+      '{pm} cambia el juego hacia la banda',
+      '{lf} acelera por fuera',
+      '{vt} inicia bien la jugada — {pm} toma el mando',
+      '{pm} conduce hasta el último tercio'
+    ],
+    chance: [
+      '{scorer} remata...',
+      '{scorer} se impone en el área...',
+      '{scorer} tiene la ocasión...',
+      '{scorer} acecha frente al arco...',
+      '{scorer} recibe dentro del área...'
+    ],
+    miss: [
+      '{scorer} la manda por poco fuera',
+      '{scorer} pega en el poste!',
+      '{scorer} remata centrado — el portero ataja',
+      '{scorer} la manda arriba',
+      '{scorer} es bloqueado en el último instante',
+      '{scorer} perdona la ocasión',
+      '{scorer} revienta el larguero!'
+    ],
+    oppBuildFail: [
+      '{opp} pierde el balón en la salida',
+      '{opp} falla completamente el pase',
+      '{vt} corta la jugada',
+      '{opp} se ve frenado en la construcción',
+      'La contrapresión obliga a {opp} a equivocarse'
+    ],
+    oppApproach: [
+      '{opp} llega por la banda',
+      '{opp} acelera el juego hacia delante',
+      '{opp} busca el remate',
+      'El delantero rival rompe la línea defensiva',
+      '{opp} progresa por el centro'
+    ],
+    save: [
+      '{tw} saca una gran mano!',
+      '{tw} atrapa con seguridad',
+      '{vt} bloquea el disparo en el último instante',
+      'Disparo desviado — {tw} lo tenía controlado',
+      '{tw} aparece con una parada brillante!',
+      'Cabezazo fuera'
+    ]
+  },
+  data: {
+    evoLabels: {
+      titan: 'Titán',
+      fortress: 'Fortaleza',
+      shotstopper: 'Parador',
+      libero_keeper: 'Portero Líbero',
+      distributor: 'Distribuidor',
+      highline: 'Línea Alta',
+      acrobat: 'Acróbata',
+      wall: 'Muro',
+      catman: 'Hombre Gato',
+      enforcer: 'Ejecutor',
+      bulldozer: 'Bulldozer',
+      captain_cool: 'Capitán Frío',
+      shark: 'Tiburón',
+      terminator: 'Terminator',
+      whirlwind: 'Torbellino',
+      orchestrator: 'Orquestador',
+      late_bloomer: 'Tardío',
+      scholar: 'Erudito',
+      metronome: 'Metrónomo',
+      architect: 'Arquitecto',
+      whisperer: 'Susurrador',
+      hunter: 'Cazador',
+      gegenpress: 'Gegenpress',
+      shadow: 'Sombra',
+      maestro_mid: 'Maestro',
+      chess: 'Maestro del Ajedrez',
+      conductor_mid: 'Director',
+      speedster: 'Velocista',
+      rocket: 'Cohete',
+      freight: 'Tren de Carga',
+      magician: 'Mago',
+      street: 'Jugador Callejero',
+      trickster: 'Tramposo',
+      ironman: 'Ironman',
+      dynamo: 'Dínamo',
+      eternal: 'Eterno',
+      assassin: 'Asesino',
+      predator_s: 'Depredador',
+      opportunist: 'Oportunista',
+      cannon: 'Cañón',
+      skyscraper: 'Rascacielos',
+      brick: 'Muro',
+      ghost: 'Fantasma',
+      puzzle: 'Rompecabezas',
+      chameleon: 'Camaleón'
+    },
+    roles: {
+      TW: { label: 'Portero', desc: 'Resuelve el uno contra uno' },
+      VT: { label: 'Defensa', desc: 'Muro de la zaga' },
+      PM: { label: 'Creador', desc: 'Ordena las jugadas' },
+      LF: { label: 'Corredor', desc: 'Factor caos' },
+      ST: { label: 'Delantero', desc: 'Definición' }
+    },
+    archetypes: {
+      keeper_block: 'Portero Bloqueador',
+      keeper_sweep: 'Portero Líbero',
+      keeper_reflex: 'Portero de Reflejos',
+      def_wall: 'Muralla',
+      def_tackle: 'Mordedor',
+      def_sweeper: 'Líbero',
+      pm_regista: 'Regista',
+      pm_press: 'Presionador',
+      pm_playmaker: 'Organizador',
+      lf_winger: 'Extremo Eléctrico',
+      lf_dribbler: 'Regateador',
+      lf_box: 'Box-to-Box',
+      st_poacher: 'Cazagoles',
+      st_target: 'Hombre Referencia',
+      st_false9: 'Falso Nueve'
+    },
+    starterTeams: {
+      konter: { name: 'Especialistas al Contraataque', theme: 'rápidos, defensivos, castigan errores', desc: 'Fuertes en el medio y por fuera. Marcan en transición.', difficultyLabel: 'Principiante' },
+      kraft: { name: 'Potencia Bruta', theme: 'físico, juego aéreo, desgaste', desc: 'Gana por pura presencia física. Muy fuerte al final del partido.', difficultyLabel: 'Intermedio' },
+      technik: { name: 'Magos Técnicos', theme: 'basado en visión, combinaciones por pase', desc: 'Construye ataques de la nada. Lento, pero preciso.', difficultyLabel: 'Exigente' },
+      pressing: { name: 'Bestias de la Presión', theme: 'agresivos, rompen la salida rival', desc: 'Fuerza errores con presión constante. Fútbol de riesgo y nervios frágiles.', difficultyLabel: 'Experto' }
+    },
+    traits: {
+      titan_stand: { name: 'Postura Titan', desc: 'Ante disparos rivales: 30% de opcion de detenerlos cuando el marcador esta ajustado, con una diferencia de 1 o menos.' },
+      fortress_aura: { name: 'Aura Fortaleza', desc: 'El defensa recibe +6 de defensa mientras el portero esta activo.' },
+      clutch_save: { name: 'Parada Clutch', desc: 'En las rondas 5-6: +20% de indice de parada.' },
+      sweep_assist: { name: 'Apoyo de Barrida', desc: 'Tras una parada del portero: +8% a la siguiente salida.' },
+      laser_pass: { name: 'Pase Laser', desc: 'Tras una parada: 20% de probabilidad de activar una contra inmediata.' },
+      offside_trap: { name: 'Trampa del Fuera de Juego', desc: 'Se anula el 15% de los ataques rivales, segun el ritmo.' },
+      acrobat_parry: { name: 'Acrobacia', desc: 'Tras una parada: +12% a la siguiente salvada, una vez por partido.' },
+      wall_effect: { name: 'Muro', desc: '+15% permanente al indice de parada, pero -10% a tu propia salida.' },
+      nine_lives: { name: 'Nueve Vidas', desc: 'Una vez por partido: se anula el primer gol recibido.' },
+      intimidate: { name: 'Intimidar', desc: 'El delantero rival recibe -5 de ataque.' },
+      bulldoze: { name: 'Bulldozer', desc: 'Cada ronda: 10% de robar el balon antes del disparo rival.' },
+      captain_boost: { name: 'Capitan', desc: 'Todo el equipo recibe +3 de temple.' },
+      blood_scent: { name: 'Olor a Sangre', desc: 'Despues de cada gol rival: +5 de defensa durante el resto del partido.' },
+      hard_tackle: { name: 'Entrada Dura', desc: '20% de romper el ataque rival y lanzar una contra.' },
+      whirlwind_rush: { name: 'Torbellino', desc: 'Una vez por cada parte: duplica el ritmo de este jugador durante una ronda.' },
+      build_from_back: { name: 'Salida Desde Atras', desc: 'El creador recibe +8 de vision.' },
+      late_bloom: { name: 'Explosion Tardia', desc: 'Desde la ronda 4: +10 de ataque y +5 de vision.' },
+      read_game: { name: 'Leer el Juego', desc: 'Una vez por partido: anula automaticamente un ataque rival.' },
+      metronome_tempo: { name: 'Metronomo', desc: 'Cada ronda: +2% a tu salida, acumulable.' },
+      killer_pass: { name: 'Pase Letal', desc: 'En tu ataque: 25% de activar un disparo en cadena.' },
+      whisper_boost: { name: 'Susurro', desc: 'El delantero recibe +8 de temple y +4 de ataque.' },
+      hunter_press: { name: 'Fiebre de Caza', desc: '15% por ronda de recuperar el balon mediante presion.' },
+      gegenpress_steal: { name: 'Gegenpress', desc: 'Tras cada perdida rival: +15% a tu siguiente salida.' },
+      shadow_strike: { name: 'Golpe Sombra', desc: 'En las rondas 3 y 6: 20% de probabilidad de un ataque oculto.' },
+      maestro_combo: { name: 'Combo Maestro', desc: 'Si PM, LF y ST marcan: tu siguiente gol vale doble.' },
+      chess_predict: { name: 'Prediccion', desc: 'Una vez por parte: convierte un gol rival en parada.' },
+      symphony_pass: { name: 'Sinfonia', desc: 'Si 2 o mas companeros activan rasgos: +10% de ataque para el equipo.' },
+      speed_burst: { name: 'Aceleracion', desc: 'Una vez por parte: salida garantizada.' },
+      launch_sequence: { name: 'Lanzamiento', desc: 'En la ronda 1: +20% de exito en tu ataque.' },
+      unstoppable_run: { name: 'Imparable', desc: 'Si el ritmo supera la defensa rival: 10% de gol automatico.' },
+      dribble_chain: { name: 'Cadena de Regates', desc: 'Cada ataque exitoso da +5% al siguiente, acumulable.' },
+      street_trick: { name: 'Truco Callejero', desc: '15% de superar por completo al defensor.' },
+      nutmeg: { name: 'Cano', desc: '20% en tu ataque de ignorar la defensa rival.' },
+      ironman_stamina: { name: 'Ironman', desc: 'En las rondas 5-6: sin desgaste de estadisticas y +2 de ritmo para el equipo.' },
+      dynamo_power: { name: 'Dinamo', desc: 'Cada dos rondas: +6 de ataque para el equipo en esa ronda.' },
+      never_stop: { name: 'No Parar', desc: 'Si vas perdiendo: +8 de ataque por cada gol recibido.' },
+      silent_killer: { name: 'Asesino Silencioso', desc: 'El primer disparo del partido recibe +30% de ataque.' },
+      predator_pounce: { name: 'Salto Depredador', desc: 'Tras un ataque rival fallido: 25% de probabilidad de gol instantaneo.' },
+      opportunity: { name: 'Oportunidad', desc: 'Cada salida exitosa suma +3% de opcion de gol incluso sin activar ataque.' },
+      cannon_blast: { name: 'Canonazo', desc: 'Cada disparo tiene un 10% de convertirse en gol automatico, pero la probabilidad de fallo sube un 5%.' },
+      header_power: { name: 'Bestia Aerea', desc: 'Con alta vision de equipo: +15% de opcion de gol.' },
+      brick_hold: { name: 'Sujecion de Balon', desc: 'Estabiliza al equipo: -10% a la presion rival.' },
+      ghost_run: { name: 'Carrera Fantasma', desc: '15% por ronda de aparecer de repente para generar una ocasion.' },
+      puzzle_connect: { name: 'Pieza de Puzle', desc: 'Si marca el creador: +25% a tu siguiente opcion de gol en la ronda siguiente.' },
+      chameleon_adapt: { name: 'Adaptacion', desc: 'Copia el rasgo del companero mas activo en la ronda 4.' }
+    },
+    opponents: {
+      prefixes: ['SC ', 'FC ', 'Atlético ', 'Unión ', 'Deportivo ', 'Dínamo ', 'Real ', 'Racing ', 'Estrella Roja ', 'Albión '],
+      places: ['Bosquenoche', 'Fortatormenta', 'Peñafría', 'Vallehierro', 'Puenteáspero', 'Monte Trueno', 'Puerto Viento', 'Ventisca', 'Campo Cuervo', 'Valle Sombrío', 'Cuerno de Fuego', 'Niebla Alta', 'Páramo', 'Rocasangre', 'Arboleda Tempestad'],
+      specials: {
+        offensive: 'Enfoque Ofensivo',
+        defensive: 'Fortaleza',
+        pacey: 'Velocidad Pura',
+        cerebral: 'Táctico',
+        stoic: 'De Hierro',
+        balanced: 'Equilibrado'
+      }
+    },
+    tactics: {
+      kickoff: {
+        aggressive: { name: 'Inicio Agresivo', desc: '+6 ataque en rondas 1-3, -4 defensa.' },
+        defensive: { name: 'Inicio Defensivo', desc: '+6 defensa en rondas 1-3, -4 ataque.' },
+        balanced: { name: 'Equilibrado', desc: '+3 a todas las estadísticas en rondas 1-3.' },
+        tempo: { name: 'Ritmo Alto', desc: '+8 ritmo en rondas 1-3, -3 temple.' },
+        pressing: { name: 'Presión', desc: '+5 defensa y +4 ritmo en rondas 1-3.' },
+        possession: { name: 'Posesión', desc: '+6 visión y +4 temple en rondas 1-3.' },
+        counter: { name: 'Emboscada al Contra', desc: '+8 defensa, +4 ritmo en rondas 1-3, -2 ataque.' },
+        flank_play: { name: 'Juego por Bandas', desc: '+5 ritmo y +5 ataque en rondas 1-3.' }
+      },
+      halftime: {
+        push: { name: 'Arriesgar', desc: '+8 ataque en rondas 4-6, -6 defensa.' },
+        stabilize: { name: 'Estabilizar', desc: '+6 defensa y +4 temple en rondas 4-6.' },
+        shift: { name: 'Reubicar', desc: 'Un jugador gana permanentemente +10 en su estadística clave.' },
+        rally: { name: 'Reacción', desc: '+3 ataque por cada gol recibido; +3 defensa por cada gol marcado.' },
+        reset: { name: 'Reordenar', desc: '+5 a todas las estadísticas en rondas 4-6.' },
+        counter_h: { name: 'Ir al Contra', desc: '+10 ritmo y +5 defensa en rondas 4-6.' },
+        high_press: { name: 'Presión Alta', desc: '+8 defensa en rondas 4-6, -3 temple.' },
+        vision_play: { name: 'Abrir el Juego', desc: '+8 visión y +4 ataque en rondas 4-6.' }
+      },
+      final: {
+        all_in: { name: 'Todo o Nada', desc: 'Última ronda: +15 ataque, -15 defensa.' },
+        park_bus: { name: 'Autobús', desc: 'Última ronda: +15 defensa, -10 ataque.' },
+        hero_ball: { name: 'Héroe del Día', desc: 'Un jugador aleatorio gana +20 permanente en su estadística clave.' },
+        keep_cool: { name: 'Mantener la Calma', desc: 'Última ronda: +8 temple y +5 visión.' },
+        final_press: { name: 'Presión Final', desc: 'Última ronda: +10 ritmo y +8 defensa, -5 ataque.' },
+        long_ball: { name: 'Balón Largo', desc: 'Última ronda: +12 ataque, -5 visión.' },
+        midfield: { name: 'Control del Medio', desc: 'Última ronda: +8 visión, +6 ritmo, +6 temple.' },
+        sneaky: { name: 'Emboscada', desc: 'Última ronda: +12 defensa, +8 ritmo, -8 ataque.' }
+      }
+    },
+    teamNamePools: {
+      konter: {
+        first: ['Jairo','Iker','Asier','Kai','Zeta','Rex','Vico','Nico','Roco','Brío','Llama','Corvo','Dani','Eco','Ravi','Pizarra','Voltio','Zane','Kito','Milo'],
+        last: ['Rápido','Cruce','Finta','Cielo','Reeve','Llama','Quino','Golpe','Caída','Racha','Borde','Veloz','Hale','Rastro','Vórtice','Destello','Cifra']
+      },
+      pressing: {
+        first: ['Bruno','Vargo','Krago','Brais','Toro','Rael','Brunox','Bjorn','Krogh','Ulises','Magnus','Ragnar','Broko','Vídar','Harald','Ívor','Oriol','Knut'],
+        last: ['Maza','Choque','Lobo','Sangre','Acero','Colmillo','Garra','Ruina','Martillo','Hierro','Piedra','Mutilador','Tusk','Gruñido','Forja','Hierrofrío','Grimwald']
+      },
+      technik: {
+        first: ['Luca','Nico','Rafa','Mateo','Dante','Enzo','Alessio','Marco','Gianni','Xavi','Theo','Renzo','Leandro','Diego','Seba','Liam','Silas'],
+        last: ['Bellucci','Corelli','Ferrando','Moretti','Salvatore','Laurent','Rossi','Valenti','Monti','Rinaldi','Serra','Piazza','Viale','Lioncourt','Delacroix']
+      },
+      kraft: {
+        first: ['Bruno','Héctor','Reinhold','Klaus','Kurt','Manuel','Detlef','Sigfrido','Hartmut','Werner','Friedhelm','Heinrich','Günter','Egon','Rolf','Ulrich'],
+        last: ['Truenomonte','Puñohierro','Piedrabrück','Martilloacero','Bosquetormenta','Cuervocresta','Lobomonte','Ackermann','Rothmann','Herrero','Gruber','Baluarte','Rocadura']
+      }
+    },
+    legendaryNames: ['Nicolás Vega','Rasmus Orth','Idris Tormenta','Jago Arena','Milo Rivera','Octavio Kross','Darian Lux','Suren Vex','León Trax','Rune Kainz','Ashe Quandt','Zephyr Böhm','Malik Kroos','Nils Falk','Soberano Reinhardt','Maksim Thoma'],
+    oppTraits: {
+      sturm: { name: 'Vendaval', desc: '+8% de precisión de tiro.' },
+      riegel: { name: 'Cerrojo', desc: '+5% para impedir paradas en cada ronda.' },
+      konter_opp: { name: 'Contra Letal', desc: 'Si fallas la salida: 30% de opción de tiro inmediato.' },
+      presser_opp: { name: 'Máquina de Presión', desc: 'Tus salidas fallan un 10% más.' },
+      clutch_opp: { name: 'Sangre Fría', desc: 'Últimas 2 rondas: +10 ataque, +5 ritmo.' },
+      lucky: { name: 'Afortunados', desc: 'Una vez por partido: ataque extra aleatorio.' },
+      ironwall: { name: 'Muro de Hierro', desc: 'Primeras 2 rondas: +10 defensa.' },
+      sniper: { name: 'Francotirador', desc: '+15% de precisión, pero -5 ritmo.' }
+    },
+    legendaryTraits: {
+      god_mode: { name: 'Modo Dios', desc: 'Una vez por partido: el siguiente gol vale triple.' },
+      clutch_dna: { name: 'ADN Decisivo', desc: 'En la última ronda: +20 ataque, +10 temple.' },
+      field_general: { name: 'General del Campo', desc: 'Todo el equipo: +4 a todas las estadísticas.' },
+      unbreakable: { name: 'Irrompible', desc: 'Primer gol recibido en cada partido: anulado.' },
+      big_game: { name: 'Jugador de Grandes Citas', desc: 'Contra jefes: +15 a la estadística clave.' },
+      conductor: { name: 'Director', desc: 'Por cada salida exitosa: +8% al siguiente gol.' },
+      phoenix: { name: 'Fénix', desc: 'Si pierde por 2 o más: +12 ataque durante el resto del partido.' },
+      ice_in_veins: { name: 'Hielo en las Venas', desc: 'Ignora por completo las mejoras de temple del rival.' }
+    }
+  }
+});
