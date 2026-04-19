@@ -153,6 +153,25 @@ const FLOW = {
     }
   },
 
+  // ─── handleMatchEvent ───────────────────────────────────────────────────────
+  // Central event handler for all match interrupts:
+  //   log        — append to match log
+  //   roundEnd   — update score display
+  //   interrupt  — show modal for kickoff / halftime / final / event
+  //
+  // Halftime flow (Schritte C + D):
+  //   1. Show tactic modal (3 options) → resolve tactic choice
+  //   2. Determine second slot: focus (always available) vs sub (only if bench not empty)
+  //      Priority: focus > sub per briefing (Fokus ist die interessantere Entscheidung)
+  //      If both available: show focus first, sub is skipped for simplicity
+  //      (briefing note: "restriktive Variante zuerst — Sub-Modal nur wenn kein Fokus")
+  //   3. Show second modal → resolve focus or sub choice
+  //   Both decisions go through applyDecision() channel.
+  //
+  // Event flow (Schritt E):
+  //   Shows event modal with gold accent header.
+  //   Chosen option is returned to checkSituativeEvents for apply().
+
   async handleMatchEvent(ev) {
     if (ev.type === 'log') {
       if (!state._matchLogBuffer) state._matchLogBuffer = [];
@@ -171,32 +190,200 @@ const FLOW = {
       while (state._paused) { await sleep(120); }
       return;
     }
+
     if (ev.type === 'roundEnd') {
       UI.updateMatchScore(ev.match);
       return;
     }
+
     if (ev.type === 'interrupt') {
       state._preKickoff = false;
-      return new Promise(resolve => {
-        let title, sub, options;
-        const m = ev.match;
-        if (!m._tacticPools) {
-          const team = DATA.starterTeams.find(t => t.id === state.starterTeamId) || DATA.starterTeams[0];
-          m._tacticPools = {
-            kickoff:  pickThemedTactics(DATA.kickoffTactics,  3, team, 'kickoff'),
-            halftime: pickThemedTactics(DATA.halftimeOptions, 3, team, 'halftime'),
-            final:    pickThemedTactics(DATA.finalOptions,    3, team, 'final')
+      const m = ev.match;
+
+      // ── Ensure tactic pools exist ───────────────────────────────────────
+      if (!m._tacticPools) {
+        const team = DATA.starterTeams.find(t => t.id === state.starterTeamId) || DATA.starterTeams[0];
+        m._tacticPools = {
+          kickoff:  pickThemedTactics(DATA.kickoffTactics,  3, team, 'kickoff'),
+          halftime: pickThemedTactics(DATA.halftimeOptions, 3, team, 'halftime'),
+          final:    pickThemedTactics(DATA.finalOptions,    3, team, 'final')
+        };
+      }
+
+      // ── Kickoff ──────────────────────────────────────────────────────────
+      if (ev.phase === 'kickoff') {
+        const hints = (typeof buildContextHint === 'function')
+          ? buildContextHint(m, 'kickoff', state)
+          : [];
+        return new Promise(resolve => {
+          UI.showInterrupt(
+            I18N.t('ui.flow.kickoffTitle'),
+            I18N.t('ui.flow.kickoffSubtitle'),
+            m._tacticPools.kickoff,
+            (picked) => resolve(picked),
+            m,
+            'kickoff',
+            hints
+          );
+        });
+      }
+
+      // ── Halftime — extended two-step flow ────────────────────────────────
+      if (ev.phase === 'halftime') {
+        // Step 1: tactic choice
+        const tacticHints = (typeof buildContextHint === 'function')
+          ? buildContextHint(m, 'halftime', state)
+          : [];
+        const tacticChoice = await new Promise(resolve => {
+          UI.showInterrupt(
+            I18N.t('ui.flow.halftimeTitle'),
+            I18N.t('ui.flow.scoreSubtitle', { me: m.scoreMe, opp: m.scoreOpp }),
+            m._tacticPools.halftime,
+            (picked) => resolve(picked),
+            m,
+            'halftime',
+            tacticHints
+          );
+        });
+
+        // Apply tactic through applyDecision channel
+        if (typeof applyDecision === 'function') {
+          applyDecision(m, tacticChoice, 'halftime', state);
+        }
+
+        // Step 2: focus or sub (second modal)
+        // Priority: focus > sub. Sub only shown when bench not empty and no focus candidate.
+        // Per briefing: "restriktive Variante" — one slot, focus preferred.
+        const currentLineup = m.squad || getLineup();
+        const bench = getBench();
+        const hasBench = bench.length > 0;
+
+        let secondOptions = null;
+        let secondTitle = '';
+        let secondSubtitle = '';
+        let secondPhase = '';
+
+        // Focus is always available (outfield players exist)
+        const focusOptions = (typeof generateFocusOptions === 'function')
+          ? generateFocusOptions(currentLineup, m)
+          : [];
+
+        if (focusOptions.length > 1) {
+          // More than just "no focus" → offer focus
+          secondOptions = focusOptions;
+          secondTitle = I18N.t('ui.decisions.focusTitle');
+          secondSubtitle = I18N.t('ui.decisions.focusSubtitle');
+          secondPhase = 'halftime_focus';
+        } else if (hasBench) {
+          // No meaningful focus candidates, but bench available
+          const subOptions = (typeof generateSubOptions === 'function')
+            ? generateSubOptions(currentLineup, m, state)
+            : [];
+          if (subOptions.length > 1) {
+            secondOptions = subOptions;
+            secondTitle = I18N.t('ui.decisions.subTitle');
+            secondSubtitle = I18N.t('ui.decisions.subSubtitle');
+            secondPhase = 'halftime_sub';
+          }
+        }
+
+        if (secondOptions) {
+          const secondChoice = await new Promise(resolve => {
+            UI.showInterrupt(
+              secondTitle,
+              secondSubtitle,
+              secondOptions,
+              (picked) => resolve(picked),
+              m,
+              secondPhase,
+              [] // no hints for second modal — keeps it clean
+            );
+          });
+
+          // Apply focus/sub through applyDecision channel
+          if (typeof applyDecision === 'function' && secondChoice && secondChoice.id !== 'focus_none' && secondChoice.id !== 'sub_none') {
+            applyDecision(m, secondChoice, secondPhase, state);
+          } else if (secondChoice && typeof secondChoice.apply === 'function') {
+            // fallback: direct apply (no-op options)
+            secondChoice.apply(m, { mult: 1.0, phase: secondPhase, state });
+          }
+        }
+
+        // Return the tactic choice to core.js (it uses this for halftimeAction)
+        return tacticChoice;
+      }
+
+      // ── Final ────────────────────────────────────────────────────────────
+      if (ev.phase === 'final') {
+        const hints = (typeof buildContextHint === 'function')
+          ? buildContextHint(m, 'final', state)
+          : [];
+        return new Promise(resolve => {
+          UI.showInterrupt(
+            I18N.t('ui.flow.finalTitle'),
+            I18N.t('ui.flow.roundScoreSubtitle', { me: m.scoreMe, opp: m.scoreOpp }),
+            m._tacticPools.final,
+            (picked) => resolve(picked),
+            m,
+            'final',
+            hints
+          );
+        });
+      }
+
+      // ── Situative event modal (Schritt E) ─────────────────────────────────
+      // phase === 'event'
+      // Returns the chosen option object directly to checkSituativeEvents,
+      // which calls option.apply(match, ctx).
+      if (ev.phase === 'event') {
+        const event = ev.event;
+        const eventCtx = ev.eventCtx || {};
+        if (!event) return null;
+
+        // Build option list from event definition
+        // Each option needs name + desc resolved from i18n
+        const options = event.options.map(opt => {
+          const i18nBase = `ui.events.${event.id}.option_${opt.id}`;
+          const name = I18N.t(i18nBase + '.name', eventCtx.eventPlayer
+            ? { name: eventCtx.eventPlayer.name, bonus: 8, stat: 'offense', deficit: eventCtx.deficit || 0, n: eventCtx.oppFailedBuildups || 0, opp: m.opp?.name || '' }
+            : { name: eventCtx.legendaryPlayer?.name || '', deficit: eventCtx.deficit || 0, n: eventCtx.oppFailedBuildups || 0, opp: m.opp?.name || '' }
+          );
+          const desc = I18N.t(i18nBase + '.desc', {
+            bonus: 8, stat: 'offense',
+            deficit: eventCtx.deficit || 0,
+            n: eventCtx.oppFailedBuildups || 0,
+            opp: m.opp?.name || '',
+            name: eventCtx.eventPlayer?.name || eventCtx.legendaryPlayer?.name || ''
+          });
+          return {
+            ...opt,
+            name,
+            desc
           };
-        }
-        if (ev.phase === 'kickoff') {
-          title = I18N.t('ui.flow.kickoffTitle'); sub = I18N.t('ui.flow.kickoffSubtitle'); options = m._tacticPools.kickoff;
-        } else if (ev.phase === 'halftime') {
-          title = I18N.t('ui.flow.halftimeTitle'); sub = I18N.t('ui.flow.scoreSubtitle', { me: m.scoreMe, opp: m.scoreOpp }); options = m._tacticPools.halftime;
-        } else {
-          title = I18N.t('ui.flow.finalTitle'); sub = I18N.t('ui.flow.roundScoreSubtitle', { me: m.scoreMe, opp: m.scoreOpp }); options = m._tacticPools.final;
-        }
-        UI.showInterrupt(title, sub, options, (pick) => resolve(pick), m, ev.phase);
-      });
+        });
+
+        // Resolve subtitle with event context
+        const subtitleVars = {
+          name: eventCtx.eventPlayer?.name || eventCtx.legendaryPlayer?.name || '',
+          deficit: eventCtx.deficit || 0,
+          n: eventCtx.oppFailedBuildups || 0,
+          opp: m.opp?.name || '',
+          points: eventCtx.currentPoints || 0
+        };
+        const subtitle = I18N.t(`ui.events.${event.id}.subtitle`, subtitleVars);
+
+        return new Promise(resolve => {
+          UI.showInterrupt(
+            I18N.t('ui.flow.eventTitle'),
+            subtitle,
+            options,
+            (picked) => resolve(picked),
+            m,
+            'event',
+            [] // Events are surprises — no hints per briefing
+          );
+        });
+      }
     }
   },
 

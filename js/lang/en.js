@@ -110,7 +110,9 @@ I18N.registerLocale("en", {
       record: "✦ NEW RECORD ✦",
       bestScore: "Best score: {points} pts ({team})",
       afterMatches: "{points} points after {matches} matches",
-      bestRun: "✦ New best run ✦"
+      bestRun: "✦ New best run ✦",
+      eventTitle: "SITUATION",
+      eventSubtitle: "Something's happening on the pitch."
     },
     perf: {
       buildups: "{ok}/{all} build-ups",
@@ -130,6 +132,88 @@ I18N.registerLocale("en", {
       mechanicFlank: "Wing runs",
       mechanicRally: "Rally mode"
     },
+
+    // ── Halftime focus / sub decisions ───────────────────────────────────────
+    decisions: {
+      focusTitle: "Player Focus",
+      focusSubtitle: "Sharpen one player for the second half.",
+      noFocus: "No Focus",
+      noFocusDesc: "Play it as is — no individual spotlight.",
+      focusHot: "{name} is in form (+{bonus} {stat}, low risk).",
+      focusNormal: "Focus on {name} (+{bonus} {stat}).",
+      focusPoorForm: "{name} is struggling — risky, but could click (+{bonus} {stat}, ~22% fail).",
+      focusCrisis: "{name} is in crisis — high risk, high reward. Success brings form recovery.",
+      focusFailed: "{name} is overwhelmed — the extra pressure backfires.",
+      focusSuccess: "{name} locks in — {stat} sharpened for round {round}.",
+      focusRedemption: "{name} turns it around! Form restored, team lifted.",
+      subTitle: "Substitution",
+      subSubtitle: "Bring someone off the bench.",
+      noSub: "No Substitution",
+      noSubDesc: "Keep the current lineup.",
+      subOption: "Bring on {name} ({role}) — off: {out}",
+      subRoleMismatch: "Role mismatch — {role} playing out of position. -8 Defense this round.",
+      subLegendary: "Legendary incoming — impact amplified.",
+      subDone: "{incoming} on for {outgoing}."
+    },
+
+    // ── Situative events ──────────────────────────────────────────────────────
+    events: {
+      hot_player: {
+        title: "On Fire",
+        subtitle: "{name} has scored and looks unstoppable.",
+        option_boost: { name: "Keep Him Going", desc: "Permanent +{bonus} to {stat}. Let the momentum ride." },
+        option_stabilize: { name: "Hold the Shape", desc: "Protect the lead — defensive stability over individual flair." }
+      },
+      crisis_moment: {
+        title: "Heads Are Dropping",
+        subtitle: "Down {deficit} — the dressing room needs a spark.",
+        option_team_talk: { name: "Team Talk", desc: "Rally the squad. 70% chance it lands — composure and offense boost. 30% it doesn't." },
+        option_focus: { name: "Single Focus", desc: "Put the pressure on one player to turn the tide." },
+        option_accept: { name: "Accept & Grind", desc: "No speeches. Play smart, stay compact — form recovery on the back end." }
+      },
+      opp_mistake: {
+        title: "They're Cracking",
+        subtitle: "{opp} has failed {n} build-ups. The pressure is showing.",
+        option_exploit: { name: "Go For It", desc: "Immediate attack with bonus — strike while they're rattled." },
+        option_sustain: { name: "Keep the Pressure On", desc: "Sustained pressing malus for the opponent. Grind them down." }
+      },
+      legendary_demand: {
+        title: "{name} Wants In",
+        subtitle: "Your legendary is watching from the bench.",
+        option_bring_on: { name: "Bring On {name}", desc: "Sub them in now — full legendary impact." },
+        option_morale: { name: "Not Yet", desc: "Keep them fresh — bench presence lifts morale. Small team-wide boost." }
+      },
+      season_finale: {
+        title: "Title Race",
+        subtitle: "Final match — points on the table, nerves on edge.",
+        option_allin: { name: "Go All-In", desc: "Risk everything for maximum points. Higher ceiling, higher floor risk." },
+        option_controlled: { name: "Controlled Approach", desc: "Steady and clinical. Lower variance — take what the game gives you." }
+      }
+    },
+
+    // ── Contextual hints ──────────────────────────────────────────────────────
+    hints: {
+      ironwallEarly: "Ironwall trait: rounds 1–2 their defence is nearly impenetrable.",
+      sniperWarning: "Precision shooter — every attempt is dangerous.",
+      clutchOppLate: "They get stronger late — rounds 5–6 watch out.",
+      presserOppActive: "High press incoming — build-up will be disrupted.",
+      bossWarning: "Boss fight — all their stats are elevated.",
+      lfTempoAdvantage: "{name} has a pace edge — wing play could be decisive.",
+      lfTempoDisadvantage: "Their tempo is higher — counter-threat on the flanks.",
+      squadInForm: "The squad's flying — pressing tactics amplified.",
+      squadInCrisis: "Confidence is low — safe options carry less risk.",
+      pressingBlocked: "Pressing blocked {n} attacks in the first half.",
+      countersFired: "Counter system triggered {n}× — it's working.",
+      scoreLeading: "You're ahead — consolidating is an option.",
+      scoreTrailing: "You're chasing — urgency matters now.",
+      tacticSynergyKickoff: "This tactic fits your squad's strengths.",
+      tacticConflict: "This tactic might clash with your current setup.",
+      legendaryOnBench: "{name} is on the bench and ready.",
+      finalLegendaryOnBench: "Legendary on the bench — final round could be their moment.",
+      oppBuildupLow: "Opponent build-up only {pct}% successful — they're vulnerable.",
+      noHint: ""
+    },
+
     log: {
       matchIntro: [
         "{me} vs {opp} — kick-off.",
@@ -287,6 +371,7 @@ I18N.registerLocale("en", {
       tacticRallyTrigger: "  💪 Rally fires — +{bonus} from the deficit.",
       tacticHighPressTrigger: "  High press — ball recovered.",
       tacticFinalPressTrigger: "  ⚡ Final press — counter launched.",
+      tacticFit: "  ✓ {name} — conditions met, bonus applied.",
       laserPass: "🎯 {name} — laser pass, counter's on.",
       bulldoze: "🛡 {name} — bulldozes through, ball won.",
       hardTackle: "🥾 {name} — hard tackle, counter!",
@@ -307,17 +392,67 @@ I18N.registerLocale("en", {
       godMode: "⭐ {name} — everything's clicking. Next goal counts triple.",
       unbreakable: "🛡 {name} — stands firm. Goal cancelled.",
       synergyBonus: "  🔗 {name} ({trait}) +{bonus}%",
-      tacticFit: "  ✓ {name} — conditions met, bonus applied.",
-      tacticMisfitKey: "  ⚠ Tactic misfit — reduced effect.",
+
+      // ── Synergy / conflict log lines (new) ───────────────────────────────
+      synergyAmplified: "  🔗 Pressing synergy — decision amplified.",
+      synergyConflict: "  ⚠ Tactic conflict — decision reduced.",
+      synergyPressingCombo: "  🔗 Pressing + pressing decision — in the zone.",
+      synergyPossessionPM: "  🔗 Possession + playmaker focus — style coherence bonus.",
+      conflictPressingAfterPossession: "  ⚠ Pressing after possession kickoff — energy misaligned.",
+      conflictPressingCollapse: "  ⚠ Pre-existing misfit — pressing decision carrying risk.",
+      conflictPlayerCrisis: "  ⚠ Player in crisis — focus is risky.",
+      conflictPlayerHot: "  🔗 Player in form — focus amplified.",
+      conflictLegendarySub: "  🔗 Legendary incoming — impact amplified.",
+
+      // ── Focus log lines (new) ─────────────────────────────────────────────
+      focusApplied: "  🎯 {name} gets the spotlight — {stat} sharpened for round {round}.",
+      focusFailed: "  ✗ {name} is overwhelmed — the extra pressure backfires. Form drops.",
+      focusRedemption: "  ⬆ {name} turns it around! Form recovered, team lifted.",
+      focusCrisisAttempt: "  ⚡ High-risk focus on {name} — crisis player, all or nothing.",
+
+      // ── Tactic misfit log lines (new / extended) ─────────────────────────
       misfitPressingCollapse: "  ⚠ Pressing collapses — legs can't sustain it.",
       misfitCounterStall: "  ⚠ Counter stalls — no one quick enough to run.",
-      aggressiveError: [
-        "  Too eager — the move breaks down in transition.",
-        "  Overcommitted — the ball's lost.",
-        "  The urgency costs them — loose ball in midfield."
-      ]
+
+      // ── Event log lines (new) ─────────────────────────────────────────────
+      eventHotPlayerBoost: "  🔥 {name} gets the nod — permanent {stat} boost locked in.",
+      eventHotPlayerStabilize: "  🛡 Shape held — individual flair reined in for team stability.",
+      eventCrisisTeamTalk: "  📢 The message lands — squad rallied.",
+      eventCrisisTeamTalkFailed: "  The message didn't land.",
+      eventCrisisFocus: "  🎯 One player carries the burden.",
+      eventCrisisAccept: "  Heads down, grind it out.",
+      eventOppMistakeExploit: "  ⚡ Immediate attack — capitalising on their breakdown.",
+      eventOppMistakeSustain: "  🏃 Pressing sustained — opponent under continuous strain.",
+      eventLegendaryBringOn: "  ⚜ {name} is on. This just changed.",
+      eventLegendaryMorale: "  The bench rallies the team — small boost across the board.",
+      eventSeasonFinaleAllIn: "  🔥 All-in for the title — no holding back.",
+      eventSeasonFinaleControlled: "  Composed and controlled — let the game come to them.",
+
+      // ── Opponent trait log lines ──────────────────────────────────────────
+      oppTrait: {
+        sturmShot: "  {name} — precision striking, every shot counts.",
+        sniperShot: "  {name} — picks their spot, clinical finish.",
+        riegelDeny: "  {name} — saves getting harder to make.",
+        presserDisrupt: "  {name} — high press disrupts the build-up.",
+        ironwallEarly: "  {name} — defensive wall up early, nearly impenetrable.",
+        clutchSurge: "  {name} — late surge, energy levels rising."
+      }
     }
   },
+
+  // ── Tactic misfit i18n keys (used by TACTIC_FIT.misfitKey lookups) ────────
+  tactic: {
+    misfit: {
+      aggressiveSlow: "  ⚠ Squad lacks pace for aggressive press — fatigue risk elevated.",
+      defensiveNoVision: "  ⚠ No playmaker vision — deep block has no outlet.",
+      tempoOutpaced: "  ⚠ Tempo game backfires — opponent is faster.",
+      pressingNoLegs: "  ⚠ Not enough legs for sustained pressing — collapse incoming.",
+      possessionNoVision: "  ⚠ No vision to hold possession — turnovers will hurt.",
+      counterNoRunner: "  ⚠ No quick runner — counter threat blunted.",
+      flankCutOut: "  ⚠ Flank runs cut out — opponent's shape neutralises width."
+    }
+  },
+
   stats: {
     offense: "Attack",
     defense: "Defense",

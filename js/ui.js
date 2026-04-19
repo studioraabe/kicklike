@@ -1,3 +1,122 @@
+// ─── buildContextHint ─────────────────────────────────────────────────────────
+// Produces up to 2 contextual hints for an interrupt modal.
+// Never produces generic "everything normal" hints — empty array = no hints shown.
+//
+// @param {Object} match  — current match object
+// @param {string} phase  — 'kickoff' | 'halftime' | 'final'
+// @param {Object} state  — game state
+// @returns {Array} of { type: 'good'|'warn'|'info', text: string }
+
+function buildContextHint(match, phase, state) {
+  const hints = [];
+  const opp = match?.opp;
+  if (!opp) return hints;
+
+  const push = (type, text) => { if (hints.length < 2 && text) hints.push({ type, text }); };
+
+  if (phase === 'kickoff') {
+    // Boss warning — highest priority
+    if (opp.isBoss) {
+      push('warn', I18N.t('ui.hints.bossWarning'));
+    }
+
+    // Ironwall trait: rounds 1-2 nearly impenetrable
+    if (opp.traits?.includes('ironwall')) {
+      push('warn', I18N.t('ui.hints.ironwallEarly'));
+    }
+
+    // Sniper trait
+    if (opp.traits?.includes('sniper') && hints.length < 2) {
+      push('warn', I18N.t('ui.hints.sniperWarning'));
+    }
+
+    // LF tempo matchup — only show if difference is significant (>10)
+    if (hints.length < 2 && match.squad) {
+      const lf = match.squad.find(p => p.role === 'LF');
+      if (lf) {
+        const diff = lf.stats.tempo - opp.stats.tempo;
+        if (diff >= 10) {
+          push('good', I18N.t('ui.hints.lfTempoAdvantage', { name: lf.name }));
+        } else if (diff <= -10) {
+          push('warn', I18N.t('ui.hints.lfTempoDisadvantage'));
+        }
+      }
+    }
+
+    // Presser opp — build-up disruption incoming
+    if (hints.length < 2 && opp.traits?.includes('presser_opp')) {
+      push('warn', I18N.t('ui.hints.presserOppActive'));
+    }
+  }
+
+  if (phase === 'halftime') {
+    // Score context
+    const deficit = match.scoreOpp - match.scoreMe;
+    const lead = match.scoreMe - match.scoreOpp;
+    if (deficit >= 2) {
+      push('warn', I18N.t('ui.hints.scoreTrailing'));
+    } else if (lead >= 2) {
+      push('good', I18N.t('ui.hints.scoreLeading'));
+    }
+
+    // Pressing performance
+    if (hints.length < 2 && (match._htPressingBlocks || 0) > 0) {
+      push('info', I18N.t('ui.hints.pressingBlocked', { n: match._htPressingBlocks }));
+    }
+
+    // Counter performance
+    if (hints.length < 2 && (match._htCountersFired || 0) > 0) {
+      push('info', I18N.t('ui.hints.countersFired', { n: match._htCountersFired }));
+    }
+
+    // Squad form auffälligkeiten
+    if (hints.length < 2 && match.squad) {
+      const hotPlayers = match.squad.filter(p => (p.form || 0) >= 2);
+      const crisisPlayers = match.squad.filter(p => (p.form || 0) <= -2);
+      if (crisisPlayers.length > 0) {
+        push('warn', I18N.t('ui.hints.squadInCrisis'));
+      } else if (hotPlayers.length >= 2) {
+        push('good', I18N.t('ui.hints.squadInForm'));
+      }
+    }
+
+    // Clutch opponent surge coming in 2nd half
+    if (hints.length < 2 && opp.traits?.includes('clutch_opp')) {
+      push('warn', I18N.t('ui.hints.clutchOppLate'));
+    }
+  }
+
+  if (phase === 'final') {
+    // Score context
+    const deficit = match.scoreOpp - match.scoreMe;
+    const lead = match.scoreMe - match.scoreOpp;
+    if (deficit > 0) {
+      push('warn', I18N.t('ui.hints.scoreTrailing'));
+    } else if (lead > 0) {
+      push('good', I18N.t('ui.hints.scoreLeading'));
+    }
+
+    // Legendary on bench
+    if (hints.length < 2 && typeof getBench === 'function') {
+      const bench = getBench();
+      const leg = bench.find(p => p.isLegendary);
+      if (leg) {
+        push('info', I18N.t('ui.hints.finalLegendaryOnBench', { name: leg.name }));
+      }
+    }
+
+    // Active tactic synergy with final options
+    if (hints.length < 2 && match.activeTacticTags?.length) {
+      const tags = new Set(match.activeTacticTags);
+      if (tags.has('pressing') || tags.has('aggressiv')) {
+        push('info', I18N.t('ui.hints.tacticSynergyKickoff'));
+      }
+    }
+  }
+
+  return hints;
+}
+
 const UI = {
   showScreen(id) {
     $$('.screen').forEach(s => s.classList.remove('active'));
@@ -431,7 +550,6 @@ const UI = {
     const myBR   = s.myBuildups ? Math.round(s.myBuildupsSuccess / s.myBuildups * 100) : null;
     const poss   = s.possRounds ? Math.round((s.possAccum / s.possRounds) * 100) : 50;
 
-    // Active mechanic tags carrying into 2nd half
     const mechanics = [];
     if (match.autoCounterRoundsLeft > 0) mechanics.push({ icon:'⚡', label: I18N.t('ui.ht.mechanicCounter') });
     if (match.pressingRoundsLeft    > 0) mechanics.push({ icon:'🏃', label: I18N.t('ui.ht.mechanicPressing') });
@@ -440,7 +558,6 @@ const UI = {
     if (match.flankRoundsLeft       > 0) mechanics.push({ icon:'🏃', label: I18N.t('ui.ht.mechanicFlank') });
     if (match._rallyActive)              mechanics.push({ icon:'💢', label: I18N.t('ui.ht.mechanicRally') });
 
-    // What the mechanics actually did in the first half
     const happened = [];
     if ((match._htPressingBlocks || 0) > 0)
       happened.push(`🛡 ${I18N.t('ui.ht.pressBlocked', { n: match._htPressingBlocks })}`);
@@ -451,8 +568,6 @@ const UI = {
 
     const panel = el('div', { class:'interrupt-panel ht-summary' }, [
       el('div', { class:'ip-title' }, [opts.title || I18N.t('ui.ht.title')]),
-
-      // Score + possession strip
       el('div', { class:'ht-score-strip' }, [
         el('div', { class:'ht-score-me' }, [String(match.scoreMe)]),
         el('div', { class:'ht-score-mid' }, [
@@ -463,8 +578,6 @@ const UI = {
         ]),
         el('div', { class:'ht-score-opp' }, [String(match.scoreOpp)])
       ]),
-
-      // 4 key numbers — own values only, no colour coding, no opponent comparison
       el('div', { class:'ht-stats-row' }, [
         el('div', { class:'ht-stat' }, [
           el('div', { class:'ht-stat-val' }, [`${s.myShots}`]),
@@ -483,13 +596,9 @@ const UI = {
           el('div', { class:'ht-stat-label' }, [I18N.t('ui.statsPanel.saves')])
         ])
       ]),
-
-      // What mechanics fired — only shown if something actually happened
       happened.length ? el('div', { class:'ht-happened' },
         happened.map(h => el('div', { class:'ht-happened-item' }, [h]))
       ) : null,
-
-      // Active mechanics carrying into 2nd half
       mechanics.length ? el('div', { class:'ht-mechanics' }, [
         el('div', { class:'ht-mechanics-title' }, [I18N.t('ui.ht.activeIntoSecondHalf')]),
         ...mechanics.map(m => el('div', { class:'ht-mechanic-tag' }, [m.icon + ' ' + m.label]))
@@ -498,11 +607,62 @@ const UI = {
     return panel;
   },
 
-  showInterrupt(title, subtitle, options, onPick, match, phase) {
+  // ─── renderHintBox ────────────────────────────────────────────────────────
+  // Renders up to 2 contextual hints above the choice list.
+  // hint.type: 'good' (green) | 'warn' (red) | 'info' (blue)
+  //
+  // @param {Array} hints — array of { type, text }
+  // @returns {HTMLElement|null}
+
+  renderHintBox(hints) {
+    if (!hints || !hints.length) return null;
+    const box = el('div', { class: 'hint-box' });
+    for (const hint of hints.slice(0, 2)) {
+      const line = el('div', { class: `hint-line hint-${hint.type}` }, [hint.text]);
+      box.appendChild(line);
+    }
+    return box;
+  },
+
+  // ─── showInterrupt ────────────────────────────────────────────────────────
+  // Extended: accepts optional hints array and isEvent flag (via phase).
+  // Event modals get gold accent border + 'SITUATION' header styling.
+  //
+  // @param {string}   title
+  // @param {string}   subtitle
+  // @param {Array}    options
+  // @param {Function} onPick
+  // @param {Object}   match
+  // @param {string}   phase    — 'kickoff'|'halftime'|'final'|'halftime_focus'|'halftime_sub'|'event'
+  // @param {Array}    hints    — optional array of { type, text }
+
+  showInterrupt(title, subtitle, options, onPick, match, phase, hints) {
     const modal = $('#interrupt-modal');
     modal.innerHTML = '';
-    modal.appendChild(el('h2', {}, [title]));
+
+    const isEvent = phase === 'event';
+    const isFocusSub = phase === 'halftime_focus' || phase === 'halftime_sub';
+
+    // ── Event modal: gold accent header ──────────────────────────────────
+    if (isEvent) {
+      modal.classList.add('interrupt-modal--event');
+      const eventHeader = el('div', { class: 'event-modal-header' }, [
+        el('div', { class: 'event-modal-badge' }, ['⚡ ' + I18N.t('ui.flow.eventTitle')]),
+        el('h2', { class: 'event-modal-title' }, [title])
+      ]);
+      modal.appendChild(eventHeader);
+    } else {
+      modal.classList.remove('interrupt-modal--event');
+      modal.appendChild(el('h2', {}, [title]));
+    }
+
     modal.appendChild(el('div', { class:'sub' }, [subtitle]));
+
+    // ── Hints — rendered before choice list ──────────────────────────────
+    const hintBox = UI.renderHintBox(hints);
+    if (hintBox) modal.appendChild(hintBox);
+
+    // ── Choice list ───────────────────────────────────────────────────────
     const list = el('div', { class:'choice-list' });
     options.forEach(opt => {
       const btn = el('button', { class:'choice' }, [
@@ -517,13 +677,12 @@ const UI = {
     });
     modal.appendChild(list);
 
-    if (match) {
+    // ── Summary panel: halftime + final only, not for focus/sub/event ────
+    if (match && !isFocusSub && !isEvent) {
       if (phase === 'halftime' || phase === 'final') {
-        // ── Halftime + Final: show match summary panel ───────────────────────
         const title = phase === 'final' ? I18N.t('ui.flow.finalTitle') : undefined;
         modal.appendChild(UI.renderHalftimeSummary(match, { title }));
       }
-      // ── Kickoff: no panels — no data yet ────────────────────────────────
     }
 
     $('#interrupt-overlay').classList.add('active');
@@ -593,6 +752,7 @@ const UI = {
   showEvolution(player, options, onPick) {
     const modal = $('#interrupt-modal');
     modal.innerHTML = '';
+    modal.classList.remove('interrupt-modal--event');
     modal.appendChild(el('h2', { style:{ color:'var(--gold)' } }, [I18N.t('ui.evolution.title')]));
     modal.appendChild(el('div', { class:'sub' }, [I18N.t('ui.evolution.reachedLevel', { name: player.name, role: DATA.roles.find(r=>r.id===player.role)?.label, level: player.level })]));
     const opts = el('div', { class:'evo-options' });
@@ -640,8 +800,6 @@ const UI = {
         [I18N.t('ui.result.sacrificeNote', { name: match._sacrificeVictim.name })]) : null
     ]));
     if (match) {
-		
-	     // ── Match log viewer — collapsible, replaces team stats ───────────────
       const logEntries = (window.getState?.()?._lastMatchLog) || [];
       if (logEntries.length) {
         const logWrap = el('div', { style:{ marginBottom:'16px' } });
@@ -663,7 +821,7 @@ const UI = {
         logWrap.appendChild(logToggle);
         logWrap.appendChild(logBody);
         content.appendChild(logWrap);
-      }	
+      }
       const s = match.stats;
       const myAccuracy = s.myShots ? Math.round(s.myShotsOnTarget / s.myShots * 100) : 0;
       const oppAccuracy = s.oppShots ? Math.round(s.oppShotsOnTarget / s.oppShots * 100) : 0;
@@ -682,8 +840,7 @@ const UI = {
       ]);
       content.appendChild(statsPanel);
 
- 
-      const perfTitle = el('div', { class:'card-title', style:{ marginTop:'16px' , display:'none' } }, [I18N.t('ui.result.players')]);
+      const perfTitle = el('div', { class:'card-title', style:{ marginTop:'16px', display:'none' } }, [I18N.t('ui.result.players')]);
       const perfList = el('div', { class:'result-perf-list' });
       for (const p of match.squad) {
         const xp = p._lastMatchXp || 0;
@@ -724,4 +881,5 @@ const UI = {
   }
 };
 
+window.buildContextHint = buildContextHint;
 window.UI = UI;
