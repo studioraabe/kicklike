@@ -193,10 +193,6 @@ function teamStrengthLabel(teamStats) {
 }
 
 // ─── Synergy Bonus ───────────────────────────────────────────────────────────
-// Fires at most once per attack. At most 2 players contribute.
-// A player only synergizes if their role fits the active tactic style.
-// Weak role matches (1 shared tag) only trigger 35% of the time.
-// Total bonus capped at +6% regardless of team size.
 function computeSynergyBonus(squad, activeTacticTags) {
   if (!activeTacticTags || !activeTacticTags.length) return { bonus: 0, logLines: [] };
 
@@ -744,36 +740,83 @@ function computeOppStats(opp, role, match) {
   dispatchTrigger('oppStatCompute', ctx);
   return base;
 }
+
 const OPP_TRAITS = Object.entries(localeData().oppTraits || {}).map(([id, def]) => ({ id, ...def }));
+
+// ─── Opponent trait effect with optional log messages ─────────────────────────
+// Each call site passes a `point` string. When a trait fires visibly at that
+// point the function pushes a human-readable message into ctx.logMsgs so the
+// caller can flush it to the match log.  Log messages are only generated once
+// per trait per match to avoid spam (tracked via match._oppTraitLogged).
 function applyOppTraitEffect(opp, match, point, ctx={}) {
   if (!opp.traits) return ctx;
+
+  if (!ctx.logMsgs) ctx.logMsgs = [];
+
+  // Helper: fire a log message once per trait-point combo per match
+  const once = (key, msgPath, vars={}) => {
+    if (!match._oppTraitLogged) match._oppTraitLogged = {};
+    const token = key + '@' + point;
+    if (match._oppTraitLogged[token]) return;
+    match._oppTraitLogged[token] = true;
+    ctx.logMsgs.push(I18N.t(msgPath, vars));
+  };
+
   for (const traitId of opp.traits) {
     const t = OPP_TRAITS.find(x => x.id === traitId);
     if (!t) continue;
+
+    // ── sturm: accurate shots ────────────────────────────────────────────────
     if (point === 'oppShotChance') {
-      if (traitId === 'sturm')  ctx.bonus = (ctx.bonus || 0) + 0.08;
-      if (traitId === 'sniper') ctx.bonus = (ctx.bonus || 0) + 0.15;
+      if (traitId === 'sturm') {
+        ctx.bonus = (ctx.bonus || 0) + 0.08;
+        once('sturm', 'ui.log.oppTrait.sturmShot', { name: opp.name });
+      }
+      if (traitId === 'sniper') {
+        ctx.bonus = (ctx.bonus || 0) + 0.15;
+        once('sniper', 'ui.log.oppTrait.sniperShot', { name: opp.name });
+      }
     }
+
+    // ── riegel: harder to save ───────────────────────────────────────────────
     if (point === 'savePenalty') {
-      if (traitId === 'riegel') ctx.penalty = (ctx.penalty || 0) + 0.05;
+      if (traitId === 'riegel') {
+        ctx.penalty = (ctx.penalty || 0) + 0.05;
+        once('riegel', 'ui.log.oppTrait.riegelDeny', { name: opp.name });
+      }
     }
+
+    // ── presser_opp: disrupts our build-up ───────────────────────────────────
     if (point === 'ownBuildupChance') {
-      if (traitId === 'presser_opp') ctx.malus = (ctx.malus || 0) + 0.10;
+      if (traitId === 'presser_opp') {
+        ctx.malus = (ctx.malus || 0) + 0.10;
+        // Log only when it actually costs us — checked by caller after rand()
+        ctx._presserActive = true;
+      }
     }
+
+    // ── clutch_opp: late-game surge ──────────────────────────────────────────
     if (point === 'lateGameBoost') {
       if (traitId === 'clutch_opp' && match.round >= 5) {
         ctx.offense = (ctx.offense || 0) + 10;
-        ctx.tempo = (ctx.tempo || 0) + 5;
+        ctx.tempo   = (ctx.tempo   || 0) + 5;
+        once('clutch_opp', 'ui.log.oppTrait.clutchSurge', { name: opp.name });
       }
     }
+
+    // ── ironwall: early-game defensive wall ──────────────────────────────────
     if (point === 'earlyDefense') {
       if (traitId === 'ironwall' && match.round <= 2) {
         ctx.defense = (ctx.defense || 0) + 10;
+        once('ironwall', 'ui.log.oppTrait.ironwallEarly', { name: opp.name });
       }
     }
+
+    // ── konter_opp: instant counter on our turnover ──────────────────────────
     if (point === 'counterAttack') {
       if (traitId === 'konter_opp' && rand() < 0.30) {
         ctx.triggered = true;
+        // log emitted at call site via oppBlitzCounter key (already exists)
       }
     }
   }
@@ -781,8 +824,6 @@ function applyOppTraitEffect(opp, match, point, ctx={}) {
 }
 
 // ─── Opponent generation ──────────────────────────────────────────────────────
-// Steeper power curve so team stats and XP progression matter.
-// MD1: ~295 power. MD15: ~530 power. Boss bonus: +55.
 function generateOpponent(matchNumber) {
   const isBoss = CONFIG.bossMatches.includes(matchNumber);
   const name = pick(DATA.opponents.prefixes) + pick(DATA.opponents.places);
@@ -878,6 +919,10 @@ async function startMatch(squad, opp, onEvent) {
     guaranteedFirstBuildup: false,
     _htPressingBlocks: 0,
     _htCountersFired: 0,
+    _oppTraitLogged: {},
+    _tacticFit: null,
+    _tacticMisfit: null,
+    _fatigue: 0,
     stats: {
       myShots: 0, myShotsOnTarget: 0, myBuildups: 0, myBuildupsSuccess: 0,
       oppShots: 0, oppShotsOnTarget: 0, oppBuildups: 0, oppBuildupsSuccess: 0,
@@ -935,6 +980,7 @@ async function startMatch(squad, opp, onEvent) {
       }
     }
 
+    // ── Opponent late-game / early-defense trait boosts ──────────────────────
     const lateCtx = applyOppTraitEffect(match.opp, match, 'lateGameBoost', {});
     const earlyCtx = applyOppTraitEffect(match.opp, match, 'earlyDefense', {});
     match.opp._roundBuffs = {
@@ -942,6 +988,10 @@ async function startMatch(squad, opp, onEvent) {
       tempo:    (lateCtx.tempo || 0),
       defense:  (earlyCtx.defense || 0)
     };
+    // Flush any trait log messages from these checks
+    for (const msg of (lateCtx.logMsgs || [])) await log(onEvent, 'trigger', msg);
+    for (const msg of (earlyCtx.logMsgs || [])) await log(onEvent, 'trigger', msg);
+
     if (match.opp.traits?.includes('lucky') && !match.opp._luckyUsed && r >= 2 && rand() < 0.25) {
       match.opp._luckyUsed = true;
       match._oppLuckyPending = true;
@@ -959,6 +1009,13 @@ async function startMatch(squad, opp, onEvent) {
         .map(([k,v]) => `${k.substring(0,3).toUpperCase()} ${v>0?'+':''}${v}`)
         .join('  ');
       await log(onEvent, 'decision', I18N.t('ui.log.kickoffChoice', { name: tactic.name }) + (buffStr ? `  [${buffStr}]` : ''));
+      // ── Tactic fit/misfit feedback ─────────────────────────────────────────
+      if (match._tacticFit === true) {
+        await log(onEvent, 'trigger', I18N.t('ui.log.tacticFit', { name: tactic.name }));
+      } else if (match._tacticMisfit) {
+        const mf = match._tacticMisfit;
+        if (mf.logKey) await log(onEvent, 'trigger', I18N.t(mf.logKey, { opp: opp.name }));
+      }
       await dispatchTacticTrigger(tactic.tacticTrigger, match, squad, onEvent);
     }
     if (r === 4) {
@@ -1005,7 +1062,6 @@ async function startMatch(squad, opp, onEvent) {
     }
 
     await log(onEvent, 'round-header', I18N.t('ui.log.roundHeader', { round: r }));
-    // ── Contextual round intro — situation-aware ───────────────────────────
     if (r > 1) {
       const me = match.scoreMe, opp2 = match.scoreOpp;
       let introKey;
@@ -1078,6 +1134,22 @@ async function startMatch(squad, opp, onEvent) {
       match._aggressiveFatigue = (match._aggressiveFatigue || 0) + 0.04;
     }
 
+    // ── Cumulative fatigue from pressing/aggressive tactic ────────────────
+    // Misfit amplifies the fatigue rate — a slow team pressing hard burns out faster.
+    if (match.aggressiveRoundsLeft > 0 || match.pressingRoundsLeft > 0) {
+      const mf = match._tacticMisfit;
+      const fatigueMult = mf?.effects?.fatigueMult || 1.0;
+      match._fatigue = Math.min(0.30, (match._fatigue || 0) + 0.022 * fatigueMult);
+    }
+    // Pressing collapse: misfit pressing stops working after round 2,
+    // log once when it happens
+    if (match._tacticMisfit?.effects?.pressingCollapseRound &&
+        match.round === match._tacticMisfit.effects.pressingCollapseRound + 1 &&
+        !match._pressingCollapsedLogged) {
+      match._pressingCollapsedLogged = true;
+      await log(onEvent, 'trigger', I18N.t('ui.log.misfitPressingCollapse'));
+    }
+
     if (myPoss >= 0.60)      await log(onEvent, 'decision', pickLog('ui.log.possessionPressure', { pct: Math.round(myPoss*100) }));
     else if (myPoss <= 0.40) await log(onEvent, 'decision', pickLog('ui.log.possessionDominated', { pct: Math.round(myPoss*100) }));
 
@@ -1113,8 +1185,15 @@ async function startMatch(squad, opp, onEvent) {
       match.pouncePending = false;
       const lfForCounter = squad.find(p => p.role === 'LF');
       bumpPlayerStat(lfForCounter, 'counters');
+      // Counter misfit: no fast runner — counter stalls, half the benefit
+      const counterMisfitMult = match._tacticMisfit?.effects?.counterBonusMult || 1.0;
+      const counterBonus = 0.15 * counterMisfitMult;
+      if (counterMisfitMult < 1.0 && !match._counterMisfitLogged) {
+        match._counterMisfitLogged = true;
+        await log(onEvent, 'trigger', I18N.t('ui.log.misfitCounterStall'));
+      }
       await log(onEvent, 'trigger', I18N.t('ui.log.counter'));
-      await attemptAttack(match, squad, onEvent, { bonusAttack: 0.15 });
+      await attemptAttack(match, squad, onEvent, { bonusAttack: counterBonus });
     }
 
     if (match.rallyReactionPending) {
@@ -1321,6 +1400,39 @@ function applyTactic(match, tactic, phase, squad, onEvent) {
     }
   }
 
+  // ── Tactic fit evaluation ─────────────────────────────────────────────────
+  // Only evaluated on kickoff phase — that's where the structural decision is.
+  // Halftime and final are reactive by design and never penalised.
+  if (phase === 'kickoff' && typeof TACTIC_FIT !== 'undefined') {
+    const fitDef = TACTIC_FIT[tactic.id];
+    if (fitDef) {
+      const currentSquad = match.squad || (squad || []);
+      const isFit = fitDef.fit(currentSquad, match.opp, match);
+      const oppBreached = fitDef.opponentBreachFn ? fitDef.opponentBreachFn(match.opp) : false;
+
+      if (isFit && !oppBreached) {
+        // Full tactic fit — bonus applied as a multiplier on the layer stats
+        match._tacticFit = true;
+        match._tacticMisfit = null;
+        for (const k of Object.keys(layer.stats)) {
+          if (layer.stats[k] > 0) layer.stats[k] = Math.round(layer.stats[k] * (1 + CONFIG.tacticFitBonus));
+        }
+      } else {
+        // Misfit or opponent breaches the tactic
+        match._tacticFit = false;
+        match._tacticMisfit = {
+          effects: fitDef.misfitEffects || {},
+          logKey: fitDef.misfitKey,
+          oppBreached
+        };
+        // Positive stat buffs reduced by misfit penalty
+        for (const k of Object.keys(layer.stats)) {
+          if (layer.stats[k] > 0) layer.stats[k] = Math.round(layer.stats[k] * (1 - CONFIG.tacticMisfitPenalty));
+        }
+      }
+    }
+  }
+
   match.buffLayers.push(layer);
   recomputeTeamBuffs(match);
 }
@@ -1383,21 +1495,43 @@ async function attemptAttack(match, squad, onEvent, extra={}) {
     match.guaranteedFirstBuildup = false;
   }
 
-  // ── Silent synergy: bonus only when PM built up AND scorer is ready ────────
-  // No log line — shows up woven into the goal text if it fires
   const synergyActive = match._lastBuildupByPM && (pm !== st);
   if (synergyActive && rand() < 0.55) {
     ctx.attackBonus += 0.04;
     ctx._synergyPair = { a: pm, b: st };
   }
-  match._lastBuildupByPM = false; // reset; set to true after successful buildup below
+  match._lastBuildupByPM = false;
 
   dispatchTrigger('ownAttack', ctx);
   await flushTriggerLog(match, onEvent);
+
+  // ── presser_opp build-up malus ────────────────────────────────────────────
   const oppPressCtx = applyOppTraitEffect(match.opp, match, 'ownBuildupChance', { malus: 0 });
+
+  // ── Tactic misfit: buildup penalty ───────────────────────────────────────
+  // defensive misfit (no vision PM) and possession misfit both reduce buildup.
+  // pressing collapse after round 2 if team lacked tempo.
+  let misfitBuildupMalus = 0;
+  const mf = match._tacticMisfit;
+  if (mf) {
+    if (mf.effects.buildupChanceMult) {
+      // defensive misfit: PM has no space to operate
+      misfitBuildupMalus = (1 - mf.effects.buildupChanceMult) * 0.30;
+    }
+    if (mf.effects.pressingCollapseRound && match.round > mf.effects.pressingCollapseRound) {
+      // pressing collapsed — now we're chasing with tired legs
+      misfitBuildupMalus += 0.12;
+    }
+  }
+
+  // ── Fatigue effect on buildup (cumulative from pressing/aggressive) ───────
+  const fatigueBuildupMalus = match._fatigue * 0.4;
+
   const buildupChance = clamp(
-    0.30 + (pmStats.vision - 55) * 0.006 + (match.nextBuildupBonus || 0) + (ctx.attackBonus * 0.5)
-    - (oppPressCtx.malus || 0),
+    0.30 + (pmStats.vision - 55) * CONFIG.buildupVisionScale + (match.nextBuildupBonus || 0) + (ctx.attackBonus * 0.5)
+    - (oppPressCtx.malus || 0)
+    - misfitBuildupMalus
+    - fatigueBuildupMalus,
     0.05, 0.92
   );
   match.nextBuildupBonus = 0;
@@ -1405,8 +1539,12 @@ async function attemptAttack(match, squad, onEvent, extra={}) {
   bumpPlayerStat(pm, 'buildups');
 
   const buildupOk = ctx.guaranteedBuildup || rand() < buildupChance;
+  match._lastBuildupFailed = !buildupOk;
   if (!buildupOk) {
-    // ── Contextual reason for buildup failure ───────────────────────────────
+    // Log presser_opp only when it visibly contributed to a failed build-up
+    if (oppPressCtx._presserActive && rand() < 0.60) {
+      await log(onEvent, 'trigger', I18N.t('ui.log.oppTrait.presserDisrupt', { name: match.opp.name }));
+    }
     let buildFailKey = 'logs.ownBuildFail';
     if (match.aggressiveRoundsLeft > 0 && rand() < 0.55) {
       await log(onEvent, 'decision', pickLog('ui.log.aggressiveError'));
@@ -1425,7 +1563,7 @@ async function attemptAttack(match, squad, onEvent, extra={}) {
   }
   match.stats.myBuildupsSuccess++;
   bumpPlayerStat(pm, 'buildupsOk');
-  match._lastBuildupByPM = true; // enables synergy combo on the shot that follows
+  match._lastBuildupByPM = true;
   dispatchTrigger('ownBuildupSuccess', ctx);
   await flushTriggerLog(match, onEvent);
   await log(onEvent, '', `R${match.round}: ${pickLog('logs.ownBuildSuccess', { pm: pm?.name || 'PM', lf: lf?.name || 'Runner', vt: vt?.name || 'Defender' })}`);
@@ -1488,7 +1626,6 @@ async function recordOwnGoal(match, squad, onEvent, scorer, ctx) {
   match.scoreMe += goalValue;
   scorer.goals += 1;
   bumpPlayerStat(scorer, 'goals');
-  // ── Synergy combo woven into the goal line ───────────────────────────────
   if (ctx._synergyPair && ctx._synergyPair.a && ctx._synergyPair.b && !suffix) {
     const combo = pickLog('ui.log.synergyCombo', { a: ctx._synergyPair.a.name, b: ctx._synergyPair.b.name });
     await log(onEvent, 'goal-me', I18N.t('ui.log.ownGoalCombo', { name: scorer.name, combo, me: match.scoreMe, opp: match.scoreOpp }));
@@ -1549,7 +1686,6 @@ async function attemptOppAttack(match, squad, onEvent) {
   const twStats = tw ? computePlayerStats(tw, match) : { defense: 55 };
 
   const rb = opp._roundBuffs || {};
-  // ── Pressing bypassed: open space behind the line → opp gets a run bonus ──
   let pressBreakBonus = 0;
   if (match.pressingRoundsLeft > 0) {
     pressBreakBonus = 0.12 + rand() * 0.08;
@@ -1581,10 +1717,44 @@ async function attemptOppAttack(match, squad, onEvent) {
                  + (match.nextSaveBonus || 0)
                  - pressBreakBonus;
   if (match.teamBuffs?.saveBonus) saveChance += match.teamBuffs.saveBonus;
+
+  // ── oppShotChance traits (sturm, sniper) ──────────────────────────────────
   const oppShotCtx = applyOppTraitEffect(opp, match, 'oppShotChance', { bonus: 0 });
+  for (const msg of (oppShotCtx.logMsgs || [])) await log(onEvent, 'trigger', msg);
+
+  // ── savePenalty traits (riegel) ───────────────────────────────────────────
   const oppSaveCtx = applyOppTraitEffect(opp, match, 'savePenalty', { penalty: 0 });
+  for (const msg of (oppSaveCtx.logMsgs || [])) await log(onEvent, 'trigger', msg);
+
   saveChance -= (oppShotCtx.bonus || 0);
   saveChance -= (oppSaveCtx.penalty || 0);
+
+  // ── Tactic misfit: defensive vulnerability ────────────────────────────────
+  // tempo misfit: open space behind the line — opponent has an easier shot
+  // possession misfit: ball loss leads to a more dangerous counter position
+  // aggressive misfit vs pacey opponent: counter comes faster, harder to recover
+  const misfitDef = match._tacticMisfit;
+  if (misfitDef) {
+    if (misfitDef.effects.oppCounterBonus) {
+      // tempo game against faster opponent — space behind exposed
+      saveChance -= misfitDef.effects.oppCounterBonus;
+    }
+    if (misfitDef.effects.lossConsequenceMult && match._lastBuildupFailed) {
+      // possession misfit: ball was lost, now they come with numbers
+      saveChance -= 0.10 * (misfitDef.effects.lossConsequenceMult - 1);
+    }
+    if (misfitDef.effects.paceyCounterBonus && opp.special?.id === 'pacey') {
+      // aggressive misfit vs pacey opponent: worst case
+      saveChance -= misfitDef.effects.paceyCounterBonus;
+    }
+  }
+
+  // ── Fatigue effect on defense ─────────────────────────────────────────────
+  // Tired legs mean slower tracking back and weaker positioning
+  if (match._fatigue > 0) {
+    saveChance -= match._fatigue * 0.35;
+  }
+
   saveChance = clamp(saveChance, 0.12, 0.92);
   match.nextSaveBonus = 0;
 

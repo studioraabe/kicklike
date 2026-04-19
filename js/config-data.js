@@ -3,16 +3,163 @@ const CONFIG = {
   rounds: 6,
   teamSize: 5,
   maxBench: 2,
-  evolutionLevels: [5, 9, 13],   // was [4, 7, 10] — evolutions come later
-  xpPerWin: 3,                    // was 4
-  xpPerDraw: 1,                   // was 2
-  xpPerLoss: 0,                   // was 1
+  evolutionLevels: [5, 9, 13],
+  xpPerWin: 3,
+  xpPerDraw: 1,
+  xpPerLoss: 0,
   bossMatches: [5, 10, 15],
-  attackBase: 0.32,               // was 0.38 — harder to score by default
-  attackStatScale: 0.005,         // was 0.006 — stat edge matters more relatively
-  defenseStatScale: 0.005,
-  tempoAdvantage: 0.03,           // was 0.04
+  attackBase: 0.32,
+  attackStatScale: 0.008,       // was 0.005 — stat advantage matters more
+  defenseStatScale: 0.008,      // was 0.005
+  tempoAdvantage: 0.05,         // was 0.03 — tempo matchup more decisive
+  buildupVisionScale: 0.009,    // was implicit 0.006 — vision drives buildup more
+  tacticFitBonus: 0.12,         // bonus multiplier when tactic fits squad/opponent
+  tacticMisfitPenalty: 0.14,    // penalty when tactic conditions not met
 };
+
+// ─── Tactic fit conditions ────────────────────────────────────────────────────
+// Each entry defines:
+//   fit(squad, opp, match)   → true = conditions met, full effect
+//   misfit(squad, opp, match) → description of what breaks down
+//   misfitEffects            → what happens mechanically when conditions not met
+//
+// Thresholds are set relative to a realistic mid-run squad (avg ~55-65 stats).
+// Early run: many misfits — player learns what their squad can do.
+// Late run after evolutions: stats grow to carry tactics properly.
+
+const TACTIC_FIT = {
+  // ── Aggressive Start ──────────────────────────────────────────────────────
+  // Real football: high press + attack surge burns legs. Against pace, lethal.
+  // A slow squad pushing aggressively gets punished on the counter.
+  aggressive: {
+    fit: (squad, opp) => {
+      const lf = squad.find(p => p.role === 'LF');
+      return lf && lf.stats.tempo >= 62;
+    },
+    misfitKey: 'tactic.misfit.aggressiveSlow',   // i18n key for log line
+    misfitEffects: {
+      fatigueMult: 1.6,        // fatigue builds faster
+      counterVulnMult: 1.4,    // counter vulnerability amplified
+      paceyCounterBonus: 0.12  // extra penalty vs pacey/high-tempo opponents
+    }
+  },
+
+  // ── Defensive Start ───────────────────────────────────────────────────────
+  // Real football: deep block works if your striker can hold the ball and
+  // your playmaker can launch counters. Without vision, you just sit deep
+  // and never threaten.
+  defensive: {
+    fit: (squad, opp) => {
+      const pm = squad.find(p => p.role === 'PM');
+      return pm && pm.stats.vision >= 58;
+    },
+    misfitKey: 'tactic.misfit.defensiveNoVision',
+    misfitEffects: {
+      buildupChanceMult: 0.55,  // buildup severely reduced — no outlet
+      pmVisionMalus: 12         // PM loses vision (cramped deep formation)
+    }
+  },
+
+  // ── Balanced ─────────────────────────────────────────────────────────────
+  // Real football: always a viable baseline. No misfit condition.
+  // Weaker ceiling but no floor risk — correct choice for an unknown opponent.
+  balanced: {
+    fit: () => true,
+    misfitKey: null,
+    misfitEffects: {}
+  },
+
+  // ── Tempo Game ────────────────────────────────────────────────────────────
+  // Real football: only works if YOUR pace exceeds theirs. Playing tempo
+  // against a faster team opens space behind your own lines.
+  tempo: {
+    fit: (squad, opp) => {
+      const lf = squad.find(p => p.role === 'LF');
+      const lfTempo = lf ? lf.stats.tempo : 50;
+      return lfTempo > opp.stats.tempo + 8;
+    },
+    misfitKey: 'tactic.misfit.tempoOutpaced',
+    misfitEffects: {
+      oppCounterBonus: 0.15,    // opponent exploits open space
+      composureMalusExtra: 8    // team loses nerve faster when outrun
+    }
+  },
+
+  // ── Pressing ─────────────────────────────────────────────────────────────
+  // Real football: pressing is fitness-dependent, not defensive shape.
+  // A team without legs can't press for 45 minutes.
+  // Vision breaks pressing — a smart opponent finds the man free.
+  pressing: {
+    fit: (squad, opp) => {
+      const avgTempo = squad.reduce((s, p) => s + p.stats.tempo, 0) / squad.length;
+      return avgTempo >= 60;
+    },
+    misfitKey: 'tactic.misfit.pressingNoLegs',
+    misfitEffects: {
+      pressingCollapseRound: 3,  // pressing breaks down after round 2 instead of holding
+      fatigueMult: 1.8,          // heavy fatigue cost even when it fails
+      visionBreachBonus: 0.10    // high-vision opponents find gaps more often
+    },
+    // Additional context: opponent vision makes pressing less effective regardless
+    opponentBreachFn: (opp) => opp.stats.vision >= 68
+  },
+
+  // ── Possession ───────────────────────────────────────────────────────────
+  // Real football: you need football intelligence (vision) to keep the ball
+  // under pressure. Without it, you just give it away in dangerous positions.
+  // Against a pressing/counter opponent: ball loss is catastrophic.
+  possession: {
+    fit: (squad, opp) => {
+      const pm = squad.find(p => p.role === 'PM');
+      return pm && pm.stats.vision >= 65;
+    },
+    misfitKey: 'tactic.misfit.possessionNoVision',
+    misfitEffects: {
+      lossConsequenceMult: 2.2,   // ball loss leads to dangerous counter
+      buildupFailCounterChance: 0.45  // failed buildup triggers opp counter
+    },
+    // Additional context: presser/counter opponents make this worse
+    opponentBreachFn: (opp) => opp.traits?.some(t => ['presser_opp', 'konter_opp'].includes(t))
+  },
+
+  // ── Counter Trap ─────────────────────────────────────────────────────────
+  // Real football: counter-attacking needs a fast, clinical runner.
+  // Without pace on the break, the counter stalls and the opponent recovers.
+  // Against a defensive opponent who doesn't attack: no counters to exploit.
+  counter: {
+    fit: (squad, opp) => {
+      const lf = squad.find(p => p.role === 'LF');
+      return lf && lf.stats.tempo >= 65;
+    },
+    misfitKey: 'tactic.misfit.counterNoRunner',
+    misfitEffects: {
+      counterBonusMult: 0.45,    // counter fires but at half effectiveness
+      ownBuildupMalusMult: 0.70  // still sacrificing own attack, less reward
+    },
+    // Defensive opponents reduce counter opportunities
+    opponentBreachFn: (opp) => opp.special?.id === 'defensive'
+  },
+
+  // ── Wing Play ─────────────────────────────────────────────────────────────
+  // Real football: wide play needs a winger who can beat his man.
+  // Against a compact low block (ironwall), width gets nullified.
+  flank_play: {
+    fit: (squad, opp) => {
+      const lf = squad.find(p => p.role === 'LF');
+      return lf && lf.stats.tempo > opp.stats.defense - 5;
+    },
+    misfitKey: 'tactic.misfit.flankCutOut',
+    misfitEffects: {
+      flankRunChanceMult: 0.40,   // flank runs rarely find space
+      oppDefenseBonus: 6          // compact shape neutralises width
+    },
+    // Ironwall trait specifically counters wing play in rounds 1-2
+    opponentBreachFn: (opp) => opp.traits?.includes('ironwall')
+  }
+};
+
+window.TACTIC_FIT = TACTIC_FIT;
+
 const DATA = {
   roles: [
     { id: "TW", label: "Keeper",     focusStat: "defense", desc: "Hält im 1-vs-1" },
@@ -54,7 +201,6 @@ const DATA = {
     "def_wall":        ["enforcer", "bulldozer", "captain_cool"],
     "def_tackle":      ["shark", "terminator", "whirlwind"],
     "def_sweeper":     ["orchestrator", "late_bloomer", "scholar"],
-
     "enforcer":        ["godfather", "hammer", "villain"],
     "bulldozer":       ["freight_train", "big_man", "anchor_man"],
     "captain_cool":    ["ice_man", "oracle", "veteran_voice"],
@@ -67,7 +213,6 @@ const DATA = {
     "pm_regista":      ["metronome", "architect", "whisperer"],
     "pm_press":        ["hunter", "gegenpress", "shadow"],
     "pm_playmaker":    ["maestro_mid", "chess", "conductor_mid"],
-
     "metronome":       ["pendulum", "clockwork", "atomic"],
     "architect":       ["designer", "engineer", "planner"],
     "whisperer":       ["mind_reader", "sensei", "oracle_mid"],
@@ -80,7 +225,6 @@ const DATA = {
     "lf_winger":       ["speedster", "rocket", "freight"],
     "lf_dribbler":     ["magician", "street", "trickster"],
     "lf_box":          ["ironman", "dynamo", "eternal"],
-
     "speedster":       ["lightning", "mach_speed", "sonic"],
     "rocket":          ["launcher", "supersonic", "nasa"],
     "freight":         ["express", "bullet", "warp"],
@@ -93,7 +237,6 @@ const DATA = {
     "st_poacher":      ["assassin", "predator_s", "opportunist"],
     "st_target":       ["cannon", "skyscraper", "brick"],
     "st_false9":       ["ghost", "puzzle", "chameleon"],
-
     "assassin":        ["silent", "killer", "shadow_s"],
     "predator_s":      ["apex_s", "carnivore", "hunter_s"],
     "opportunist":     ["vulture", "scavenger", "gambler"],
@@ -151,6 +294,7 @@ const DATA = {
     "puzzle":        { role:"ST", label:"Puzzle",        boosts:{ offense:+8, vision:+15 },      trait:"puzzle_connect" },
     "chameleon":     { role:"ST", label:"Chamäleon",     boosts:{ offense:+10, vision:+8, tempo:+5 }, trait:"chameleon_adapt" }
   },
+  evoDetails_stage2_placeholder: true,
   traits: {
     "titan_stand":    { name:"Titanenstand",   desc:"Gegner-Abschluss: 30% Chance abwehren wenn Spielstand eng (≤1 Diff)." },
     "fortress_aura":  { name:"Festungs-Aura",  desc:"Verteidiger +6 Defense solange Keeper in Aktion." },
@@ -303,6 +447,7 @@ const DATA = {
     { id:"sacrifice",   tags:["aggressiv","physisch"], name:"Opferlamm",        desc:"Ein Spieler opfert dauerhaft 15 Fokus-Stat für +25 Offense im Team jetzt.", tacticTrigger: "sacrifice_trigger" }
   ]
 };
+
 function deriveStage2Details() {
   const parents = Object.keys(DATA.evolutions);
   for (const parent of parents) {
