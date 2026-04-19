@@ -1,28 +1,61 @@
-// Screen effects module - injected into flow.js logic via UI calls
+// Screen effects module — glowing border frame
 (function() {
-  function createOverlay(id) {
+  function createFrame(id) {
     let el = document.getElementById(id);
     if (!el) {
       el = document.createElement('div');
       el.id = id;
-      el.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:9999;transition:opacity 0.15s;opacity:0;';
+      el.style.cssText = [
+        'position:fixed',
+        'inset:0',
+        'pointer-events:none',
+        'z-index:9999',
+        'opacity:0'
+      ].join(';');
       document.body.appendChild(el);
     }
     return el;
   }
 
-  function flash(color, duration=400) {
-    const ov = createOverlay('fx-flash');
-    ov.style.background = color;
-    ov.style.opacity = '1';
-    setTimeout(() => { ov.style.opacity = '0'; }, duration * 0.3);
+  // glowBlur  — how far the glow bleeds inward (px), soft diffuse halo
+  // glowSpread — hard inner border thickness (px), keep thin
+  function animateFrame(el, color, glowBlur, glowSpread, peakOpacity, rampMs, totalMs) {
+    if (el._fxFrame) cancelAnimationFrame(el._fxFrame);
+
+    el.style.boxShadow = `inset 0 0 ${glowBlur}px ${glowSpread}px ${color}`;
+
+    const start = performance.now();
+
+    function tick(now) {
+      const elapsed = now - start;
+      let t;
+
+      if (elapsed < rampMs) {
+        // sharp ease-out ramp — frame snaps on quickly
+        const p = elapsed / rampMs;
+        t = 1 - Math.pow(1 - p, 2.5);
+      } else if (elapsed < totalMs) {
+        // very gentle ease-in fade — lingers at the edge, drifts away slowly
+        const p = (elapsed - rampMs) / (totalMs - rampMs);
+        t = 1 - Math.pow(p, 2.4);
+      } else {
+        el.style.opacity = '0';
+        el._fxFrame = null;
+        return;
+      }
+
+      el.style.opacity = String(Math.max(0, peakOpacity * t));
+      el._fxFrame = requestAnimationFrame(tick);
+    }
+
+    el._fxFrame = requestAnimationFrame(tick);
   }
 
-  function shake(intensity=6, duration=500) {
+  function shake(intensity, duration) {
     const app = document.getElementById('app');
     if (!app) return;
     const start = Date.now();
-    const step = () => {
+    function step() {
       const t = Date.now() - start;
       if (t >= duration) { app.style.transform = ''; return; }
       const decay = 1 - t / duration;
@@ -30,39 +63,47 @@
       const y = (Math.random() - 0.5) * intensity * decay;
       app.style.transform = `translate(${x}px, ${y}px)`;
       requestAnimationFrame(step);
-    };
+    }
     requestAnimationFrame(step);
   }
 
-  function vignette(color, duration=1200) {
-    const ov = createOverlay('fx-vignette');
-    ov.style.background = `radial-gradient(ellipse at center, transparent 40%, ${color} 100%)`;
-    ov.style.opacity = '1';
-    setTimeout(() => { ov.style.opacity = '0'; }, duration * 0.6);
+  // ── Goal scored ───────────────────────────────────────────────────────────
+  function goalMe() {
+    const el = createFrame('fx-frame');
+    // wider blur, longer tail
+    animateFrame(el, 'rgba(170,255,42,0.90)', 42, 5, 1, 90, 1400);
+    shake(2, 200);
   }
 
-  function goalMe() {
-    flash('rgba(170,255,42,0.22)', 600);
-    vignette('rgba(170,255,42,0.18)', 1200);
-    shake(3, 300);
-  }
+  // ── Goal conceded ─────────────────────────────────────────────────────────
   function goalOpp() {
-    flash('rgba(255,60,110,0.28)', 500);
-    vignette('rgba(255,60,110,0.25)', 1500);
-    shake(7, 500);
+    const el = createFrame('fx-frame');
+    animateFrame(el, 'rgba(255,60,110,0.92)', 38, 6, 1, 60, 1500);
+    shake(5, 340);
   }
+
+  // ── Match won ─────────────────────────────────────────────────────────────
   function winResult() {
-    flash('rgba(170,255,42,0.18)', 800);
-    vignette('rgba(170,255,42,0.12)', 2000);
+    const el = createFrame('fx-frame');
+    animateFrame(el, 'rgba(170,255,42,0.75)', 54, 4, 1, 240, 2600);
   }
+
+  // ── Match lost ────────────────────────────────────────────────────────────
   function lossResult() {
-    vignette('rgba(255,60,110,0.3)', 2500);
-    shake(5, 400);
+    const el = createFrame('fx-frame');
+    animateFrame(el, 'rgba(255,60,110,0.80)', 50, 6, 1, 180, 2800);
+    shake(4, 300);
   }
+
+  // ── Boss warning ──────────────────────────────────────────────────────────
   function bossWarning() {
-    vignette('rgba(255,210,58,0.2)', 1500);
-    flash('rgba(255,210,58,0.15)', 600);
+    const el = createFrame('fx-frame');
+    animateFrame(el, 'rgba(255,210,58,0.80)', 46, 4, 1, 200, 2200);
   }
+
+  // stubs kept for any legacy callers
+  function flash() {}
+  function vignette() {}
 
   window.FX = { goalMe, goalOpp, winResult, lossResult, bossWarning, flash, shake, vignette };
 })();

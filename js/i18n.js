@@ -1,7 +1,7 @@
 (() => {
   const STORAGE_KEY = 'kicklike_lang_v1';
   const registry = {};
-  let currentLang = localStorage.getItem(STORAGE_KEY) || document.documentElement.lang || 'de';
+  let currentLang = localStorage.getItem(STORAGE_KEY) || document.documentElement.lang || 'en';
 
   function getPath(obj, path) {
     return String(path).split('.').reduce((acc, key) => (acc == null ? acc : acc[key]), obj);
@@ -13,7 +13,7 @@
   }
 
   function locale() {
-    return registry[currentLang] || registry.de || Object.values(registry)[0] || {};
+    return registry[currentLang] || registry.en || Object.values(registry)[0] || {};
   }
 
   function t(path, vars = {}) {
