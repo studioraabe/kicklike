@@ -594,10 +594,24 @@ function applyDecision(match, decision, phase, state) {
     if (synergyLogged && conflictLogged) break;
   }
 
-  // Route: tactic phases delegate to existing applyTactic()
+  // Route: tactic phases delegate to existing applyTactic(), then scale the
+  // resulting buff layer by the synergy/conflict multiplier so mult actually
+  // affects gameplay (not just log lines).
   if (phase === 'kickoff' || phase === 'halftime' || phase === 'final') {
     if (typeof applyTactic === 'function') {
+      const layersBefore = (match.buffLayers || []).length;
       applyTactic(match, decision, phase);
+      const layersAfter = (match.buffLayers || []).length;
+      if (layersAfter > layersBefore && ctx.mult !== 1.0) {
+        for (let i = layersBefore; i < layersAfter; i++) {
+          const layer = match.buffLayers[i];
+          if (!layer || !layer.stats) continue;
+          for (const k of Object.keys(layer.stats)) {
+            layer.stats[k] = Math.round(layer.stats[k] * ctx.mult);
+          }
+        }
+        if (typeof recomputeTeamBuffs === 'function') recomputeTeamBuffs(match);
+      }
     }
     return;
   }

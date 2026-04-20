@@ -52,6 +52,7 @@ I18N.registerLocale("en", {
       traitReportTitle: "Where your edge came from",
       traitReportEmpty: "No abilities fired this match.",
       traitReportFires: "{count}×",
+      traitReportPassive: "ACTIVE",
       traitReportImpact: "~{value} pwr",
       traitReportFooter: "Ability impact is estimated from how often each trait fired and its tuned value."
     },

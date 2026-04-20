@@ -15,22 +15,15 @@ function buildContextHint(match, phase, state) {
   const push = (type, text) => { if (hints.length < 2 && text) hints.push({ type, text }); };
 
   if (phase === 'kickoff') {
-    // Boss warning — highest priority
     if (opp.isBoss) {
       push('warn', I18N.t('ui.hints.bossWarning'));
     }
-
-    // Ironwall trait: rounds 1-2 nearly impenetrable
     if (opp.traits?.includes('ironwall')) {
       push('warn', I18N.t('ui.hints.ironwallEarly'));
     }
-
-    // Sniper trait
     if (opp.traits?.includes('sniper') && hints.length < 2) {
       push('warn', I18N.t('ui.hints.sniperWarning'));
     }
-
-    // LF tempo matchup — only show if difference is significant (>10)
     if (hints.length < 2 && match.squad) {
       const lf = match.squad.find(p => p.role === 'LF');
       if (lf) {
@@ -42,15 +35,12 @@ function buildContextHint(match, phase, state) {
         }
       }
     }
-
-    // Presser opp — build-up disruption incoming
     if (hints.length < 2 && opp.traits?.includes('presser_opp')) {
       push('warn', I18N.t('ui.hints.presserOppActive'));
     }
   }
 
   if (phase === 'halftime') {
-    // Score context
     const deficit = match.scoreOpp - match.scoreMe;
     const lead = match.scoreMe - match.scoreOpp;
     if (deficit >= 2) {
@@ -58,18 +48,12 @@ function buildContextHint(match, phase, state) {
     } else if (lead >= 2) {
       push('good', I18N.t('ui.hints.scoreLeading'));
     }
-
-    // Pressing performance
     if (hints.length < 2 && (match._htPressingBlocks || 0) > 0) {
       push('info', I18N.t('ui.hints.pressingBlocked', { n: match._htPressingBlocks }));
     }
-
-    // Counter performance
     if (hints.length < 2 && (match._htCountersFired || 0) > 0) {
       push('info', I18N.t('ui.hints.countersFired', { n: match._htCountersFired }));
     }
-
-    // Squad form auffälligkeiten
     if (hints.length < 2 && match.squad) {
       const hotPlayers = match.squad.filter(p => (p.form || 0) >= 2);
       const crisisPlayers = match.squad.filter(p => (p.form || 0) <= -2);
@@ -79,15 +63,12 @@ function buildContextHint(match, phase, state) {
         push('good', I18N.t('ui.hints.squadInForm'));
       }
     }
-
-    // Clutch opponent surge coming in 2nd half
     if (hints.length < 2 && opp.traits?.includes('clutch_opp')) {
       push('warn', I18N.t('ui.hints.clutchOppLate'));
     }
   }
 
   if (phase === 'final') {
-    // Score context
     const deficit = match.scoreOpp - match.scoreMe;
     const lead = match.scoreMe - match.scoreOpp;
     if (deficit > 0) {
@@ -95,8 +76,6 @@ function buildContextHint(match, phase, state) {
     } else if (lead > 0) {
       push('good', I18N.t('ui.hints.scoreLeading'));
     }
-
-    // Legendary on bench
     if (hints.length < 2 && typeof getBench === 'function') {
       const bench = getBench();
       const leg = bench.find(p => p.isLegendary);
@@ -104,8 +83,6 @@ function buildContextHint(match, phase, state) {
         push('info', I18N.t('ui.hints.finalLegendaryOnBench', { name: leg.name }));
       }
     }
-
-    // Active tactic synergy with final options
     if (hints.length < 2 && match.activeTacticTags?.length) {
       const tags = new Set(match.activeTacticTags);
       if (tags.has('pressing') || tags.has('aggressiv')) {
@@ -155,17 +132,6 @@ const UI = {
     UI.showScreen('screen-draft');
   },
 
-  _buildOppTell(opp) {
-    const parts = [];
-    const locTells = I18N.locale().data?.oppTells || {};
-    if (opp.special?.id && locTells[opp.special.id]) parts.push(locTells[opp.special.id]);
-    for (const traitId of (opp.traits || [])) {
-      if (locTells['trait_' + traitId]) parts.push(locTells['trait_' + traitId]);
-    }
-    if (opp.isBoss) parts.push(I18N.t('ui.labels.bossTell'));
-    return parts.length ? parts[0] : null;
-  },
-
   renderHub() {
     $('#hub-match-num').textContent = state.matchNumber + 1;
     $('#hub-wins').textContent = state.wins;
@@ -198,8 +164,6 @@ const UI = {
     const teamStats = aggregateTeamStats(lineup);
     const teamPower = teamTotalPower(lineup);
     const teamTheme = teamStrengthLabel(teamStats);
-    // ── Intel: effective power breakdown + matchup callouts ──────────────
-    // intel can be null if lineup/opp missing; code below guards with `if (intel)`
     const intel = (typeof buildMatchupIntel === 'function')
       ? buildMatchupIntel(lineup, opp, state)
       : null;
@@ -212,8 +176,6 @@ const UI = {
     else if (teamFormAvg >= 1)  teamFormText = ' · ↑ ' + I18N.t('ui.labels.goodForm');
     else if (teamFormAvg <= -2) teamFormText = ' · ❄ ' + I18N.t('ui.labels.crisis');
     else if (teamFormAvg <= -1) teamFormText = ' · ↓ ' + I18N.t('ui.labels.badForm');
-    // Power display: show effective power breakdown when intel available,
-    // fall back to plain power otherwise (e.g. if intel module missing)
     const myPowerText = intel
       ? `${I18N.t('ui.intel.powerBreakdown', { base: intel.myBasePower, traits: intel.myTraitPower, effective: intel.myEffectivePower })} · ${teamTheme}${teamFormText}`
       : `${I18N.t('ui.labels.power')} ${teamPower} · ${teamTheme}${teamFormText}`;
@@ -243,6 +205,9 @@ const UI = {
       teamTrends[focus] = (teamTrends[focus] || 0) + (p.form || 0);
     }
     sumBox.appendChild(UI.renderComparedStatBars(teamStats, opp.stats, teamTrends, { compact:true }));
+
+    // Opponent box — simplified. The old tell-banner is removed: all matchup
+    // warnings now live in the Intel panel below, so no duplication.
     const oppBox = $('#next-opponent');
     oppBox.innerHTML = '';
     const traitNames = (opp.traits || [])
@@ -261,31 +226,9 @@ const UI = {
       ])
     ];
     oppBox.appendChild(el('div', { class:'matchup-meta' }, oppMeta));
-    const tell = UI._buildOppTell(opp);
-    if (tell) {
-      oppBox.appendChild(el('div', {
-        style: {
-          background: 'rgba(255,210,58,0.10)',
-          border: '1px solid rgba(255,210,58,0.35)',
-          padding: '5px 8px',
-          margin: '6px 0',
-          fontSize: '10px',
-          color: 'var(--gold)',
-          letterSpacing: '0.04em',
-          fontFamily: 'var(--font-display)',
-          textTransform: 'uppercase'
-        }
-      }, ['⚠ ' + tell]));
-    }
     oppBox.appendChild(UI.renderComparedStatBars(opp.stats, teamStats, {}, { compact:true }));
 
-    // ── Matchup Intel Panel ─────────────────────────────────────────────
-    // Rendered between hub-matchup grid and the Squad card.
-    // Shows the specific trait advantages / warnings that make this matchup
-    // winnable (or risky) beyond raw stat totals.
-    // Appended to hub-matchup's parent .screen, inserted before the squad card.
     const hubMatchup = document.querySelector('.hub-matchup');
-    // Remove any previous intel panel (re-renders replace it)
     const prevIntel = document.getElementById('hub-intel-panel');
     if (prevIntel) prevIntel.remove();
     if (intel && hubMatchup) {
@@ -379,19 +322,15 @@ const UI = {
   },
 
   // ─── renderMatchupIntelPanel ──────────────────────────────────────────
-  // Shows the matchup intel in the hub: advantages (green) + warnings (red).
-  // Power breakdown already visible in the matchup meta-lines above.
-  // Returns an element (or null if intel is empty in a meaningful way).
+  // Compact pre-match intel: the delta lives as a subtle inline label in the
+  // advantages/warnings header row, NOT as a big center banner. Power-breakdown
+  // is already visible in the matchup meta-lines above, so we don't repeat it.
+  // Each line gets an inline icon (✓ / ⚠) instead of relying only on color.
   renderMatchupIntelPanel(intel) {
     if (!intel) return null;
     const hasContent = intel.advantages.length || intel.warnings.length;
     if (!hasContent) return null;
 
-    const panel = el('div', { class: 'interrupt-panel', style: { marginBottom: '14px' } }, [
-      el('div', { class: 'ip-title' }, [I18N.t('ui.intel.title')])
-    ]);
-
-    // Delta summary line — who's ahead in effective power
     const delta = intel.powerDelta;
     let deltaText, deltaColor;
     if (Math.abs(delta) < 15) {
@@ -404,38 +343,62 @@ const UI = {
       deltaText = I18N.t('ui.intel.deltaBehind', { delta });
       deltaColor = 'var(--accent-2)';
     }
+
+    const panel = el('div', { class: 'interrupt-panel intel-panel', style: { marginBottom: '14px', padding: '10px 12px' } });
+
+    // Header: title left, delta badge right — single slim line
     panel.appendChild(el('div', {
       style: {
-        fontFamily: 'var(--font-display)',
-        fontSize: '11px',
-        letterSpacing: '0.1em',
-        textTransform: 'uppercase',
-        textAlign: 'center',
-        color: deltaColor,
-        padding: '4px 0 10px',
-        borderBottom: '1px dashed var(--dim)',
-        marginBottom: '10px'
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: '8px',
+        paddingBottom: '8px',
+        marginBottom: '8px',
+        borderBottom: '1px dashed var(--dim)'
       }
-    }, [deltaText]));
+    }, [
+      el('span', {
+        style: {
+          fontFamily: 'var(--font-display)',
+          fontSize: '10px',
+          letterSpacing: '0.12em',
+          textTransform: 'uppercase',
+          color: 'var(--accent-3)'
+        }
+      }, [I18N.t('ui.intel.title')]),
+      el('span', {
+        style: {
+          fontFamily: 'var(--font-display)',
+          fontSize: '10px',
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+          color: deltaColor,
+          padding: '2px 6px',
+          border: `1px solid ${deltaColor}`,
+          background: 'rgba(0,0,0,0.3)'
+        }
+      }, [deltaText])
+    ]));
 
     // Two-column layout: advantages left, warnings right
     const columns = el('div', {
       style: {
         display: 'grid',
         gridTemplateColumns: '1fr 1fr',
-        gap: '10px'
-      }
+        gap: '12px'
+      },
+      class: 'intel-columns'
     });
 
     // Advantages column
     const advCol = el('div', {});
     advCol.appendChild(el('div', {
-      class: 'mono-sm',
-      style: { color: 'var(--accent)', marginBottom: '6px', fontFamily: 'var(--font-display)', fontSize: '10px' }
-    }, [I18N.t('ui.intel.advantagesTitle')]));
+      style: { color: 'var(--accent)', marginBottom: '6px', fontFamily: 'var(--font-display)', fontSize: '10px', letterSpacing: '0.1em', textTransform: 'uppercase' }
+    }, ['✓ ' + I18N.t('ui.intel.advantagesTitle')]));
     if (intel.advantages.length) {
       for (const adv of intel.advantages) {
-        advCol.appendChild(el('div', { class: 'hint-line hint-good', style: { marginBottom: '4px' } }, [adv.text]));
+        advCol.appendChild(el('div', { class: 'hint-line hint-good', style: { marginBottom: '4px', fontSize: '10px' } }, [adv.text]));
       }
     } else {
       advCol.appendChild(el('div', {
@@ -447,12 +410,11 @@ const UI = {
     // Warnings column
     const warnCol = el('div', {});
     warnCol.appendChild(el('div', {
-      class: 'mono-sm',
-      style: { color: 'var(--accent-2)', marginBottom: '6px', fontFamily: 'var(--font-display)', fontSize: '10px' }
-    }, [I18N.t('ui.intel.warningsTitle')]));
+      style: { color: 'var(--accent-2)', marginBottom: '6px', fontFamily: 'var(--font-display)', fontSize: '10px', letterSpacing: '0.1em', textTransform: 'uppercase' }
+    }, ['⚠ ' + I18N.t('ui.intel.warningsTitle')]));
     if (intel.warnings.length) {
       for (const warn of intel.warnings) {
-        warnCol.appendChild(el('div', { class: 'hint-line hint-warn', style: { marginBottom: '4px' } }, [warn.text]));
+        warnCol.appendChild(el('div', { class: 'hint-line hint-warn', style: { marginBottom: '4px', fontSize: '10px' } }, [warn.text]));
       }
     } else {
       warnCol.appendChild(el('div', {
@@ -660,7 +622,6 @@ const UI = {
     log.scrollTop = log.scrollHeight;
   },
 
-  // ── Halftime summary panel ────────────────────────────────────────────────
   renderHalftimeSummary(match, opts={}) {
     const s = match.stats;
     const myAcc  = s.myShots  ? Math.round(s.myShotsOnTarget  / s.myShots  * 100) : null;
@@ -724,13 +685,6 @@ const UI = {
     return panel;
   },
 
-  // ─── renderHintBox ────────────────────────────────────────────────────────
-  // Renders up to 2 contextual hints above the choice list.
-  // hint.type: 'good' (green) | 'warn' (red) | 'info' (blue)
-  //
-  // @param {Array} hints — array of { type, text }
-  // @returns {HTMLElement|null}
-
   renderHintBox(hints) {
     if (!hints || !hints.length) return null;
     const box = el('div', { class: 'hint-box' });
@@ -741,18 +695,6 @@ const UI = {
     return box;
   },
 
-  // ─── showInterrupt ────────────────────────────────────────────────────────
-  // Extended: accepts optional hints array and isEvent flag (via phase).
-  // Event modals get gold accent border + 'SITUATION' header styling.
-  //
-  // @param {string}   title
-  // @param {string}   subtitle
-  // @param {Array}    options
-  // @param {Function} onPick
-  // @param {Object}   match
-  // @param {string}   phase    — 'kickoff'|'halftime'|'final'|'halftime_focus'|'halftime_sub'|'event'
-  // @param {Array}    hints    — optional array of { type, text }
-
   showInterrupt(title, subtitle, options, onPick, match, phase, hints) {
     const modal = $('#interrupt-modal');
     modal.innerHTML = '';
@@ -760,7 +702,6 @@ const UI = {
     const isEvent = phase === 'event';
     const isFocusSub = phase === 'halftime_focus' || phase === 'halftime_sub';
 
-    // ── Event modal: gold accent header ──────────────────────────────────
     if (isEvent) {
       modal.classList.add('interrupt-modal--event');
       const eventHeader = el('div', { class: 'event-modal-header' }, [
@@ -775,11 +716,9 @@ const UI = {
 
     modal.appendChild(el('div', { class:'sub' }, [subtitle]));
 
-    // ── Hints — rendered before choice list ──────────────────────────────
     const hintBox = UI.renderHintBox(hints);
     if (hintBox) modal.appendChild(hintBox);
 
-    // ── Choice list ───────────────────────────────────────────────────────
     const list = el('div', { class:'choice-list' });
     options.forEach(opt => {
       const btn = el('button', { class:'choice' }, [
@@ -794,7 +733,6 @@ const UI = {
     });
     modal.appendChild(list);
 
-    // ── Summary panel: halftime + final only, not for focus/sub/event ────
     if (match && !isFocusSub && !isEvent) {
       if (phase === 'halftime' || phase === 'final') {
         const title = phase === 'final' ? I18N.t('ui.flow.finalTitle') : undefined;
@@ -945,6 +883,9 @@ const UI = {
       const myBuildupRate = s.myBuildups ? Math.round(s.myBuildupsSuccess / s.myBuildups * 100) : 0;
       const oppBuildupRate = s.oppBuildups ? Math.round(s.oppBuildupsSuccess / s.oppBuildups * 100) : 0;
       const possession = s.possRounds ? Math.round((s.possAccum / s.possRounds) * 100) : 50;
+      // Opponent saves = their shots-on-target that we failed to convert.
+      // Formula: myShotsOnTarget - scoreMe (every on-target shot that didn't become a goal)
+      const oppSaves = Math.max(0, (s.myShotsOnTarget || 0) - scoreMe);
       const statsPanel = el('div', { class:'interrupt-panel', style:{ margin:'0 0 16px' } }, [
         el('div', { class:'ip-title' }, [I18N.t('ui.result.analysis')]),
         UI.renderMatchStatRow(I18N.t('ui.statsPanel.possession'), possession + '%', (100 - possession) + '%'),
@@ -952,7 +893,7 @@ const UI = {
         UI.renderMatchStatRow(I18N.t('ui.statsPanel.shots'), s.myShots, s.oppShots),
         UI.renderMatchStatRow(I18N.t('ui.statsPanel.accuracy'), myAccuracy + '%', oppAccuracy + '%'),
         UI.renderMatchStatRow(I18N.t('ui.statsPanel.buildup'), myBuildupRate + '%', oppBuildupRate + '%'),
-        UI.renderMatchStatRow(I18N.t('ui.statsPanel.saves'), s.saves, '–'),
+        UI.renderMatchStatRow(I18N.t('ui.statsPanel.saves'), s.saves, oppSaves),
         UI.renderMatchStatRow(I18N.t('ui.statsPanel.abilitiesTriggered'), s.triggersFired || 0, '–')
       ]);
       content.appendChild(statsPanel);
@@ -992,9 +933,9 @@ const UI = {
       content.appendChild(perfList);
 
       // ── Trait Fire Report ─────────────────────────────────────────────
-      // Post-match: which of your traits fired, how often, estimated impact.
-      // Makes visible where the actual edge came from when raw stats said
-      // you should have lost.
+      // Shows which of your traits fired and how often. The `count` is
+      // capped per round by dispatchTrigger, so passive traits show a
+      // realistic number (max 6, one per round) instead of dozens.
       if (typeof buildMatchTraitReport === 'function') {
         const report = buildMatchTraitReport(match);
         const traitPanel = el('div', { style: { marginTop: '16px' } });
@@ -1004,12 +945,16 @@ const UI = {
         if (report.length) {
           const list = el('div', { class: 'result-perf-list' });
           for (const entry of report) {
+            // Passive traits marked with isPassive flag get an "ACTIVE" pill
+            // instead of a fire-count. Active/reactive traits keep their count.
+            const countDisplay = entry.isPassive
+              ? I18N.t('ui.result.traitReportPassive')
+              : I18N.t('ui.result.traitReportFires', { count: entry.count });
             const row = el('div', { class: 'result-perf-row' }, [
               el('span', { class: 'perf-role' }, [entry.role || '—']),
               el('span', { class: 'perf-name' }, [entry.traitName]),
               el('span', { class: 'perf-detail' }, [entry.playerName]),
-              el('span', { class: 'perf-xp good' },
-                [I18N.t('ui.result.traitReportFires', { count: entry.count })]),
+              el('span', { class: 'perf-xp good' }, [countDisplay]),
               el('span', { style: { fontSize: '10px', color: 'var(--gold)', textAlign: 'right' } },
                 [I18N.t('ui.result.traitReportImpact', { value: entry.estimatedImpact })])
             ]);

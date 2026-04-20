@@ -228,7 +228,13 @@ const FLOW = {
         });
       }
 
-      // ── Halftime — extended two-step flow ────────────────────────────────
+      // ── Halftime — extended flow ─────────────────────────────────────────
+      // Bug #6 fix: applyDecision for the tactic choice is now handled by core.js
+      //             (which calls applyDecision when it receives the return value).
+      //             Removing the apply here prevents double-application of buff layers.
+      // Bug #1 fix: Sub is now reachable. If bench is non-empty, player gets a
+      //             Sub modal IN ADDITION to the Focus modal. Previously the
+      //             Sub branch was unreachable because Focus always had length > 1.
       if (ev.phase === 'halftime') {
         // Step 1: tactic choice
         const tacticHints = (typeof buildContextHint === 'function')
@@ -246,70 +252,61 @@ const FLOW = {
           );
         });
 
-        // Apply tactic through applyDecision channel
-        if (typeof applyDecision === 'function') {
-          applyDecision(m, tacticChoice, 'halftime', state);
-        }
-
-        // Step 2: focus or sub (second modal)
-        // Priority: focus > sub. Sub only shown when bench not empty and no focus candidate.
-        // Per briefing: "restriktive Variante" — one slot, focus preferred.
+        // Step 2: focus modal (always available — outfield players always exist)
         const currentLineup = m.squad || getLineup();
-        const bench = getBench();
-        const hasBench = bench.length > 0;
-
-        let secondOptions = null;
-        let secondTitle = '';
-        let secondSubtitle = '';
-        let secondPhase = '';
-
-        // Focus is always available (outfield players exist)
         const focusOptions = (typeof generateFocusOptions === 'function')
           ? generateFocusOptions(currentLineup, m)
           : [];
 
         if (focusOptions.length > 1) {
-          // More than just "no focus" → offer focus
-          secondOptions = focusOptions;
-          secondTitle = I18N.t('ui.decisions.focusTitle');
-          secondSubtitle = I18N.t('ui.decisions.focusSubtitle');
-          secondPhase = 'halftime_focus';
-        } else if (hasBench) {
-          // No meaningful focus candidates, but bench available
+          const focusChoice = await new Promise(resolve => {
+            UI.showInterrupt(
+              I18N.t('ui.decisions.focusTitle'),
+              I18N.t('ui.decisions.focusSubtitle'),
+              focusOptions,
+              (picked) => resolve(picked),
+              m,
+              'halftime_focus',
+              []
+            );
+          });
+
+          if (typeof applyDecision === 'function' && focusChoice && focusChoice.id !== 'focus_none') {
+            applyDecision(m, focusChoice, 'halftime_focus', state);
+          } else if (focusChoice && typeof focusChoice.apply === 'function') {
+            focusChoice.apply(m, { mult: 1.0, phase: 'halftime_focus', state });
+          }
+        }
+
+        // Step 3: sub modal — ONLY if bench is non-empty
+        const bench = getBench();
+        if (bench.length > 0) {
           const subOptions = (typeof generateSubOptions === 'function')
             ? generateSubOptions(currentLineup, m, state)
             : [];
           if (subOptions.length > 1) {
-            secondOptions = subOptions;
-            secondTitle = I18N.t('ui.decisions.subTitle');
-            secondSubtitle = I18N.t('ui.decisions.subSubtitle');
-            secondPhase = 'halftime_sub';
+            const subChoice = await new Promise(resolve => {
+              UI.showInterrupt(
+                I18N.t('ui.decisions.subTitle'),
+                I18N.t('ui.decisions.subSubtitle'),
+                subOptions,
+                (picked) => resolve(picked),
+                m,
+                'halftime_sub',
+                []
+              );
+            });
+
+            if (typeof applyDecision === 'function' && subChoice && subChoice.id !== 'sub_none') {
+              applyDecision(m, subChoice, 'halftime_sub', state);
+            } else if (subChoice && typeof subChoice.apply === 'function') {
+              subChoice.apply(m, { mult: 1.0, phase: 'halftime_sub', state });
+            }
           }
         }
 
-        if (secondOptions) {
-          const secondChoice = await new Promise(resolve => {
-            UI.showInterrupt(
-              secondTitle,
-              secondSubtitle,
-              secondOptions,
-              (picked) => resolve(picked),
-              m,
-              secondPhase,
-              [] // no hints for second modal — keeps it clean
-            );
-          });
-
-          // Apply focus/sub through applyDecision channel
-          if (typeof applyDecision === 'function' && secondChoice && secondChoice.id !== 'focus_none' && secondChoice.id !== 'sub_none') {
-            applyDecision(m, secondChoice, secondPhase, state);
-          } else if (secondChoice && typeof secondChoice.apply === 'function') {
-            // fallback: direct apply (no-op options)
-            secondChoice.apply(m, { mult: 1.0, phase: secondPhase, state });
-          }
-        }
-
-        // Return the tactic choice to core.js (it uses this for halftimeAction)
+        // Return the tactic choice to core.js. core.js will route it through
+        // applyDecision for the actual buff layer application.
         return tacticChoice;
       }
 

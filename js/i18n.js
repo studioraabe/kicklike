@@ -1,3 +1,14 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// i18n.js — Internationalisation
+//
+// Exports:
+//   window.I18N        — legacy global, still the canonical API
+//   window.KL.i18n     — alias into the same object
+//
+// Registers locales, formats strings with {placeholders}, decorates DATA with
+// translated labels, and wires up the language-switcher buttons.
+// ─────────────────────────────────────────────────────────────────────────────
+
 (() => {
   const STORAGE_KEY = 'kicklike_lang_v1';
   const registry = {};
@@ -40,6 +51,10 @@
       .join(' ');
   }
 
+  // ─── DATA decoration ───────────────────────────────────────────────────────
+  // Applies translated labels to the runtime DATA object. Runs on load and
+  // every language switch. All logic still reads DATA.* — the strings just
+  // change underneath it.
   function decorateConfigData(data) {
     const dataLocale = locale().data || {};
     const statLabels = locale().stats || {};
@@ -64,7 +79,8 @@
         const evoId = id.replace(/_mastery$/, '');
         const evo = data.evoDetails[evoId];
         const parentLabel = evo?.inheritedFrom ? data.evoDetails[evo.inheritedFrom]?.label : '';
-        const emphasisOrder = Object.keys(evo?.boosts || {}).filter(key => ['offense', 'defense', 'tempo', 'vision', 'composure'].includes(key));
+        const emphasisOrder = Object.keys(evo?.boosts || {})
+          .filter(key => ['offense', 'defense', 'tempo', 'vision', 'composure'].includes(key));
         const emphasis = emphasisOrder.map(key => statLabels[key] || key).join(', ');
         trait.name = t('generated.masteryName', { label: evo?.label || titleCase(evoId) });
         trait.desc = t('generated.masteryDesc', { parent: parentLabel, stats: emphasis });
@@ -91,26 +107,18 @@
       special.name = dataLocale.opponents?.specials?.[special.id] || special.name;
     });
 
-    data.kickoffTactics.forEach(tactic => {
-      const translated = dataLocale.tactics?.kickoff?.[tactic.id];
+    const decorateTactic = (list, bucket) => list.forEach(tactic => {
+      const translated = dataLocale.tactics?.[bucket]?.[tactic.id];
       if (!translated) return;
       tactic.name = translated.name;
       tactic.desc = translated.desc;
     });
-    data.halftimeOptions.forEach(tactic => {
-      const translated = dataLocale.tactics?.halftime?.[tactic.id];
-      if (!translated) return;
-      tactic.name = translated.name;
-      tactic.desc = translated.desc;
-    });
-    data.finalOptions.forEach(tactic => {
-      const translated = dataLocale.tactics?.final?.[tactic.id];
-      if (!translated) return;
-      tactic.name = translated.name;
-      tactic.desc = translated.desc;
-    });
+    decorateTactic(data.kickoffTactics,  'kickoff');
+    decorateTactic(data.halftimeOptions, 'halftime');
+    decorateTactic(data.finalOptions,    'final');
   }
 
+  // ─── DOM wiring ────────────────────────────────────────────────────────────
   function applyDom(root = document) {
     root.querySelectorAll('[data-i18n]').forEach(node => {
       node.textContent = t(node.dataset.i18n);
@@ -118,9 +126,7 @@
     root.querySelectorAll('[data-i18n-html]').forEach(node => {
       node.innerHTML = t(node.dataset.i18nHtml);
     });
-    if (document.title) {
-      document.title = t('ui.meta.title');
-    }
+    if (document.title) document.title = t('ui.meta.title');
     document.documentElement.lang = currentLang;
     root.querySelectorAll('[data-lang]').forEach(node => {
       node.classList.toggle('active', node.dataset.lang === currentLang);
@@ -158,7 +164,7 @@
   bindLanguageButtons();
   document.addEventListener('DOMContentLoaded', () => applyDom());
 
-  window.I18N = {
+  const api = {
     registerLocale,
     decorateConfigData,
     applyDom,
@@ -170,4 +176,10 @@
     format,
     getLang: () => currentLang
   };
+
+  window.I18N = api;
+
+  // Also expose under the namespace once KL exists
+  const KL = window.KL || (window.KL = {});
+  KL.i18n = api;
 })();

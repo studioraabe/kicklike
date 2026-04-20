@@ -672,6 +672,12 @@ function _snapshotTriggerState(ctx) {
   return JSON.stringify(s);
 }
 
+// Passive trait events fire on every stat recomputation, which inflates
+// per-match fire counts into the dozens for a trait that's always on.
+// These event types are treated as "passive" in the post-match report:
+// a single mark per round, with an "ACTIVE" label instead of a fire-count.
+const PASSIVE_TRIGGER_EVENTS = new Set(['statCompute', 'oppStatCompute']);
+
 function dispatchTrigger(type, ctx) {
   ctx.event = type;
   ctx.triggersThisRound = ctx.triggersThisRound || 0;
@@ -680,6 +686,8 @@ function dispatchTrigger(type, ctx) {
     if (ctx.match?._triggerLogBuffer) ctx.match._triggerLogBuffer.push(msg);
   };
   const squad = ctx.match?.squad || state?.squad || [];
+  const isPassiveEvent = PASSIVE_TRIGGER_EVENTS.has(type);
+  const round = ctx.match?.round || 0;
   for (const p of squad) {
     if (!p.traits?.length) continue;
     for (const traitId of p.traits) {
@@ -699,10 +707,25 @@ function dispatchTrigger(type, ctx) {
         p._triggerCount = (p._triggerCount||0) + 1;
         if (ctx.match) {
           ctx.match.stats.triggersFired = (ctx.match.stats.triggersFired||0) + 1;
-          // ── Track per-trait fires for the post-match intel report ────────
-          // _traitFireCounts: { traitId: count } — read by buildMatchTraitReport
+          // Track per-trait fires for the post-match report.
+          // Cap each trait at ONE fire per round, so passive traits that
+          // re-fire on every statCompute call don't inflate the count.
           ctx.match._traitFireCounts = ctx.match._traitFireCounts || {};
-          ctx.match._traitFireCounts[traitId] = (ctx.match._traitFireCounts[traitId] || 0) + 1;
+          ctx.match._traitFireRounds = ctx.match._traitFireRounds || {};
+          const lastRound = ctx.match._traitFireRounds[traitId];
+          if (lastRound !== round) {
+            ctx.match._traitFireCounts[traitId] = (ctx.match._traitFireCounts[traitId] || 0) + 1;
+            ctx.match._traitFireRounds[traitId] = round;
+          }
+          // Mark the trait as passive if it only ever fires on passive events.
+          // Stored as a set-like object: { traitId: true }.
+          ctx.match._traitPassiveMap = ctx.match._traitPassiveMap || {};
+          if (!(traitId in ctx.match._traitPassiveMap)) {
+            ctx.match._traitPassiveMap[traitId] = isPassiveEvent;
+          } else if (!isPassiveEvent) {
+            // If we see a non-passive fire, clear the passive flag permanently
+            ctx.match._traitPassiveMap[traitId] = false;
+          }
         }
       }
     }
@@ -979,7 +1002,9 @@ async function startMatch(squad, opp, onEvent) {
     _oppBuildupPenalty: 0,        // set by opp_mistake sustain; read in attemptOppAttack
     _oppBuildupPenaltyRounds: 0,  // decremented by checkSituativeEvents each round
     // ── Trait fire tracking (for post-match intel report) ────────────────────
-    _traitFireCounts: {},    // { traitId: count } — incremented in dispatchTrigger
+    _traitFireCounts: {},    // { traitId: count } — capped at 1/round/trait
+    _traitFireRounds: {},    // { traitId: lastRoundFired } — tracks per-round cap
+    _traitPassiveMap: {},    // { traitId: isPassive } — passive = only fired on stat recompute
     stats: {
       myShots: 0, myShotsOnTarget: 0, myBuildups: 0, myBuildupsSuccess: 0,
       oppShots: 0, oppShotsOnTarget: 0, oppBuildups: 0, oppBuildupsSuccess: 0,
@@ -1055,7 +1080,11 @@ async function startMatch(squad, opp, onEvent) {
       UI && UI.updateRoundIndicator && UI.updateRoundIndicator(r);
       const tactic = await onEvent({ type:'interrupt', phase:'kickoff', match });
       match.lastTactic = tactic;
-      applyTactic(match, tactic, 'kickoff');
+      if (typeof applyDecision === 'function') {
+        applyDecision(match, tactic, 'kickoff', (typeof state !== 'undefined' ? state : null));
+      } else {
+        applyTactic(match, tactic, 'kickoff');
+      }
       match.activeTacticTags = [...(tactic.tags || [])];
       recomputeTeamBuffs(match);
       const buffAfter = match.teamBuffs;
@@ -1084,7 +1113,6 @@ async function startMatch(squad, opp, onEvent) {
 
       const halftime = await onEvent({ type:'interrupt', phase:'halftime', match });
       match.halftimeAction = halftime;
-      applyTactic(match, halftime, 'halftime');
       for (const tag of (halftime.tags || [])) { if (!match.activeTacticTags.includes(tag)) match.activeTacticTags.push(tag); }
       await log(onEvent, 'round-header', I18N.t('ui.log.halftimeHeader'));
       recomputeTeamBuffs(match);
@@ -1103,7 +1131,11 @@ async function startMatch(squad, opp, onEvent) {
       UI && UI.updateRoundIndicator && UI.updateRoundIndicator(r);
       const final = await onEvent({ type:'interrupt', phase:'final', match });
       match.finalAction = final;
-      applyTactic(match, final, 'final', squad, onEvent);
+      if (typeof applyDecision === 'function') {
+        applyDecision(match, final, 'final', (typeof state !== 'undefined' ? state : null));
+      } else {
+        applyTactic(match, final, 'final', squad, onEvent);
+      }
       for (const tag of (final.tags || [])) { if (!match.activeTacticTags.includes(tag)) match.activeTacticTags.push(tag); }
       recomputeTeamBuffs(match);
       const buffAfter = match.teamBuffs;
@@ -1497,7 +1529,12 @@ function applyTactic(match, tactic, phase, squad, onEvent) {
 }
 function recomputeTeamBuffs(match) {
   const r = match.round || 1;
+  const prev = match.teamBuffs || {};
   const agg = { offense:0, defense:0, tempo:0, vision:0, composure:0 };
+  const STICKY_KEYS = ['saveBonus', 'buildupMalus', 'tempoBonus'];
+  for (const key of STICKY_KEYS) {
+    if (typeof prev[key] === 'number') agg[key] = prev[key];
+  }
   for (const layer of match.buffLayers || []) {
     if (r < layer.range[0] || r > layer.range[1]) continue;
     for (const [k, v] of Object.entries(layer.stats || {})) {
@@ -1579,16 +1616,11 @@ async function attemptAttack(match, squad, onEvent, extra={}) {
 
   const fatigueBuildupMalus = match._fatigue * 0.4;
 
-  // ── Sustained opp build-up penalty from opp_mistake sustain event ─────────
-  // _oppBuildupPenalty: set by event apply(), decremented in checkSituativeEvents
-  const eventBuildupMalus = match._oppBuildupPenalty || 0;
-
   const buildupChance = clamp(
     0.30 + (pmStats.vision - 55) * CONFIG.buildupVisionScale + (match.nextBuildupBonus || 0) + (ctx.attackBonus * 0.5)
     - (oppPressCtx.malus || 0)
     - misfitBuildupMalus
     - fatigueBuildupMalus,
-    // Note: eventBuildupMalus applies to OPPONENT build-up, not ours — correctly in attemptOppAttack
     0.05, 0.92
   );
   match.nextBuildupBonus = 0;
@@ -2121,6 +2153,7 @@ function buildMatchupIntel(squad, opp, state) {
 function buildMatchTraitReport(match) {
   if (!match?._traitFireCounts) return [];
   const fires = match._traitFireCounts;
+  const passiveMap = match._traitPassiveMap || {};
   const squad = match.squad || [];
 
   const traitOwners = {};
@@ -2138,7 +2171,15 @@ function buildMatchTraitReport(match) {
       (traitId.endsWith('_mastery')
         ? Math.round((TRAIT_POWER_VALUES[DATA.evoDetails[traitId.replace(/_mastery$/, '')]?.parentTrait] || 8) * 1.3)
         : 8);
-    const perFireValue = Math.max(2, Math.round(baseValue / 3));
+    // Passive traits: assume they're on every round they fired. Impact is
+    // rounds-active × (baseValue / 2) — a larger per-fire share than active
+    // traits because "it's always on" is more valuable than a single trigger.
+    // Active traits: count × (baseValue / 3) — an activation is a fraction
+    // of the trait's rated ceiling.
+    const isPassive = passiveMap[traitId] === true;
+    const perFireValue = isPassive
+      ? Math.max(3, Math.round(baseValue / 2))
+      : Math.max(2, Math.round(baseValue / 3));
     const estimatedImpact = count * perFireValue;
 
     const traitDef = DATA.traits[traitId];
@@ -2151,7 +2192,8 @@ function buildMatchTraitReport(match) {
       playerName: owner?.name || '—',
       role: owner?.role || '',
       count,
-      estimatedImpact
+      estimatedImpact,
+      isPassive
     });
   }
 

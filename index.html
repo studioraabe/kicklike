@@ -155,12 +155,37 @@
 <div class="interrupt-overlay" id="interrupt-overlay">
   <div class="interrupt-modal" id="interrupt-modal"></div>
 </div>
+
+<!--
+  Script load order reflects the KL namespace dependency graph:
+
+    1. i18n           — sets up I18N so config-data can call decorateConfigData
+    2. lang/*         — register locales into I18N
+    3. util           — foundation helpers (RNG, DOM, i18n shortcuts)
+    4. config-data    — static data + highscore (runs decorateConfigData)
+    5. state          — season/roster/session with legacy state proxy
+    6. stats          — team aggregations and stat computation
+    7. traits         — trigger registry + dispatcher, opp-trait effects
+    8. entities       — player/opponent factories (needs traits.OPP_TRAITS)
+    9. intel          — matchup intel + post-match trait report
+   10. engine         — match engine (needs everything above)
+   11. decisions      — situative events + halftime focus/sub (needs engine)
+   12. fx             — visual effects (no deps)
+   13. ui             — rendering (needs state + intel + engine + i18n)
+   14. flow           — top-level screen flow + match orchestration (needs all)
+-->
 <script src="./js/i18n.js"></script>
 <script src="./js/lang/de.js"></script>
 <script src="./js/lang/en.js"></script>
 <script src="./js/lang/es.js"></script>
+<script src="./js/util.js"></script>
 <script src="./js/config-data.js"></script>
-<script src="./js/core.js"></script>
+<script src="./js/state.js"></script>
+<script src="./js/stats.js"></script>
+<script src="./js/traits.js"></script>
+<script src="./js/entities.js"></script>
+<script src="./js/intel.js"></script>
+<script src="./js/engine.js"></script>
 <script src="./js/decisions.js"></script>
 <script src="./js/fx.js"></script>
 <script src="./js/ui.js"></script>
