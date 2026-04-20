@@ -47,7 +47,13 @@ I18N.registerLocale("en", {
       continue: "▶ Continue",
       analysis: "Match Breakdown",
       players: "Player Breakdown",
-      sacrificeNote: "⚠ {name} gave everything — permanent stat loss."
+      sacrificeNote: "⚠ {name} gave everything — permanent stat loss.",
+      // ── Post-match trait fire report ────────────────────────────────────
+      traitReportTitle: "Where your edge came from",
+      traitReportEmpty: "No abilities fired this match.",
+      traitReportFires: "{count}×",
+      traitReportImpact: "~{value} pwr",
+      traitReportFooter: "Ability impact is estimated from how often each trait fired and its tuned value."
     },
     gameover: { title: "GAME OVER" },
     victory: { survived: "15 matches survived" },
@@ -84,6 +90,43 @@ I18N.registerLocale("en", {
       diff: "Diff",
       opponent: "Opponent",
       buffsFootnote: "Buffs stack across kickoff, halftime, and final phase"
+    },
+
+    // ── Matchup Intel (hub, shown before every match) ──────────────────────
+    // Goal: make visible WHY a match is winnable despite a raw power gap.
+    // Effective power breakdown + specific advantage / warning callouts.
+    intel: {
+      title: "Matchup Intel",
+      effectivePowerTitle: "Effective Power",
+      basePowerLabel: "Base",
+      traitPowerLabel: "Traits",
+      effectiveLabel: "Effective",
+      powerBreakdown: "{base} +{traits} = {effective}",
+      deltaAhead: "+{delta} edge",
+      deltaBehind: "{delta} gap",
+      deltaEven: "Even match",
+      advantagesTitle: "Your edge",
+      warningsTitle: "Their threats",
+      noAdvantages: "No standout trait advantages — stat-driven match.",
+      noWarnings: "No specific opponent threats.",
+
+      // Advantage lines — reference YOUR traits
+      advPredatorVsPresser: "{name}'s predator instinct punishes their pressing errors.",
+      advLateBloom: "{name} comes alive in rounds 4–6.",
+      advClutchMatchup: "Your clutch traits match theirs in the closing minutes.",
+      advBigGame: "{name} lives for boss fights — +15 focus stat.",
+      advFieldGeneral: "Field General lifts the whole squad +4 across the board.",
+      advKeeperWall: "Your keeper trait blunts their aerial threat.",
+      advTempo: "{name} out-paces their entire backline.",
+
+      // Warning lines — reference OPP traits
+      warnSniper: "Their sniper makes every shot dangerous.",
+      warnCounter: "Any turnover triggers a lightning counter.",
+      warnIronwall: "Rounds 1–2 their defence is nearly impenetrable.",
+      warnClutchUnanswered: "They surge in rounds 5–6 — you have no clutch answer.",
+      warnPresserNoVision: "High press incoming and no PM vision to escape it.",
+      warnStatGap: "{diff} stat-power behind — need traits to carry it.",
+      warnBoss: "Boss opponent — every stat elevated."
     },
     evolution: {
       title: "EVOLUTION!",

@@ -198,6 +198,11 @@ const UI = {
     const teamStats = aggregateTeamStats(lineup);
     const teamPower = teamTotalPower(lineup);
     const teamTheme = teamStrengthLabel(teamStats);
+    // ── Intel: effective power breakdown + matchup callouts ──────────────
+    // intel can be null if lineup/opp missing; code below guards with `if (intel)`
+    const intel = (typeof buildMatchupIntel === 'function')
+      ? buildMatchupIntel(lineup, opp, state)
+      : null;
     $('#hub-team-meta').textContent = I18N.t('ui.labels.compactTeamMeta', { lineup: lineup.length, bench: getBench().length });
     const sumBox = $('#hub-team-summary');
     sumBox.innerHTML = '';
@@ -207,9 +212,14 @@ const UI = {
     else if (teamFormAvg >= 1)  teamFormText = ' · ↑ ' + I18N.t('ui.labels.goodForm');
     else if (teamFormAvg <= -2) teamFormText = ' · ❄ ' + I18N.t('ui.labels.crisis');
     else if (teamFormAvg <= -1) teamFormText = ' · ↓ ' + I18N.t('ui.labels.badForm');
+    // Power display: show effective power breakdown when intel available,
+    // fall back to plain power otherwise (e.g. if intel module missing)
+    const myPowerText = intel
+      ? `${I18N.t('ui.intel.powerBreakdown', { base: intel.myBasePower, traits: intel.myTraitPower, effective: intel.myEffectivePower })} · ${teamTheme}${teamFormText}`
+      : `${I18N.t('ui.labels.power')} ${teamPower} · ${teamTheme}${teamFormText}`;
     sumBox.appendChild(el('div', { class:'matchup-meta' }, [
       el('div', { class:'name me' }, [state.teamName || I18N.t('ui.hub.yourTeam')]),
-      el('div', { class:'meta-line' }, [`${I18N.t('ui.labels.power')} ${teamPower} · ${teamTheme}${teamFormText}`])
+      el('div', { class:'meta-line' }, [myPowerText])
     ]));
     if (state.currentLossStreak === 2) {
       sumBox.appendChild(el('div', {
@@ -245,7 +255,9 @@ const UI = {
         (opp.isBoss ? '🏆 ' : '') + opp.name
       ]),
       el('div', { class:'meta-line' }, [
-        `${I18N.t('ui.labels.power')} ${opp.power} · ${ausrichtungParts.join(' / ')}`
+        intel
+          ? `${I18N.t('ui.intel.powerBreakdown', { base: intel.oppBasePower, traits: intel.oppTraitPower, effective: intel.oppEffectivePower })} · ${ausrichtungParts.join(' / ')}`
+          : `${I18N.t('ui.labels.power')} ${opp.power} · ${ausrichtungParts.join(' / ')}`
       ])
     ];
     oppBox.appendChild(el('div', { class:'matchup-meta' }, oppMeta));
@@ -266,6 +278,24 @@ const UI = {
       }, ['⚠ ' + tell]));
     }
     oppBox.appendChild(UI.renderComparedStatBars(opp.stats, teamStats, {}, { compact:true }));
+
+    // ── Matchup Intel Panel ─────────────────────────────────────────────
+    // Rendered between hub-matchup grid and the Squad card.
+    // Shows the specific trait advantages / warnings that make this matchup
+    // winnable (or risky) beyond raw stat totals.
+    // Appended to hub-matchup's parent .screen, inserted before the squad card.
+    const hubMatchup = document.querySelector('.hub-matchup');
+    // Remove any previous intel panel (re-renders replace it)
+    const prevIntel = document.getElementById('hub-intel-panel');
+    if (prevIntel) prevIntel.remove();
+    if (intel && hubMatchup) {
+      const intelPanel = UI.renderMatchupIntelPanel(intel);
+      if (intelPanel) {
+        intelPanel.id = 'hub-intel-panel';
+        hubMatchup.parentNode.insertBefore(intelPanel, hubMatchup.nextSibling);
+      }
+    }
+
     const sqBox = $('#hub-squad');
     sqBox.innerHTML = '';
     lineup.forEach(p => sqBox.appendChild(UI.renderPlayerCard(p)));
@@ -346,6 +376,93 @@ const UI = {
       }
     }
     UI.renderLineup();
+  },
+
+  // ─── renderMatchupIntelPanel ──────────────────────────────────────────
+  // Shows the matchup intel in the hub: advantages (green) + warnings (red).
+  // Power breakdown already visible in the matchup meta-lines above.
+  // Returns an element (or null if intel is empty in a meaningful way).
+  renderMatchupIntelPanel(intel) {
+    if (!intel) return null;
+    const hasContent = intel.advantages.length || intel.warnings.length;
+    if (!hasContent) return null;
+
+    const panel = el('div', { class: 'interrupt-panel', style: { marginBottom: '14px' } }, [
+      el('div', { class: 'ip-title' }, [I18N.t('ui.intel.title')])
+    ]);
+
+    // Delta summary line — who's ahead in effective power
+    const delta = intel.powerDelta;
+    let deltaText, deltaColor;
+    if (Math.abs(delta) < 15) {
+      deltaText = I18N.t('ui.intel.deltaEven');
+      deltaColor = 'var(--gold)';
+    } else if (delta > 0) {
+      deltaText = I18N.t('ui.intel.deltaAhead', { delta });
+      deltaColor = 'var(--accent)';
+    } else {
+      deltaText = I18N.t('ui.intel.deltaBehind', { delta });
+      deltaColor = 'var(--accent-2)';
+    }
+    panel.appendChild(el('div', {
+      style: {
+        fontFamily: 'var(--font-display)',
+        fontSize: '11px',
+        letterSpacing: '0.1em',
+        textTransform: 'uppercase',
+        textAlign: 'center',
+        color: deltaColor,
+        padding: '4px 0 10px',
+        borderBottom: '1px dashed var(--dim)',
+        marginBottom: '10px'
+      }
+    }, [deltaText]));
+
+    // Two-column layout: advantages left, warnings right
+    const columns = el('div', {
+      style: {
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: '10px'
+      }
+    });
+
+    // Advantages column
+    const advCol = el('div', {});
+    advCol.appendChild(el('div', {
+      class: 'mono-sm',
+      style: { color: 'var(--accent)', marginBottom: '6px', fontFamily: 'var(--font-display)', fontSize: '10px' }
+    }, [I18N.t('ui.intel.advantagesTitle')]));
+    if (intel.advantages.length) {
+      for (const adv of intel.advantages) {
+        advCol.appendChild(el('div', { class: 'hint-line hint-good', style: { marginBottom: '4px' } }, [adv.text]));
+      }
+    } else {
+      advCol.appendChild(el('div', {
+        style: { fontSize: '10px', color: 'var(--muted)', fontStyle: 'italic', padding: '4px 0' }
+      }, [I18N.t('ui.intel.noAdvantages')]));
+    }
+    columns.appendChild(advCol);
+
+    // Warnings column
+    const warnCol = el('div', {});
+    warnCol.appendChild(el('div', {
+      class: 'mono-sm',
+      style: { color: 'var(--accent-2)', marginBottom: '6px', fontFamily: 'var(--font-display)', fontSize: '10px' }
+    }, [I18N.t('ui.intel.warningsTitle')]));
+    if (intel.warnings.length) {
+      for (const warn of intel.warnings) {
+        warnCol.appendChild(el('div', { class: 'hint-line hint-warn', style: { marginBottom: '4px' } }, [warn.text]));
+      }
+    } else {
+      warnCol.appendChild(el('div', {
+        style: { fontSize: '10px', color: 'var(--muted)', fontStyle: 'italic', padding: '4px 0' }
+      }, [I18N.t('ui.intel.noWarnings')]));
+    }
+    columns.appendChild(warnCol);
+
+    panel.appendChild(columns);
+    return panel;
   },
 
   renderRecruit(options) {
@@ -873,6 +990,57 @@ const UI = {
       }
       content.appendChild(perfTitle);
       content.appendChild(perfList);
+
+      // ── Trait Fire Report ─────────────────────────────────────────────
+      // Post-match: which of your traits fired, how often, estimated impact.
+      // Makes visible where the actual edge came from when raw stats said
+      // you should have lost.
+      if (typeof buildMatchTraitReport === 'function') {
+        const report = buildMatchTraitReport(match);
+        const traitPanel = el('div', { style: { marginTop: '16px' } });
+        traitPanel.appendChild(el('div', { class: 'card-title', style: { marginBottom: '8px' } },
+          [I18N.t('ui.result.traitReportTitle')]));
+
+        if (report.length) {
+          const list = el('div', { class: 'result-perf-list' });
+          for (const entry of report) {
+            const row = el('div', { class: 'result-perf-row' }, [
+              el('span', { class: 'perf-role' }, [entry.role || '—']),
+              el('span', { class: 'perf-name' }, [entry.traitName]),
+              el('span', { class: 'perf-detail' }, [entry.playerName]),
+              el('span', { class: 'perf-xp good' },
+                [I18N.t('ui.result.traitReportFires', { count: entry.count })]),
+              el('span', { style: { fontSize: '10px', color: 'var(--gold)', textAlign: 'right' } },
+                [I18N.t('ui.result.traitReportImpact', { value: entry.estimatedImpact })])
+            ]);
+            list.appendChild(row);
+          }
+          traitPanel.appendChild(list);
+          traitPanel.appendChild(el('div', {
+            style: {
+              fontSize: '9px',
+              color: 'var(--muted)',
+              textAlign: 'center',
+              marginTop: '6px',
+              padding: '4px',
+              fontStyle: 'italic'
+            }
+          }, [I18N.t('ui.result.traitReportFooter')]));
+        } else {
+          traitPanel.appendChild(el('div', {
+            style: {
+              fontSize: '11px',
+              color: 'var(--muted)',
+              textAlign: 'center',
+              padding: '12px',
+              fontStyle: 'italic',
+              border: '1px dashed var(--dim)',
+              background: 'var(--bg-3)'
+            }
+          }, [I18N.t('ui.result.traitReportEmpty')]));
+        }
+        content.appendChild(traitPanel);
+      }
     }
     content.appendChild(el('div', { class:'btn-row', style:{ justifyContent:'center', marginTop:'24px' } }, [
       el('button', { class:'btn primary', onClick: () => FLOW.continueRun() }, [I18N.t('ui.result.continue')])

@@ -699,6 +699,10 @@ function dispatchTrigger(type, ctx) {
         p._triggerCount = (p._triggerCount||0) + 1;
         if (ctx.match) {
           ctx.match.stats.triggersFired = (ctx.match.stats.triggersFired||0) + 1;
+          // ── Track per-trait fires for the post-match intel report ────────
+          // _traitFireCounts: { traitId: count } — read by buildMatchTraitReport
+          ctx.match._traitFireCounts = ctx.match._traitFireCounts || {};
+          ctx.match._traitFireCounts[traitId] = (ctx.match._traitFireCounts[traitId] || 0) + 1;
         }
       }
     }
@@ -974,6 +978,8 @@ async function startMatch(squad, opp, onEvent) {
     _eventImmediateAttack: false, // set by opp_mistake exploit; read in round loop, reset after use
     _oppBuildupPenalty: 0,        // set by opp_mistake sustain; read in attemptOppAttack
     _oppBuildupPenaltyRounds: 0,  // decremented by checkSituativeEvents each round
+    // ── Trait fire tracking (for post-match intel report) ────────────────────
+    _traitFireCounts: {},    // { traitId: count } — incremented in dispatchTrigger
     stats: {
       myShots: 0, myShotsOnTarget: 0, myBuildups: 0, myBuildupsSuccess: 0,
       oppShots: 0, oppShotsOnTarget: 0, oppBuildups: 0, oppBuildupsSuccess: 0,
@@ -1841,6 +1847,318 @@ function getTeamDisplayName(squad) {
   return (typeof state !== 'undefined' && state?.teamName) || tt('ui.hub.yourTeam');
 }
 
+// ═════════════════════════════════════════════════════════════════════════════
+// INTEL LAYER — trait power estimation + matchup analysis + post-match report
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// Why this exists:
+//   Flat stat power (324 vs 658) hides the fact that traits add massive
+//   effective power. A team with 8 active traits can outperform a trait-less
+//   team twice its raw stats. Without this layer, wins feel random.
+//
+// Each trait has a hand-tuned stat-equivalent value, calibrated to:
+//   +8 recurring stat bonus per round    ≈ 10 power
+//   Once-per-match goal cancel           ≈ 22-25 power
+//   Conditional 15-25% chance trigger    ≈ 12-18 power
+//   Team-wide permanent buff             ≈ 18-25 power
+//   Late-game boost (rounds 5-6 only)    ≈ 8-12 power
+//
+// Opponent traits use the same scale, so comparison is direct. Most are weak
+// stat modifiers → low values (5-10), which is exactly what makes the matchup
+// feel unbalanced — and is now visible to the player.
+
+const TRAIT_POWER_VALUES = {
+  // Keeper
+  titan_stand:      14,
+  fortress_aura:    16,
+  clutch_save:      10,
+  sweep_assist:     6,
+  laser_pass:       8,
+  offside_trap:     12,
+  acrobat_parry:    7,
+  wall_effect:      14,
+  nine_lives:       22,
+
+  // Defender
+  intimidate:       7,
+  bulldoze:         10,
+  captain_boost:    14,
+  blood_scent:      9,
+  hard_tackle:      12,
+  whirlwind_rush:   10,
+  build_from_back:  10,
+  late_bloom:       14,
+  read_game:        18,
+
+  // Playmaker
+  metronome_tempo:  11,
+  killer_pass:      13,
+  whisper_boost:    12,
+  hunter_press:     10,
+  gegenpress_steal: 11,
+  shadow_strike:    9,
+  maestro_combo:    18,
+  chess_predict:    20,
+  symphony_pass:    10,
+
+  // Runner
+  speed_burst:      12,
+  launch_sequence:  9,
+  unstoppable_run:  10,
+  dribble_chain:    11,
+  street_trick:     9,
+  nutmeg:           13,
+  ironman_stamina:  10,
+  dynamo_power:     10,
+  never_stop:       12,
+
+  // Striker
+  silent_killer:    12,
+  predator_pounce:  16,
+  opportunity:      8,
+  cannon_blast:     11,
+  header_power:     13,
+  brick_hold:       8,
+  ghost_run:        10,
+  puzzle_connect:   14,
+  chameleon_adapt:  11,
+
+  // Legendary (premium)
+  god_mode:         28,
+  clutch_dna:       16,
+  field_general:    25,
+  unbreakable:      24,
+  big_game:         14,
+  conductor:        18,
+  phoenix:          14,
+  ice_in_veins:     8
+};
+
+const OPP_TRAIT_POWER_VALUES = {
+  sturm:       6,   // +8% shot accuracy
+  riegel:      5,   // +5% save denial
+  konter_opp:  10,  // 30% insta-shot on build-up fail
+  presser_opp: 8,   // 10% buildup fail rate
+  clutch_opp:  9,   // late-round boost only
+  lucky:       6,   // once-per-match bonus attack
+  ironwall:    5,   // rounds 1-2 only
+  sniper:      8    // +15% accuracy, -5 tempo
+};
+
+// ─── estimatePlayerTraitPower ────────────────────────────────────────────────
+// Sum of trait-equivalent stat power for one player.
+// Mastery traits fall back to parent trait value × 1.3.
+function estimatePlayerTraitPower(player) {
+  if (!player?.traits?.length) return 0;
+  let total = 0;
+  for (const t of player.traits) {
+    if (TRAIT_POWER_VALUES[t] != null) {
+      total += TRAIT_POWER_VALUES[t];
+      continue;
+    }
+    if (t.endsWith('_mastery')) {
+      const parentId = t.replace(/_mastery$/, '');
+      const evo = DATA.evoDetails?.[parentId];
+      const parentTrait = evo?.parentTrait;
+      const parentValue = parentTrait ? TRAIT_POWER_VALUES[parentTrait] : null;
+      if (parentValue != null) {
+        total += Math.round(parentValue * 1.3);
+        continue;
+      }
+    }
+    total += 8;
+  }
+  return total;
+}
+
+function estimateSquadTraitPower(squad) {
+  if (!squad?.length) return 0;
+  return squad.reduce((sum, p) => sum + estimatePlayerTraitPower(p), 0);
+}
+
+function estimateOppTraitPower(opp) {
+  if (!opp?.traits?.length) return 0;
+  return opp.traits.reduce((sum, t) => sum + (OPP_TRAIT_POWER_VALUES[t] || 5), 0);
+}
+
+// ─── buildMatchupIntel ───────────────────────────────────────────────────────
+// Structured pre-match matchup comparison for the hub.
+// Returns null if squad or opp missing.
+//
+// Returns:
+//   {
+//     myBasePower, myTraitPower, myEffectivePower,
+//     oppBasePower, oppTraitPower, oppEffectivePower,
+//     powerDelta,
+//     advantages: [{ text, weight }],   // pre-resolved i18n strings
+//     warnings:   [{ text, weight }],
+//     statComparisons: [{ stat, me, opp, diff }]
+//   }
+function buildMatchupIntel(squad, opp, state) {
+  if (!squad?.length || !opp) return null;
+
+  const myBasePower = teamTotalPower(squad);
+  const myTraitPower = estimateSquadTraitPower(squad);
+  const myEffectivePower = myBasePower + myTraitPower;
+
+  const oppBasePower = opp.power || Object.values(opp.stats).reduce((a, b) => a + b, 0);
+  const oppTraitPower = estimateOppTraitPower(opp);
+  const oppEffectivePower = oppBasePower + oppTraitPower;
+
+  const advantages = [];
+  const warnings = [];
+
+  const myTraitSet = new Set(squad.flatMap(p => p.traits || []));
+  const oppTraits = new Set(opp.traits || []);
+  const isBoss = opp.isBoss;
+
+  // Predator Pounce vs pressing/offensive opponents (many failed attacks to pounce on)
+  if (myTraitSet.has('predator_pounce') && (oppTraits.has('presser_opp') || opp.special?.id === 'offensive')) {
+    const p = squad.find(p => p.traits?.includes('predator_pounce'));
+    advantages.push({ text: I18N.t('ui.intel.advPredatorVsPresser', { name: p?.name || 'ST' }), weight: 3 });
+  }
+
+  // Late Bloom goes live rounds 4-6
+  if (myTraitSet.has('late_bloom')) {
+    const p = squad.find(p => p.traits?.includes('late_bloom'));
+    advantages.push({ text: I18N.t('ui.intel.advLateBloom', { name: p?.name || 'VT' }), weight: 2 });
+  }
+
+  // Clutch save / DNA counters clutch_opp
+  if ((myTraitSet.has('clutch_save') || myTraitSet.has('clutch_dna')) && oppTraits.has('clutch_opp')) {
+    advantages.push({ text: I18N.t('ui.intel.advClutchMatchup'), weight: 2 });
+  }
+
+  // Big-game vs boss
+  if (isBoss && myTraitSet.has('big_game')) {
+    const p = squad.find(p => p.traits?.includes('big_game'));
+    advantages.push({ text: I18N.t('ui.intel.advBigGame', { name: p?.name || '?' }), weight: 3 });
+  }
+
+  // Field general always strong
+  if (myTraitSet.has('field_general')) {
+    advantages.push({ text: I18N.t('ui.intel.advFieldGeneral'), weight: 3 });
+  }
+
+  // Keeper wall traits vs offensive/sniper opps
+  if ((myTraitSet.has('fortress_aura') || myTraitSet.has('wall_effect') || myTraitSet.has('nine_lives'))
+      && (opp.special?.id === 'offensive' || oppTraits.has('sniper'))) {
+    advantages.push({ text: I18N.t('ui.intel.advKeeperWall'), weight: 2 });
+  }
+
+  // LF tempo edge
+  const lf = squad.find(p => p.role === 'LF');
+  if (lf && lf.stats.tempo >= opp.stats.tempo + 15) {
+    advantages.push({ text: I18N.t('ui.intel.advTempo', { name: lf.name }), weight: 2 });
+  }
+
+  // ── Warnings ──────────────────────────────────────────────────────────────
+
+  if (oppTraits.has('sniper')) {
+    warnings.push({ text: I18N.t('ui.intel.warnSniper'), weight: 3 });
+  }
+
+  if (oppTraits.has('konter_opp')) {
+    warnings.push({ text: I18N.t('ui.intel.warnCounter'), weight: 3 });
+  }
+
+  if (oppTraits.has('ironwall')) {
+    warnings.push({ text: I18N.t('ui.intel.warnIronwall'), weight: 2 });
+  }
+
+  if (oppTraits.has('clutch_opp') && !myTraitSet.has('clutch_save') && !myTraitSet.has('clutch_dna')) {
+    warnings.push({ text: I18N.t('ui.intel.warnClutchUnanswered'), weight: 3 });
+  }
+
+  if (oppTraits.has('presser_opp')) {
+    const pm = squad.find(p => p.role === 'PM');
+    if (!pm || pm.stats.vision < 65) {
+      warnings.push({ text: I18N.t('ui.intel.warnPresserNoVision'), weight: 3 });
+    }
+  }
+
+  if (oppBasePower > myBasePower + 100) {
+    warnings.push({ text: I18N.t('ui.intel.warnStatGap', { diff: oppBasePower - myBasePower }), weight: 3 });
+  }
+
+  if (isBoss) {
+    warnings.push({ text: I18N.t('ui.intel.warnBoss'), weight: 1 });
+  }
+
+  advantages.sort((a, b) => b.weight - a.weight);
+  warnings.sort((a, b) => b.weight - a.weight);
+
+  const myAgg = aggregateTeamStats(squad);
+  const statComparisons = ['offense', 'defense', 'tempo', 'vision', 'composure'].map(k => ({
+    stat: k,
+    me: myAgg[k],
+    opp: opp.stats[k] || 0,
+    diff: myAgg[k] - (opp.stats[k] || 0)
+  }));
+
+  return {
+    myBasePower,
+    myTraitPower,
+    myEffectivePower,
+    oppBasePower,
+    oppTraitPower,
+    oppEffectivePower,
+    powerDelta: myEffectivePower - oppEffectivePower,
+    advantages: advantages.slice(0, 3),
+    warnings: warnings.slice(0, 3),
+    statComparisons
+  };
+}
+
+// ─── buildMatchTraitReport ──────────────────────────────────────────────────
+// Post-match: which of your traits fired, how often, estimated impact.
+// Sorted by estimated impact desc.
+//
+// Per-fire impact is rougher than total trait power — one activation ≠ full
+// rating, so we use baseValue / 3 as a proxy (min 2).
+//
+// Returns [{ traitId, traitName, playerName, role, count, estimatedImpact }]
+function buildMatchTraitReport(match) {
+  if (!match?._traitFireCounts) return [];
+  const fires = match._traitFireCounts;
+  const squad = match.squad || [];
+
+  const traitOwners = {};
+  for (const p of squad) {
+    for (const t of (p.traits || [])) {
+      if (!traitOwners[t]) traitOwners[t] = p;
+    }
+  }
+
+  const report = [];
+  for (const [traitId, count] of Object.entries(fires)) {
+    if (count <= 0) continue;
+
+    const baseValue = TRAIT_POWER_VALUES[traitId] ||
+      (traitId.endsWith('_mastery')
+        ? Math.round((TRAIT_POWER_VALUES[DATA.evoDetails[traitId.replace(/_mastery$/, '')]?.parentTrait] || 8) * 1.3)
+        : 8);
+    const perFireValue = Math.max(2, Math.round(baseValue / 3));
+    const estimatedImpact = count * perFireValue;
+
+    const traitDef = DATA.traits[traitId];
+    const traitName = traitDef?.name || traitId;
+    const owner = traitOwners[traitId];
+
+    report.push({
+      traitId,
+      traitName,
+      playerName: owner?.name || '—',
+      role: owner?.role || '',
+      count,
+      estimatedImpact
+    });
+  }
+
+  report.sort((a, b) => b.estimatedImpact - a.estimatedImpact);
+  return report;
+}
+
 window.getState = () => state;
 window.setState = (nextState) => { state = nextState; return state; };
 window.getLineup = getLineup;
@@ -1877,3 +2195,10 @@ window.recomputeTeamBuffs = recomputeTeamBuffs;
 window.bumpPlayerStat = bumpPlayerStat;
 window.resetPlayerMatchStats = resetPlayerMatchStats;
 window.getTeamDisplayName = getTeamDisplayName;
+window.TRAIT_POWER_VALUES = TRAIT_POWER_VALUES;
+window.OPP_TRAIT_POWER_VALUES = OPP_TRAIT_POWER_VALUES;
+window.estimatePlayerTraitPower = estimatePlayerTraitPower;
+window.estimateSquadTraitPower = estimateSquadTraitPower;
+window.estimateOppTraitPower = estimateOppTraitPower;
+window.buildMatchupIntel = buildMatchupIntel;
+window.buildMatchTraitReport = buildMatchTraitReport;
