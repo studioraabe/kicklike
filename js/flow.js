@@ -10,7 +10,34 @@ const FLOW = {
     state.lineupIds = players.map(p => p.id);
     state.teamName = team.name;
     state.teamColor = team.color;
+    state.teamLogo = team.logo || null;
     state.starterTeamId = team.id;
+    // Pre-generate the entire season bracket so future opponents (and their
+    // logos) are stable from kickoff. If a run already has opponents — e.g.
+    // on reload — keep them.
+    //
+    // Place-Indizes werden ohne Zurücklegen gezogen, damit kein Run zwei
+    // Gegner mit gleichem zweiten Namen (und damit gleichem Wappen) enthält.
+    // Bei 15 Plätzen = runLength passt das genau. Falls der Pool kleiner
+    // würde, fällt der Code nach "Random mit Wiederholung" zurück.
+    if (!state.seasonOpponents || !state.seasonOpponents.length) {
+      state.seasonOpponents = [];
+      const placeCount = DATA.opponents.places.length;
+      const placeOrder = [];
+      if (placeCount >= CONFIG.runLength) {
+        const pool = Array.from({ length: placeCount }, (_, i) => i);
+        for (let i = pool.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [pool[i], pool[j]] = [pool[j], pool[i]];
+        }
+        placeOrder.push(...pool.slice(0, CONFIG.runLength));
+      }
+      for (let i = 1; i <= CONFIG.runLength; i++) {
+        const placeIdx = placeOrder[i - 1];
+        const opts = (typeof placeIdx === 'number') ? { placeIdx } : {};
+        state.seasonOpponents.push(generateOpponent(i, opts));
+      }
+    }
     FLOW.advance();
   },
 
@@ -19,7 +46,10 @@ const FLOW = {
       FLOW.winRun();
       return;
     }
-    state.currentOpponent = generateOpponent(state.matchNumber + 1);
+    // Prefer pre-generated opponent. Fall back to fresh generation for legacy
+    // saves that don't have seasonOpponents populated yet.
+    state.currentOpponent = (state.seasonOpponents && state.seasonOpponents[state.matchNumber])
+      || generateOpponent(state.matchNumber + 1);
     UI.renderHub();
   },
 
@@ -29,6 +59,57 @@ const FLOW = {
     if (lineup.length !== CONFIG.teamSize) {
       alert(I18N.t('ui.flow.lineupIncomplete'));
       return;
+    }
+    const suspended = lineup.filter(p => p._suspendedUntil && p._suspendedUntil > state.matchNumber);
+    if (suspended.length) {
+      // Kann die Bank alle Sperren rollen-gerecht ersetzen? Weil die
+      // Aufstellung genau 1 Keeper braucht, muss TW → TW und Feld → Feld
+      // getauscht werden. Ein einzelner TW auf der Bank hilft gegen einen
+      // gesperrten ST nicht — die zwei Keeper wären illegal.
+      const bench = getBench();
+      const benchPool = bench.filter(p => !(p._suspendedUntil && p._suspendedUntil > state.matchNumber));
+
+      const canSwapAllFromBench = (() => {
+        const pool = benchPool.slice();
+        for (const susp of suspended) {
+          const needsKeeper = susp.role === 'TW';
+          const idx = pool.findIndex(p => (p.role === 'TW') === needsKeeper);
+          if (idx < 0) return false;
+          pool.splice(idx, 1);  // Bank-Spieler "reservieren"
+        }
+        return true;
+      })();
+
+      if (canSwapAllFromBench) {
+        // User hat Optionen — bewusste Entscheidung.
+        alert(I18N.t('ui.flow.lineupSuspended', { name: suspended[0].name }));
+        UI.renderLineup();
+        return;
+      }
+      // Bank bietet keinen regelgerechten Tausch → Notfall-Akademie.
+      // Für jeden Gesperrten einen temporären, schwächeren Spieler gleicher
+      // Rolle; nach dem Match weg (nicht im Roster).
+      const replacedIds = [];
+      const academyNames = [];
+      for (const susp of suspended) {
+        const academy = window.makeAcademyPlayer(susp.role, { teamId: state.starterTeamId });
+        if (!academy) continue;
+        const idx = lineup.indexOf(susp);
+        if (idx >= 0) {
+          lineup[idx] = academy;
+          susp._replacedByAcademy = true;   // transientes Flag für den XP-Loop
+          replacedIds.push(susp.id);
+          academyNames.push(`${susp.name} → ${academy.name}`);
+        }
+      }
+      if (replacedIds.length) {
+        state._academyActiveIds = replacedIds;
+        alert(I18N.t('ui.flow.academyCalledUp', {
+          list: academyNames.join(', ')
+        }));
+      }
+    } else {
+      state._academyActiveIds = null;
     }
     UI.renderMatch(opp, lineup);
     state._skipAnim = false;
@@ -60,25 +141,42 @@ const FLOW = {
       state.wins++;
       state.seasonPoints += 3;
       state.currentLossStreak = 0;
+      state.currentWinStreak = (state.currentWinStreak || 0) + 1;
+      if (state.currentWinStreak > (state.longestWinStreak || 0)) state.longestWinStreak = state.currentWinStreak;
+      state.pendingPointsPop = 3;
     } else if (result.result === 'loss') {
       state.losses++;
       state.currentLossStreak++;
+      state.currentWinStreak = 0;
     } else {
       state.draws++;
       state.seasonPoints += 1;
       state.currentLossStreak = 0;
+      state.currentWinStreak = 0;
+      state.pendingPointsPop = 1;
     }
     state.goalsFor += result.scoreMe;
     state.goalsAgainst += result.scoreOpp;
+
+    const match = result.match;
+    if (match && match._traitFireCounts) {
+      const totalFires = Object.values(match._traitFireCounts).reduce((a, b) => a + b, 0);
+      state.runTraitFires = (state.runTraitFires || 0) + totalFires;
+    }
+
+    if (typeof checkAchievements === 'function') checkAchievements(state, result);
     const isWin = result.result === 'win';
     const isDraw = result.result === 'draw';
     const teamBonus = isWin ? 2 : isDraw ? 1 : 0;
     let totalAwarded = 0;
     for (const p of state.roster) {
-      const playedInMatch = state.lineupIds.includes(p.id);
+      const wasReplaced = !!p._replacedByAcademy;
+      const playedInMatch = state.lineupIds.includes(p.id) && !wasReplaced;
       const ms = p._matchStats || {};
       let xp;
       if (!playedInMatch) {
+        // Bank-XP oder "gesperrt, nicht aufgestellt". Identisch behandelt:
+        // kein Fleiß-Bonus, kein Malus. Gewinnboni gibt's normal mit.
         xp = 1 + (isWin ? 1 : 0);
       } else {
         xp = 2 + teamBonus;
@@ -92,8 +190,9 @@ const FLOW = {
             const accuracy = onTarget / shots;
             if (accuracy >= 0.67) xp += 2;
             else if (accuracy >= 0.50) xp += 1;
-            else if (accuracy === 0 && shots >= 3) xp -= 2;
-            else if (accuracy === 0 && shots >= 1) xp -= 1;
+            else if (accuracy === 0) xp -= shots >= 3 ? 2 : 1;
+          } else if (shots === 1 && onTarget === 0) {
+            xp -= 1;
           } else if (shots === 0) {
             xp -= 1;
           }
@@ -117,6 +216,13 @@ const FLOW = {
       if (playedInMatch && result.match._teamFormLabel === 'KRISE' && (isWin || isDraw)) {
         xp = Math.round(xp * 1.5);
       }
+      // Entscheidungs-XP: aus erfolgreichen Focus-Aktionen während
+      // gewählter Taktik-Phasen. Wird separat getrackt für Result-Anzeige.
+      // Bei Academy-ersetzten Spielern explizit 0, auch wenn _matchStats
+      // noch alte Werte enthielten (engine resetet nur die aufgestellten).
+      const decisionXp = wasReplaced ? 0 : (ms.decisionXp || 0);
+      p._lastDecisionXp = decisionXp;
+      xp += decisionXp;
       p._lastMatchXp = xp;
       p.lastPerformance = xp;
       p._formDelta = 0;
@@ -135,6 +241,14 @@ const FLOW = {
       p.goals = 0;
       totalAwarded += xp;
     }
+    // Transiente Academy-Flags aufräumen — dürfen nicht in das nächste Match
+    // lecken (der Spieler könnte im Folge-Match wieder aufgestellt sein).
+    for (const p of state.roster) delete p._replacedByAcademy;
+    state._academyActiveIds = null;
+    // Level-Ups jetzt anwenden, damit die Stat-Diffs im Result-Screen
+    // den Zuwachs vom Leveln sichtbar machen. Evolutions kommen separat
+    // nach dem Result in continueRun — sie brauchen ihren eigenen Modal.
+    await FLOW.applyPendingLevelUps();
     const reward = I18N.t('ui.flow.reward', { avg: (totalAwarded / state.roster.length).toFixed(1) });
     await sleep(400);
     UI.renderResult(result.result, result.scoreMe, result.scoreOpp, reward, result.match);
@@ -191,23 +305,46 @@ const FLOW = {
       return;
     }
 
+    if (ev.type === 'matchStart') {
+      // Baseline-Snapshot für die Live-Scorecard setzen + Initial-Render.
+      UI.updateMatchMomentum(ev.match);
+      return;
+    }
+
     if (ev.type === 'roundEnd') {
       UI.updateMatchScore(ev.match);
+      UI.updateMatchMomentum(ev.match);
+      return;
+    }
+
+    if (ev.type === 'buffsUpdated') {
+      // Feuert direkt nach Taktik-Anwendung (Kickoff/Halbzeit/Finale).
+      // Momentum-Strip aktualisiert sich, bevor die Runde gespielt wird —
+      // so sieht der Spieler den Impact seiner Wahl sofort.
+      UI.updateMatchMomentum(ev.match);
       return;
     }
 
     if (ev.type === 'interrupt') {
       state._preKickoff = false;
       const m = ev.match;
+      const team = DATA.starterTeams.find(t => t.id === state.starterTeamId) || DATA.starterTeams[0];
 
       // ── Ensure tactic pools exist ───────────────────────────────────────
+      // Kickoff-Pool wird einmal pro Match vorgehalten.
+      // Halftime/Final werden LAZY gezogen, damit Score-bedingte Taktiken
+      // (Desperate, Kamikaze, Clockwatch, Poker Face) die reale Spielsituation
+      // als Filter nutzen können.
       if (!m._tacticPools) {
-        const team = DATA.starterTeams.find(t => t.id === state.starterTeamId) || DATA.starterTeams[0];
         m._tacticPools = {
-          kickoff:  pickThemedTactics(DATA.kickoffTactics,  3, team, 'kickoff'),
-          halftime: pickThemedTactics(DATA.halftimeOptions, 3, team, 'halftime'),
-          final:    pickThemedTactics(DATA.finalOptions,    3, team, 'final')
+          kickoff: pickThemedTactics(DATA.kickoffTactics, 3, team, 'kickoff', m)
         };
+      }
+      if (ev.phase === 'halftime' && !m._tacticPools.halftime) {
+        m._tacticPools.halftime = pickThemedTactics(DATA.halftimeOptions, 3, team, 'halftime', m);
+      }
+      if (ev.phase === 'final' && !m._tacticPools.final) {
+        m._tacticPools.final = pickThemedTactics(DATA.finalOptions, 3, team, 'final', m);
       }
 
       // ── Kickoff ──────────────────────────────────────────────────────────
@@ -215,11 +352,14 @@ const FLOW = {
         const hints = (typeof buildContextHint === 'function')
           ? buildContextHint(m, 'kickoff', state)
           : [];
+        const kickoffOptions = (typeof decorateOptionsForDisplay === 'function')
+          ? decorateOptionsForDisplay(m._tacticPools.kickoff, m, 'kickoff', state)
+          : m._tacticPools.kickoff;
         return new Promise(resolve => {
           UI.showInterrupt(
             I18N.t('ui.flow.kickoffTitle'),
             I18N.t('ui.flow.kickoffSubtitle'),
-            m._tacticPools.kickoff,
+            kickoffOptions,
             (picked) => resolve(picked),
             m,
             'kickoff',
@@ -229,22 +369,22 @@ const FLOW = {
       }
 
       // ── Halftime — extended flow ─────────────────────────────────────────
-      // Bug #6 fix: applyDecision for the tactic choice is now handled by core.js
-      //             (which calls applyDecision when it receives the return value).
-      //             Removing the apply here prevents double-application of buff layers.
-      // Bug #1 fix: Sub is now reachable. If bench is non-empty, player gets a
-      //             Sub modal IN ADDITION to the Focus modal. Previously the
-      //             Sub branch was unreachable because Focus always had length > 1.
+      // Tactic choice is returned to the engine, which routes it through
+      // applyDecision to pick up Synergy/Conflict/Legendary multipliers.
+      // Focus and Sub decisions go through applyDecision directly here.
       if (ev.phase === 'halftime') {
         // Step 1: tactic choice
         const tacticHints = (typeof buildContextHint === 'function')
           ? buildContextHint(m, 'halftime', state)
           : [];
+        const halftimeOptions = (typeof decorateOptionsForDisplay === 'function')
+          ? decorateOptionsForDisplay(m._tacticPools.halftime, m, 'halftime', state)
+          : m._tacticPools.halftime;
         const tacticChoice = await new Promise(resolve => {
           UI.showInterrupt(
             I18N.t('ui.flow.halftimeTitle'),
             I18N.t('ui.flow.scoreSubtitle', { me: m.scoreMe, opp: m.scoreOpp }),
-            m._tacticPools.halftime,
+            halftimeOptions,
             (picked) => resolve(picked),
             m,
             'halftime',
@@ -252,39 +392,25 @@ const FLOW = {
           );
         });
 
-        // Step 2: focus modal (always available — outfield players always exist)
+        // Step 2 (Focus-Modal) wurde bewusst entfernt:
+        // - Mechanisch redundant mit Tactics (beide geben Stat-Boosts).
+        // - Keine echte Entscheidung: Focus war in 90% der Fälle "pick
+        //   den Hot-Streak-Spieler". Kein Risiko, kein Trade-off.
+        // - Isoliert vom Rest: triggerte nichts, koppelte mit keinem
+        //   anderen System. Siehe auch Commit-Message für diese Änderung.
+        // Ersparte Screen-Zeit ermöglicht längerfristig mehr Situations.
+
+        // Step 2: sub modal — ONLY if bench is non-empty
         const currentLineup = m.squad || getLineup();
-        const focusOptions = (typeof generateFocusOptions === 'function')
-          ? generateFocusOptions(currentLineup, m)
-          : [];
-
-        if (focusOptions.length > 1) {
-          const focusChoice = await new Promise(resolve => {
-            UI.showInterrupt(
-              I18N.t('ui.decisions.focusTitle'),
-              I18N.t('ui.decisions.focusSubtitle'),
-              focusOptions,
-              (picked) => resolve(picked),
-              m,
-              'halftime_focus',
-              []
-            );
-          });
-
-          if (typeof applyDecision === 'function' && focusChoice && focusChoice.id !== 'focus_none') {
-            applyDecision(m, focusChoice, 'halftime_focus', state);
-          } else if (focusChoice && typeof focusChoice.apply === 'function') {
-            focusChoice.apply(m, { mult: 1.0, phase: 'halftime_focus', state });
-          }
-        }
-
-        // Step 3: sub modal — ONLY if bench is non-empty
         const bench = getBench();
         if (bench.length > 0) {
           const subOptions = (typeof generateSubOptions === 'function')
             ? generateSubOptions(currentLineup, m, state)
             : [];
           if (subOptions.length > 1) {
+            const subHints = (typeof buildContextHint === 'function')
+              ? buildContextHint(m, 'halftime_sub', state)
+              : [];
             const subChoice = await new Promise(resolve => {
               UI.showInterrupt(
                 I18N.t('ui.decisions.subTitle'),
@@ -293,7 +419,7 @@ const FLOW = {
                 (picked) => resolve(picked),
                 m,
                 'halftime_sub',
-                []
+                subHints
               );
             });
 
@@ -315,11 +441,14 @@ const FLOW = {
         const hints = (typeof buildContextHint === 'function')
           ? buildContextHint(m, 'final', state)
           : [];
+        const finalOptions = (typeof decorateOptionsForDisplay === 'function')
+          ? decorateOptionsForDisplay(m._tacticPools.final, m, 'final', state)
+          : m._tacticPools.final;
         return new Promise(resolve => {
           UI.showInterrupt(
             I18N.t('ui.flow.finalTitle'),
             I18N.t('ui.flow.roundScoreSubtitle', { me: m.scoreMe, opp: m.scoreOpp }),
-            m._tacticPools.final,
+            finalOptions,
             (picked) => resolve(picked),
             m,
             'final',
@@ -337,64 +466,149 @@ const FLOW = {
         const eventCtx = ev.eventCtx || {};
         if (!event) return null;
 
+        const resolveText = (inlineValue, key, vars) => {
+          if (inlineValue) return I18N.format(inlineValue, vars);
+          return I18N.t(key, vars);
+        };
+
+        const describeEventActor = (player, side) => {
+          if (!player) return '';
+          const owner = I18N.t(`ui.eventActors.owners.${side === 'opp' ? 'opp' : 'my'}`);
+          const roleKey = `ui.eventActors.roles.${player.role}`;
+          const role = I18N.t(roleKey);
+          return I18N.format(I18N.t('ui.eventActors.format'), {
+            owner,
+            role: role === roleKey ? I18N.t('ui.eventActors.roles.player') : role,
+            name: player.name
+          });
+        };
+
+        const titleName = eventCtx.eventPlayer?.name || eventCtx.legendaryPlayer?.name || eventCtx.oppPlayer?.name || '';
+        const subtitleName = eventCtx.eventPlayer
+          ? describeEventActor(eventCtx.eventPlayer, 'my')
+          : eventCtx.legendaryPlayer
+            ? describeEventActor(eventCtx.legendaryPlayer, 'my')
+            : eventCtx.oppPlayer
+              ? describeEventActor(eventCtx.oppPlayer, 'opp')
+              : titleName;
+
         // Build option list from event definition
         // Each option needs name + desc resolved from i18n
         const options = event.options.map(opt => {
           const i18nBase = `ui.events.${event.id}.option_${opt.id}`;
-          const name = I18N.t(i18nBase + '.name', eventCtx.eventPlayer
-            ? { name: eventCtx.eventPlayer.name, bonus: 8, stat: 'offense', deficit: eventCtx.deficit || 0, n: eventCtx.oppFailedBuildups || 0, opp: m.opp?.name || '' }
-            : { name: eventCtx.legendaryPlayer?.name || '', deficit: eventCtx.deficit || 0, n: eventCtx.oppFailedBuildups || 0, opp: m.opp?.name || '' }
-          );
-          const desc = I18N.t(i18nBase + '.desc', {
+          const vars = {
+            name: titleName,
+            oppName: eventCtx.oppPlayer?.name || '',
+            pmName: eventCtx.pmPlayer?.name || '',
+            lfName: eventCtx.lfPlayer?.name || '',
             bonus: 8, stat: 'offense',
             deficit: eventCtx.deficit || 0,
-            n: eventCtx.oppFailedBuildups || 0,
+            n: eventCtx.oppFailedBuildups || eventCtx.streakCount || 0,
             opp: m.opp?.name || '',
-            name: eventCtx.eventPlayer?.name || eventCtx.legendaryPlayer?.name || ''
-          });
-          return {
-            ...opt,
-            name,
-            desc
+            streakCount: eventCtx.streakCount || 0
           };
+          const name = resolveText(opt.name, i18nBase + '.name', vars);
+          const desc = resolveText(opt.desc, i18nBase + '.desc', vars);
+          return { ...opt, name, desc };
         });
 
         // Resolve subtitle with event context
-        const subtitleVars = {
-          name: eventCtx.eventPlayer?.name || eventCtx.legendaryPlayer?.name || '',
+        const titleVars = {
+          name: titleName,
           deficit: eventCtx.deficit || 0,
-          n: eventCtx.oppFailedBuildups || 0,
+          n: eventCtx.oppFailedBuildups || eventCtx.streakCount || 0,
           opp: m.opp?.name || '',
-          points: eventCtx.currentPoints || 0
+          points: eventCtx.currentPoints || 0,
+          streakCount: eventCtx.streakCount || 0,
+          conceded: eventCtx.conceded || 0
         };
-        const subtitle = I18N.t(`ui.events.${event.id}.subtitle`, subtitleVars);
+        const subtitleVars = {
+          name: subtitleName,
+          deficit: eventCtx.deficit || 0,
+          n: eventCtx.oppFailedBuildups || eventCtx.streakCount || 0,
+          opp: m.opp?.name || '',
+          points: eventCtx.currentPoints || 0,
+          streakCount: eventCtx.streakCount || 0,
+          conceded: eventCtx.conceded || 0
+        };
+        const titleText = resolveText(event.title, `ui.events.${event.id}.title`, titleVars);
+        const subtitleBase = resolveText(event.subtitle, `ui.events.${event.id}.subtitle`, subtitleVars);
+        const subtitle = eventCtx.reason
+          ? `${subtitleBase}\n__REASON__${eventCtx.reason}`
+          : subtitleBase;
 
         return new Promise(resolve => {
           UI.showInterrupt(
-            I18N.t('ui.flow.eventTitle'),
+            titleText,
             subtitle,
             options,
             (picked) => resolve(picked),
             m,
             'event',
-            [] // Events are surprises — no hints per briefing
+            []
           );
         });
       }
     }
   },
 
-  async processLevelUps() {
+  // Stat-Growth vom Level-Up läuft VOR renderResult, damit die Stat-Diffs
+  // auf den Spieler-Karten die Zuwächse sofort zeigen. Evolutions bleiben
+  // ein eigenständiger Modal-Flow im continueRun, über pendingEvolution
+  // verkettet.
+  async applyPendingLevelUps() {
+    const SECONDARY_STATS = {
+      TW: ['composure', 'vision'],
+      VT: ['composure', 'tempo'],
+      PM: ['composure', 'tempo'],
+      LF: ['offense',   'vision'],
+      ST: ['composure', 'tempo']
+    };
+    const applyStatGrowth = (player) => {
+      const growth = CONFIG.statGrowthPerLevel || { focusBonus: 0, secondaryBonus: 0 };
+      const role = DATA.roles.find(r => r.id === player.role);
+      if (!role) return;
+      const focusStat = role.focusStat;
+      if (growth.focusBonus && focusStat) {
+        player.stats[focusStat] = Math.min(99, (player.stats[focusStat] || 0) + growth.focusBonus);
+      }
+      if (growth.secondaryBonus) {
+        const secondaries = SECONDARY_STATS[player.role] || [];
+        const idx = secondaries.length ? ((player.level - 1) % secondaries.length) : -1;
+        const secStat = idx >= 0 ? secondaries[idx] : null;
+        if (secStat) {
+          player.stats[secStat] = Math.min(99, (player.stats[secStat] || 0) + growth.secondaryBonus);
+        }
+      }
+    };
+
     for (const p of state.roster) {
       while (p.xp >= p.xpToNext) {
         p.xp -= p.xpToNext;
         p.level++;
         p.xpToNext = Math.round(p.xpToNext * 1.4);
+        applyStatGrowth(p);
         if (CONFIG.evolutionLevels.includes(p.level) && p.stage < 2) {
-          await FLOW.triggerEvolution(p);
+          p._pendingEvolution = true;
         }
       }
     }
+  },
+
+  async processPendingEvolutions() {
+    for (const p of state.roster) {
+      if (p._pendingEvolution) {
+        p._pendingEvolution = false;
+        await FLOW.triggerEvolution(p);
+      }
+    }
+  },
+
+  // Legacy-Wrapper: sequenziell beides. Wird nirgends mehr direkt aufgerufen,
+  // aber weiterhin exportiert für Abwärtskompatibilität.
+  async processLevelUps() {
+    await FLOW.applyPendingLevelUps();
+    await FLOW.processPendingEvolutions();
   },
 
   triggerEvolution(player) {
@@ -416,13 +630,16 @@ const FLOW = {
         player.label = evo.label;
         player.stage += 1;
         player.evoPath.push(chosenId);
+        state.runEvoCount = (state.runEvoCount || 0) + 1;
         resolve();
       });
     });
   },
 
   async continueRun() {
-    await FLOW.processLevelUps();
+    // Level-Ups sind bereits in applyPendingLevelUps (vor renderResult)
+    // angewandt. Hier nur noch die aufgestauten Evolutions anfragen.
+    await FLOW.processPendingEvolutions();
     if (state.pendingRecruit) {
       state.pendingRecruit = false;
       FLOW.startRecruit();

@@ -1,18 +1,8 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// stats.js — Aggregation and scoring helpers for squads
-//
-// Pure functions. No state mutation, no side effects. Given a squad (and
-// optionally a match/opp), return numbers and labels.
-//
-// Exposed on KL.stats and as legacy bare-name window globals.
-// ─────────────────────────────────────────────────────────────────────────────
-
 (() => {
   const KL = window.KL;
   const { rand, clamp } = KL.util;
   const { DATA } = KL.config;
 
-  // ─── Raw totals ────────────────────────────────────────────────────────────
   function totalPower(squad) {
     return squad.reduce(
       (sum, p) => sum + Object.values(p.stats).reduce((a, b) => a + b, 0),
@@ -39,7 +29,6 @@
     return Object.values(agg).reduce((a, b) => a + b, 0);
   }
 
-  // Most-prominent team stat as a human label — used in hub summary.
   function teamStrengthLabel(teamStats) {
     const entries = Object.entries(teamStats).sort((a, b) => b[1] - a[1]);
     const labels = {
@@ -52,10 +41,6 @@
     return labels[entries[0][0]] || window.I18N.t('ui.labels.standard');
   }
 
-  // ─── Synergy bonus ─────────────────────────────────────────────────────────
-  // Detects players whose role naturally aligns with the active tactic tags
-  // and rewards a small attack bonus. Only the first 1-2 contributors count —
-  // the idea is a nod, not a stacking modifier.
   const ROLE_TAGS = {
     TW: ['defensiv', 'kontrolle'],
     VT: ['defensiv', 'physisch', 'pressing'],
@@ -97,19 +82,32 @@
     };
   }
 
-  // ─── Themed tactic picking ─────────────────────────────────────────────────
-  // Uses the starter-team's signature bias to pre-seed one tactic that fits
-  // their identity, then weights the remainder by tag overlap with the team's
-  // tactic tags. Always returns n tactics.
-  function pickThemedTactics(pool, n, team, phase) {
+  // Rogue-like tuning knobs — controls how deterministic the decision screen is.
+  //   SIG_CHANCE   — probability the team's signature tactic appears at all.
+  //                  Lower = more variance, higher = stronger team identity.
+  //   Shuffle at end ensures the signature (if drawn) isn't always position 0;
+  //   stops "click first option" muscle memory from being a viable strategy.
+  const SIG_CHANCE = 0.55;
+
+  function pickThemedTactics(pool, n, team, phase, match) {
     const sigIds = team?.signatureTactics?.[phase] || [];
     const tagWeights = team?.tacticTags || {};
     const result = [];
-    const sigOptions = pool.filter(t => sigIds.includes(t.id));
-    if (sigOptions.length) {
+
+    // Context-sensitive: Taktiken mit condition() die 'miss' liefern werden
+    // nur aufgenommen wenn der Kontext passt (Führung, Rückstand, Power-Diff).
+    const filtered = pool.filter(t => {
+      if (typeof t.condition !== 'function') return true;
+      if (!match) return true; // ohne Match-Kontext alles zulassen (nie zutreffend)
+      const res = t.condition(match);
+      return res !== 'miss' && res !== null;
+    });
+
+    const sigOptions = filtered.filter(t => sigIds.includes(t.id));
+    if (sigOptions.length && rand() < SIG_CHANCE) {
       result.push(sigOptions[Math.floor(rand() * sigOptions.length)]);
     }
-    const remaining = pool.filter(t => !result.includes(t));
+    const remaining = filtered.filter(t => !result.includes(t));
     const scored = remaining.map(t => {
       let score = 1;
       for (const tag of (t.tags || [])) score += (tagWeights[tag] || 0);
@@ -126,82 +124,70 @@
       result.push(scored[idx].tactic);
       scored.splice(idx, 1);
     }
+
+    // Fisher-Yates shuffle — signature (if present) gets a random slot.
+    for (let i = result.length - 1; i > 0; i--) {
+      const j = Math.floor(rand() * (i + 1));
+      [result[i], result[j]] = [result[j], result[i]];
+    }
+
+    // Kickoff safety net: with the widened 1.35/0.55 fit spread, a round where
+    // all three drawn options misfit the squad becomes a near-auto-loss. If
+    // that happens, swap the last slot for 'balanced' (fit: () => true) so
+    // the player always has an escape hatch. No-op for halftime/final — those
+    // phases don't apply fit/misfit penalties.
+    if (phase === 'kickoff' && match?.squad?.length) {
+      const FIT = window.TACTIC_FIT || {};
+      const anyFit = result.some(t => {
+        const def = FIT[t.id];
+        if (!def) return true;
+        const fits = def.fit(match.squad, match.opp, match);
+        const breached = def.opponentBreachFn ? def.opponentBreachFn(match.opp) : false;
+        return fits && !breached;
+      });
+      if (!anyFit) {
+        const balanced = pool.find(t => t.id === 'balanced');
+        if (balanced && !result.includes(balanced) && result.length) {
+          result[result.length - 1] = balanced;
+        }
+      }
+    }
+
     return result;
   }
 
-  // ─── Per-player stat computation for a match round ─────────────────────────
-  // Applies, in order:
-  //   1. form bias to the focus stat
-  //   2. team-wide form bonus
-  //   3. halftime focus effect (with fail/success resolution)
-  //   4. stat-computing traits via the trigger dispatcher
-  //   5. team-wide buffs from layered tactic effects
-  //
-  // Focus logic lives here (not in decisions.js) because it's resolved during
-  // a specific round and needs to be applied consistently every time stats are
-  // requested for the focused player in that round. See match._focus.* fields
-  // set by decisions.js.
+  // Focus-System bewusst entfernt (siehe flow.js halftime-Block). Die
+  // applyActiveFocusState + Focus-Resolve-Pipeline sind weg; computePlayerStats
+  // beschränkt sich auf Form, Traits, Streaks und Team-Buffs.
+
   function computePlayerStats(player, match) {
+    if (KL.engine?.isSuspended && KL.engine.isSuspended(player, match)) {
+      return { offense: 0, defense: 0, tempo: 0, vision: 0, composure: 0 };
+    }
+
     const stats = { ...player.stats };
     const focusStat = DATA.roles.find(r => r.id === player.role)?.focusStat;
 
     if (focusStat && player.form) {
-      stats[focusStat] = (stats[focusStat] || 0) + player.form * 2;
+      // `disciplined` kickoff-Tactic nullifiziert NEGATIVE Form-Penalties
+      // für das gesamte Match. Positive Form bleibt — die Tactic ist ein
+      // Anti-Krise-Tool, kein Pauschalboost.
+      const formForCalc = (match._formPenaltiesDisabled && player.form < 0) ? 0 : player.form;
+      if (formForCalc) {
+        stats[focusStat] = (stats[focusStat] || 0) + formForCalc * 2;
+      }
     }
     if (match._teamFormBonus) {
       for (const k of Object.keys(stats)) stats[k] += match._teamFormBonus;
     }
 
-    // ── Focus effect: fires exactly once in _focusRound ──────────────────
-    // _focusPlayerId is set in decisions.js on halftime; resolved here in the
-    // round it fires. See match schema comments in engine.js.
-    if (
-      match._focusPlayerId &&
-      player.id === match._focusPlayerId &&
-      match.round === match._focusRound &&
-      !match._focusResolved
-    ) {
-      match._focusResolved = true;
-      const failRoll = Math.random();
-      match._triggerLogBuffer = match._triggerLogBuffer || [];
-      if (failRoll < (match._focusFailChance || 0)) {
-        stats[match._focusStat] = Math.max(20, (stats[match._focusStat] || 0) - 15);
-        player.form = clamp((player.form || 0) - 1, -3, 3);
-        match._triggerLogBuffer.push(
-          window.I18N.t('ui.log.focusFailed', { name: player.name })
-        );
-      } else {
-        stats[match._focusStat] = clamp(
-          (stats[match._focusStat] || 0) + match._focusBonus, 20, 99
-        );
-        match._triggerLogBuffer.push(
-          window.I18N.t('ui.log.focusApplied', {
-            name: player.name, stat: match._focusStat, round: match._focusRound
-          })
-        );
-        if (match._focusRedemption) {
-          player.form = clamp((player.form || 0) + 1, -3, 3);
-          match.buffLayers.push({
-            source: 'focus_redemption',
-            range: [match.round, 6],
-            stats: { composure: 4 },
-            special: null
-          });
-          // engine.recomputeTeamBuffs is attached on KL.engine once that loads;
-          // guard for the (rare) case stats is called before engine.
-          if (KL.engine?.recomputeTeamBuffs) KL.engine.recomputeTeamBuffs(match);
-          match._triggerLogBuffer.push(
-            window.I18N.t('ui.log.focusRedemption', { name: player.name })
-          );
-        }
-      }
-    }
-
-    // Stat-computing traits (late_bloom, fortress_aura, whisper_boost, etc.)
     const ctx = { stats, player, match };
     if (KL.traits?.dispatch) KL.traits.dispatch('statCompute', ctx);
 
-    // Team-wide buffs — applied last so tactic effects win over trait effects.
+    if (KL.engine?.applyStreakStatMod) {
+      KL.engine.applyStreakStatMod(player, match, stats);
+    }
+
     if (match.teamBuffs) {
       for (const [k, v] of Object.entries(match.teamBuffs)) {
         if (k in stats) stats[k] += v;
@@ -210,9 +196,6 @@
     return stats;
   }
 
-  // Per-opponent-role stat computation. Mirrors computePlayerStats but uses
-  // opponent traits that react to our defensive setup ("intimidate" drops the
-  // opposing striker's offense, etc.).
   function computeOppStats(opp, role, match) {
     const base = { ...opp.stats };
     const ctx = { oppStats: base, oppRole: role, match };
@@ -220,7 +203,6 @@
     return base;
   }
 
-  // ─── Namespace + legacy exports ────────────────────────────────────────────
   KL.stats = {
     totalPower,
     squadPowerAvg,

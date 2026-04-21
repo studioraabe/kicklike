@@ -1,27 +1,6 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// state.js — Game state, split into three concerns
-//
-//   KL.state.season  — persistent run data (Highscore-relevant)
-//   KL.state.roster  — players + lineup
-//   KL.state.session — transient UI / match-loop flags (never saved)
-//
-// A legacy `state` proxy on window exposes all three as if they were one flat
-// object, so existing code that reads `state.wins` or `state.roster` keeps
-// working. New code should reach for KL.state.season.wins etc. directly.
-//
-// Also exports:
-//   KL.state.fresh()        — reset everything to a new run
-//   KL.state.getLineup()    — current starting 5
-//   KL.state.getBench()     — current bench
-//   KL.state.isLineupValid(ids) — keeper + count check
-// ─────────────────────────────────────────────────────────────────────────────
-
 (() => {
   const KL = window.KL || (window.KL = {});
   const CONFIG = () => KL.config.CONFIG;
-
-  // ─── Fresh state factories ─────────────────────────────────────────────────
-  // Each sub-slice is built here. Touching one slice never mutates another.
 
   function freshSeason() {
     return {
@@ -34,11 +13,21 @@
       goalsAgainst:      0,
       seasonPoints:      0,
       currentLossStreak: 0,
+      currentWinStreak:  0,
+      longestWinStreak:  0,
+      runTraitFires:     0,
+      runEvoCount:       0,
+      achievements:      [],
+      pendingPointsPop:  0,
       startedAt:         Date.now(),
       teamName:          '',
       teamColor:         '',
       starterTeamId:     null,
-      matchHistory:      []
+      matchHistory:      [],
+      // Pre-generated opponents for all 15 matches. Populated on chooseStarterTeam.
+      // Lets the run bracket be drawn up-front (logos in the progress row etc.)
+      // instead of creating an opponent fresh each match. null before a run starts.
+      seasonOpponents:   null
     };
   }
 
@@ -51,12 +40,10 @@
 
   function freshSession() {
     return {
-      // Current-turn data
       currentOpponent:   null,
       currentMatch:      null,
       pendingRecruit:    false,
       recruitOptions:    null,
-      // UI / match-loop flags
       swapSelected:      null,
       skipAnim:          false,
       paused:            false,
@@ -66,8 +53,6 @@
     };
   }
 
-  // Slot-objects that get mutated — never reassigned — so outside references
-  // stay valid across `fresh()` calls.
   const season  = freshSeason();
   const roster  = freshRoster();
   const session = freshSession();
@@ -83,7 +68,6 @@
     resetSlice(session, freshSession());
   }
 
-  // ─── Roster queries ────────────────────────────────────────────────────────
   function getLineup() {
     return roster.lineupIds
       .map(id => roster.players.find(p => p.id === id))
@@ -100,34 +84,35 @@
     const players = ids.map(id => roster.players.find(p => p.id === id)).filter(Boolean);
     if (players.length !== cfg.teamSize) return false;
     const keepers = players.filter(p => p.role === 'TW').length;
-    return keepers === 1;
+    if (keepers !== 1) return false;
+    const mn = season.matchNumber;
+    const banned = players.filter(p => p._suspendedUntil && p._suspendedUntil > mn);
+    if (banned.length) return false;
+    return true;
   }
 
-  // ─── Legacy flat proxy ─────────────────────────────────────────────────────
-  // Old code says `state.wins++`, `state.roster.push(...)`, `state._skipAnim = true`.
-  // This proxy routes each property to the right slice. New fields default to
-  // session (the most permissive).
-  //
-  // Mapping rule: a fixed route table for known fields, fallback = session.
-  //
-  // Most awkward legacy names (`state.roster`, `state.lineupIds`) collide with
-  // our slice names. We resolve them by routing to roster.players / roster.lineupIds.
+  function isPlayerAvailable(player) {
+    if (!player) return false;
+    const mn = season.matchNumber;
+    if (player._suspendedUntil && player._suspendedUntil > mn) return false;
+    return true;
+  }
 
   const SEASON_KEYS = new Set([
     'run', 'matchNumber', 'wins', 'losses', 'draws',
     'goalsFor', 'goalsAgainst', 'seasonPoints',
-    'currentLossStreak', 'startedAt',
+    'currentLossStreak', 'currentWinStreak', 'longestWinStreak',
+    'runTraitFires', 'runEvoCount', 'achievements', 'pendingPointsPop',
+    'startedAt',
     'teamName', 'teamColor', 'starterTeamId', 'matchHistory'
   ]);
 
   const ROSTER_KEY_MAP = {
-    // Legacy `state.roster` → roster.players array
     roster:    'players',
     lineupIds: 'lineupIds'
   };
 
   const SESSION_KEY_MAP = {
-    // The old code sprinkled underscores liberally. Strip them transparently.
     _skipAnim:        'skipAnim',
     _paused:          'paused',
     _preKickoff:      'preKickoff',
@@ -144,16 +129,13 @@
     if (SEASON_KEYS.has(prop))                return { slice: season,  key: prop };
     if (ROSTER_KEY_MAP[prop] !== undefined)   return { slice: roster,  key: ROSTER_KEY_MAP[prop] };
     if (SESSION_KEY_MAP[prop] !== undefined)  return { slice: session, key: SESSION_KEY_MAP[prop] };
-    // Fallback: treat anything else as a session property. This is where ad-hoc
-    // flags land (mostly UI). Stripping a leading underscore keeps legacy code
-    // working without name collisions.
     const key = prop.startsWith('_') ? prop.slice(1) : prop;
     return { slice: session, key };
   }
 
   const legacyStateProxy = new Proxy({}, {
     get(_, prop) {
-      if (prop === 'roster')    return roster.players;     // legacy shape
+      if (prop === 'roster')    return roster.players;
       if (prop === 'lineupIds') return roster.lineupIds;
       const { slice, key } = routeFor(prop);
       return slice[key];
@@ -177,7 +159,6 @@
     }
   });
 
-  // ─── Namespace ─────────────────────────────────────────────────────────────
   KL.state = {
     season,
     roster,
@@ -186,17 +167,14 @@
     getLineup,
     getBench,
     isLineupValid,
-    // Exposed for code that specifically needs the proxy
+    isPlayerAvailable,
     legacy: legacyStateProxy
   };
 
-  // Legacy global `state` — all old code reads this
   Object.defineProperty(window, 'state', {
     configurable: true,
     get() { return legacyStateProxy; },
     set(v) {
-      // Old code does `state = freshState()` to reset. Honour that by
-      // running fresh() and, if a partial state was passed, merging it.
       fresh();
       if (v && typeof v === 'object') {
         for (const [k, val] of Object.entries(v)) {
@@ -206,14 +184,14 @@
     }
   });
 
-  // Legacy bare-name fresh-state factory
   window.freshState = () => {
     fresh();
     return legacyStateProxy;
   };
-  window.getState = () => legacyStateProxy;
-  window.setState = (next) => { window.state = next; return legacyStateProxy; };
-  window.getLineup       = getLineup;
-  window.getBench        = getBench;
-  window.isLineupValid   = isLineupValid;
+  window.getState           = () => legacyStateProxy;
+  window.setState           = (next) => { window.state = next; return legacyStateProxy; };
+  window.getLineup          = getLineup;
+  window.getBench           = getBench;
+  window.isLineupValid      = isLineupValid;
+  window.isPlayerAvailable  = isPlayerAvailable;
 })();

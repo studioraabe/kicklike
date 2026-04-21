@@ -6,7 +6,7 @@ I18N.registerLocale("en", {
       sub: "15 matches · 4 starter teams · emergent synergies",
       newRun: "▶ New Run",
       howTitle: "How it works:",
-      howBody: "Choose one starter team out of 4 concepts. Each of your 5 players evolves along one of 3 paths during the run. Matches play out as auto-battles, but you choose the direction at 3 key moments. Traits trigger each other. Earn points (3 for a win, 1 for a draw), and avoid 3 straight losses. Goal: 36+ points = Champion, 24+ points = Safe."
+      howBody: "Pick one of 4 starter teams. Play 15 matches, with boss fights at matches 5, 10 and 15. Win a boss and you recruit a legend to your bench. Each player evolves at levels 5, 9 and 13 — pick 1 of 3 paths each time. Matches auto-play, but you call the shots at 3 key moments: kickoff, halftime, final. Traits chain into each other. 3 points for a win, 1 for a draw, 3 straight losses = fired. 36+ points = Champion, 24+ = Safe."
     },
     draft: {
       title: "Choose your starter team",
@@ -18,7 +18,79 @@ I18N.registerLocale("en", {
       squad: "Squad",
       bench: "Bench",
       lineup: "⚙ Lineup",
-      startMatch: "▶ Start Match"
+      startMatch: "▶ Start Match",
+      vs: "VS",
+      nextUp: "Next Up",
+      bossTag: "BOSS",
+      powerGap: "Power {me} vs {opp}",
+      suspendedAlert: "{name} is suspended this match",
+      suspendedAlertTooltip: "{name}: red card in the previous match. Suspended for {n} more matches. Substitute from the bench before starting.",
+      cardAlert: "{name} on a yellow — one more and they're out",
+      benchEmpty: "No bench yet",
+      tapForDetails: "tap a player for details",
+      chipTraits: "{n}× triggered",
+      chipGoals:  "{n} goals",
+      chipEvos:   "{done}/{max} evos",
+      chipStreak: "{n}W streak",
+      tilePower:  "Power",
+      tileTraits: "Traits fired",
+      tileEvos:   "Evolutions"
+    },
+    detail: {
+      traits: "Traits",
+      noTraits: "No traits yet — traits unlock at evolutions.",
+      stats: "Stats",
+      runStats: "This Run",
+      runGoals: "Goals",
+      runAssists: "Assists",
+      runMinutes: "Minutes",
+      close: "✕ Close",
+      level: "Level {lv}",
+      suspended: "Suspended next match",
+      yellow: "On a yellow card",
+      xpProgress: "{xp} / {next} XP"
+    },
+    achievements: {
+      hatTrickRunner: { title: "Hat-Trick Runner", desc: "{name} bagged 3 in one match" },
+      runScorer10:    { title: "Double Digits",    desc: "{name} hit 10 goals this run" },
+      runScorer20:    { title: "Serial Killer",    desc: "{name} hit 20 goals this run" },
+      triggers50:     { title: "Synergy Engine",   desc: "50 trait triggers this run" },
+      triggers150:    { title: "Unstoppable Chain",desc: "150 trait triggers this run" },
+      win3:           { title: "Hot Streak",       desc: "3 wins in a row" },
+      win5:           { title: "Dynasty",          desc: "5 wins in a row" },
+      bossDown:       { title: "Giant Slayer",     desc: "Beat a boss" },
+      cleanSheet:     { title: "Clean Sheet",      desc: "Shut them out at home" },
+      comeback:       { title: "Comeback Kings",   desc: "Won after trailing at halftime" }
+    },
+    verdict: {
+      close:       "Close one",
+      favored:     "Favored",
+      strongEdge:  "Big edge",
+      tough:       "Tough fight",
+      bossFight:   "Boss fight",
+      trustTraits: "Trust your traits",
+      rideForm:    "Form is rolling",
+      riskyStreak: "Don't lose a third",
+      newRival:    "New challenger"
+    },
+    prob: {
+      win:  "Win",
+      draw: "Draw",
+      loss: "Loss",
+      currentWin: "Current win chance",
+      boosts:     "Boosts"
+    },
+    scorecard: {
+      threat: "THREAT",
+      edge:   "EDGE",
+      off:    "OFF",
+      def:    "DEF",
+      tmp:    "TMP",
+      vis:    "VIS",
+      cmp:    "CMP",
+      traitActivity: "~{n} trait triggers expected · {p} passives active",
+      edgeTooltip:   "Your advantages: traits that counter this opponent plus any stat surplus. Independent of Threat — you can have both high.",
+      threatTooltip: "Their danger to you: opponent traits that hurt your squad plus any raw power gap. Independent of Edge — you can have both high."
     },
     lineup: {
       title: "LINEUP",
@@ -38,7 +110,10 @@ I18N.registerLocale("en", {
       pause: "⏸ Pause",
       resume: "▶ Resume",
       speed: "⏩ Speed",
-      fast: "⏩ Fast"
+      fast: "⏩ Fast",
+      pulseBuildup: "build-up",
+      pulseDefense: "stops",
+      pulseSaves:   "saves"
     },
     result: {
       win: "WIN",
@@ -47,14 +122,37 @@ I18N.registerLocale("en", {
       continue: "▶ Continue",
       analysis: "Match Breakdown",
       players: "Player Breakdown",
-      sacrificeNote: "⚠ {name} gave everything — permanent stat loss.",
-      // ── Post-match trait fire report ────────────────────────────────────
+      matchLogTitle: "Match Log",
+      matchFlowTitle: "Match Flow",
+      matchFlowHint: "Team stat trajectory during the match (buffs, form, traits).",
+      detailsToggle: "Full Breakdown",
+      stopsLabel: "stops",
+      sacrificeNote: "{name} gave everything — permanent stat loss.",
+      hlGoal:         "{name} on the scoresheet",
+      hlBraceOrHat:   "{name} with a brace",
+      hlHatTrick:     "{name} hat-trick — {n} goals",
+      hlKeeperBig:    "{name} wall — {n} saves",
+      hlKeeperSolid:  "{name} held steady — {n} saves",
+      hlBreakout:     "{name} breakout — +{xp} XP",
+      hlFlop:         "{name} off the pace — needs a reset",
+      hlOverperform:  "Over expectation (pre-match: {pre}% win)",
+      hlUnderperform: "Below expectation (pre-match: {pre}% win)",
+      decisionsTitle: "Your decisions",
+      decisionsSum:   "Total",
+      decisionNoXp:   "no bonus XP",
+      microBoostsTitle: "Stat boosts earned",
+      microBoostsHint:  "Decision-driven successes permanently raised these attributes.",
+      decisionPhase: {
+        kickoff:  "Start",
+        halftime: "Halftime",
+        final:    "Final"
+      },
       traitReportTitle: "Where your edge came from",
       traitReportEmpty: "No abilities fired this match.",
-      traitReportFires: "{count}×",
+      traitReportFires: "{count} triggers",
       traitReportPassive: "ACTIVE",
-      traitReportImpact: "~{value} pwr",
-      traitReportFooter: "Ability impact is estimated from how often each trait fired and its tuned value."
+      traitReportImpact: "impact ~{value}",
+      traitReportFooter: "Trigger count × per-ability weight. Higher = more impact on this match.",
     },
     gameover: { title: "GAME OVER" },
     victory: { survived: "15 matches survived" },
@@ -76,26 +174,43 @@ I18N.registerLocale("en", {
       outcomeFired: "Fired",
       compactTeamMeta: "{lineup} + {bench}B",
       matchLabel: "Match {num}: {me}:{opp} vs {name}",
-      bossTell: "Boss fight — all stats boosted, no mistakes allowed"
+      bossTell: "Boss fight — all stats boosted, no mistakes allowed",
+      academy: "ACADEMY"
     },
     statsPanel: {
       possession: "Possession",
       shots: "Shots",
+      onTarget: "On Target",
       accuracy: "Accuracy",
       buildup: "Build-up %",
       saves: "Saves",
       goals: "Goals",
       abilitiesTriggered: "Abilities Triggered",
       currentTeamStats: "Current Team Stats",
+      phaseRelevantStats: "Phase-Relevant Stats",
+      whatMattersNow: "What Matters Now",
       own: "You",
       diff: "Diff",
       opponent: "Opponent",
-      buffsFootnote: "Buffs stack across kickoff, halftime, and final phase"
+      buffsFootnote: "Buffs stack across kickoff, halftime, and final phase",
+      liveFootnote: "Live values include form, streaks, focus and active round effects."
     },
 
-    // ── Matchup Intel (hub, shown before every match) ──────────────────────
-    // Goal: make visible WHY a match is winnable despite a raw power gap.
-    // Effective power breakdown + specific advantage / warning callouts.
+    phaseGuide: {
+      kickoffBuildUp: "Build-up runs through PM vision/composure: {vision} VIS / {composure} COM.",
+      kickoffControl: "Control edge right now: {delta}.",
+      kickoffWide: "Wide threat is LF tempo: {lfTempo} vs {oppTempo}. Back-line hold: {hold} vs {oppOffense} opp OFF.",
+      halftimeBuildUp: "Fix build-up first if it is low: {myRate}% for you vs {oppRate}% for them.",
+      halftimeAccuracy: "If build-up is fine but finishing lags, solve accuracy next: {myAcc}% for you vs {oppAcc}% for them.",
+      halftimeDefense: "Defense now lives in TW/VT hold: {hold} hold value and {saves} saves so far.",
+      finalChaseStatus: "You need a goal now. Build-up is {buildup}%, accuracy is {accuracy}%.",
+      finalChaseAdvice: "If build-up is the blocker, favor control/vision. If shots are the blocker, favor offense/direct play.",
+      finalProtectStatus: "You are protecting a lead. Their build-up is {oppRate}% and your hold line is {hold}.",
+      finalProtectAdvice: "Defense and composure are worth more than raw offense right now.",
+      finalLevelStatus: "Level game. Pick whether the blocker is entry, finish, or protection: build-up {buildup}%, accuracy {accuracy}%, saves {saves}.",
+      finalLevelAdvice: "Midfield/control choices create one clean possession; direct/offense choices chase variance."
+    },
+
     intel: {
       title: "Matchup Intel",
       effectivePowerTitle: "Effective Power",
@@ -111,7 +226,15 @@ I18N.registerLocale("en", {
       noAdvantages: "No standout trait advantages — stat-driven match.",
       noWarnings: "No specific opponent threats.",
 
-      // Advantage lines — reference YOUR traits
+      verdictDominant: "Should roll them",
+      verdictAhead:    "Favored",
+      verdictEven:     "Coin flip",
+      verdictBehind:   "Tough one",
+      verdictUnderdog: "Uphill battle",
+
+      headlineBoth:    "{adv} — but {warn}",
+      headlineNothing: "Stat-driven match — no big trait matchups.",
+
       advPredatorVsPresser: "{name}'s predator instinct punishes their pressing errors.",
       advLateBloom: "{name} comes alive in rounds 4–6.",
       advClutchMatchup: "Your clutch traits match theirs in the closing minutes.",
@@ -120,12 +243,11 @@ I18N.registerLocale("en", {
       advKeeperWall: "Your keeper trait blunts their aerial threat.",
       advTempo: "{name} out-paces their entire backline.",
 
-      // Warning lines — reference OPP traits
-      warnSniper: "Their sniper makes every shot dangerous.",
-      warnCounter: "Any turnover triggers a lightning counter.",
-      warnIronwall: "Rounds 1–2 their defence is nearly impenetrable.",
-      warnClutchUnanswered: "They surge in rounds 5–6 — you have no clutch answer.",
-      warnPresserNoVision: "High press incoming and no PM vision to escape it.",
+      warnSniper: "{name} (sniper) — every shot's a threat.",
+      warnCounter: "{name} punishes every turnover on the counter.",
+      warnIronwall: "{name} locks the early rounds down — 1–2 look impenetrable.",
+      warnClutchUnanswered: "{name} surges late — you have no clutch answer.",
+      warnPresserNoVision: "{name} presses high and no PM vision to escape it.",
       warnStatGap: "{diff} stat-power behind — need traits to carry it.",
       warnBoss: "Boss opponent — every stat elevated."
     },
@@ -139,6 +261,8 @@ I18N.registerLocale("en", {
       lineupIncomplete: "Lineup incomplete! Please choose 5 players.",
       benchFull: "Bench is full!",
       lineupInvalid: "Invalid lineup! You need exactly 1 goalkeeper and 5 total players.",
+      lineupSuspended: "{name} is suspended for this match — please pick a replacement.",
+      academyCalledUp: "Bench empty — academy replacements called up: {list}. Their stats are significantly reduced.",
       kickoffTitle: "Kickoff Tactic",
       kickoffSubtitle: "How do we start?",
       halftimeTitle: "Halftime Adjustment",
@@ -165,6 +289,7 @@ I18N.registerLocale("en", {
     },
     ht: {
       title: "HALF TIME",
+      detailsToggle: "Match Details",
       pressBlocked: "Pressing blocked {n} attacks",
       countersFired: "Counter system fired {n}×",
       momentumActive: "Momentum: +{bonus}% build-up bonus next round",
@@ -177,19 +302,8 @@ I18N.registerLocale("en", {
       mechanicRally: "Rally mode"
     },
 
-    // ── Halftime focus / sub decisions ───────────────────────────────────────
     decisions: {
-      focusTitle: "Player Focus",
-      focusSubtitle: "Sharpen one player for the second half.",
-      noFocus: "No Focus",
-      noFocusDesc: "Play it as is — no individual spotlight.",
-      focusHot: "{name} is in form (+{bonus} {stat}, low risk).",
-      focusNormal: "Focus on {name} (+{bonus} {stat}).",
-      focusPoorForm: "{name} is struggling — risky, but could click (+{bonus} {stat}, ~22% fail).",
-      focusCrisis: "{name} is in crisis — high risk, high reward. Success brings form recovery.",
-      focusFailed: "{name} is overwhelmed — the extra pressure backfires.",
-      focusSuccess: "{name} locks in — {stat} sharpened for round {round}.",
-      focusRedemption: "{name} turns it around! Form restored, team lifted.",
+      // Focus-Keys entfernt — Focus-System deprecated.
       subTitle: "Substitution",
       subSubtitle: "Bring someone off the bench.",
       noSub: "No Substitution",
@@ -200,8 +314,148 @@ I18N.registerLocale("en", {
       subDone: "{incoming} on for {outgoing}."
     },
 
-    // ── Situative events ──────────────────────────────────────────────────────
+    optionBadges: {
+      fitsSquad: "FITS SQUAD",
+      risky:    "RISKY",
+      synergy:  "SYNERGY ×{mult}",
+      conflict: "CONFLICT ×{mult}",
+      synergyShort:  "SYNERGY",
+      conflictShort: "CONFLICT"
+    },
+    optionHints: {
+      scalesDeficit: "↑ grows with your deficit",
+      scalesLead:    "↑ grows with your lead"
+    },
+
+    optionNotes: {
+      kickoffAggressive: "early shot volume",
+      kickoffDefensive: "safer first three rounds",
+      kickoffBalanced: "first build-up guaranteed",
+      kickoffTempo: "pace over control",
+      kickoffPressing: "caps their attack count if it sticks",
+      kickoffPossession: "best for clean build-up",
+      kickoffCounter: "failed opp attacks fire counters",
+      kickoffFlank: "leans hard into LF tempo",
+      halftimePush: "best when you reach the box but lack finish",
+      halftimeStabilize: "best when they are getting clean chances",
+      halftimeShift: "boosts {name}'s {stat}",
+      halftimeRally: "scales with the scoreline",
+      halftimeReset: "safe patch for multiple weak spots",
+      halftimeCounter: "best if they overcommit",
+      halftimeHighPress: "best if their build-up is too clean",
+      halftimeVisionPlay: "best if build-up is the real problem",
+      finalAllIn: "pure goal chase",
+      finalParkBus: "protect the lead",
+      finalHeroBall: "{name} gets +30 {stat}",
+      finalKeepCool: "best when nerves or build-up fail",
+      finalPress: "last-round press with counter upside",
+      finalLongBall: "skip some build-up for direct pressure",
+      finalMidfield: "best for one clean possession",
+      finalSneaky: "protect and counter",
+      finalSacrifice: "lose 15 focus on one player for team offense now",
+      fitFullValue: "squad fit: full value",
+      misfitReduced: "misfit: value reduced, downside rises",
+      synergyMult: "synergy x{mult}",
+      conflictMult: "conflict x{mult}"
+    },
+
     events: {
+      playmaker_pulse: {
+        title: "Playmaker Pulse",
+        subtitle: "{name} is dictating the rhythm. This is the moment to lean into it.",
+        option_release_runner: {
+          name: "Release the runner",
+          desc: "Immediate wide attack with extra vision. Force the next move through the channel."
+        },
+        option_dictate_tempo: {
+          name: "Dictate the tempo",
+          desc: "Vision and composure rise for the rest of the match. Lock the game to your rhythm."
+        },
+        option_thread_risk: {
+          name: "Thread the risk",
+          desc: "Next build-up gets a major boost, and the playmaker keeps forcing sharper passes."
+        }
+      },
+      opp_keeper_rattled: {
+        title: "Keeper Shaken",
+        subtitle: "{name} is wobbling. The next decision can turn pressure into a collapse.",
+        option_shoot_early: {
+          name: "Shoot on sight",
+          desc: "Their keeper save rate drops for 2 rounds. Less patience, more volume."
+        },
+        option_crash_box: {
+          name: "Crash the box",
+          desc: "Offense and tempo rise immediately. Swarm the second balls and rebounds."
+        },
+        option_reset_probe: {
+          name: "Reset and probe",
+          desc: "Boost the next build-up and sharpen the final pass before the shot."
+        }
+      },
+      backline_step_up: {
+        title: "Backline Step-Up",
+        subtitle: "{name} keeps reading the game. The back line can now set the tone.",
+        option_step_in: {
+          name: "Step into midfield",
+          desc: "Next build-up gets stronger and the whole shape pushes five yards higher."
+        },
+        option_hold_shape: {
+          name: "Hold the shape",
+          desc: "Safer block for 2 rounds. Opponent shot quality drops and composure rises."
+        },
+        option_spring_trap: {
+          name: "Spring the trap",
+          desc: "Counter stance armed and their next build-ups get shakier."
+        }
+      },
+      playmaker_pulse: {
+        title: "Playmaker Pulse",
+        subtitle: "{name} is dictating the rhythm. This is the moment to lean into it.",
+        option_release_runner: {
+          name: "Release the runner",
+          desc: "Immediate wide attack with extra vision. Force the next move through the channel."
+        },
+        option_dictate_tempo: {
+          name: "Dictate the tempo",
+          desc: "Vision and composure rise for the rest of the match. Lock the game to your rhythm."
+        },
+        option_thread_risk: {
+          name: "Thread the risk",
+          desc: "Next build-up gets a major boost, and the playmaker keeps forcing sharper passes."
+        }
+      },
+      opp_keeper_rattled: {
+        title: "Keeper Shaken",
+        subtitle: "{name} is wobbling. The next decision can turn pressure into a collapse.",
+        option_shoot_early: {
+          name: "Shoot on sight",
+          desc: "Their keeper save rate drops for 2 rounds. Less patience, more volume."
+        },
+        option_crash_box: {
+          name: "Crash the box",
+          desc: "Offense and tempo rise immediately. Swarm the second balls and rebounds."
+        },
+        option_reset_probe: {
+          name: "Reset and probe",
+          desc: "Boost the next build-up and sharpen the final pass before the shot."
+        }
+      },
+      backline_step_up: {
+        title: "Backline Step-Up",
+        subtitle: "{name} keeps reading the game. The back line can now set the tone.",
+        option_step_in: {
+          name: "Step into midfield",
+          desc: "Next build-up gets stronger and the whole shape pushes five yards higher."
+        },
+        option_hold_shape: {
+          name: "Hold the shape",
+          desc: "Safer block for 2 rounds. Opponent shot quality drops and composure rises."
+        },
+        option_spring_trap: {
+          name: "Spring the trap",
+          desc: "Counter stance armed and their next build-ups get shakier."
+        }
+      },
       hot_player: {
         title: "On Fire",
         subtitle: "{name} has scored and looks unstoppable.",
@@ -235,8 +489,18 @@ I18N.registerLocale("en", {
       }
     },
 
-    // ── Contextual hints ──────────────────────────────────────────────────────
     hints: {
+      lfTempoEdgeExact: "{name} has the pace edge: {myTempo} TEM vs {oppTempo}.",
+      lfTempoRiskExact: "Their pace can punish the flank: {myTempo} TEM vs {oppTempo}.",
+      shakyBuildUp: "Build-up looks shaky: PM {vision} VIS / {composure} COM. Control options help most.",
+      backlineUnderPressure: "Back line starts under pressure: {hold} hold vs {oppOffense} opp OFF.",
+      earlyControl: "You should control the opening exchanges. Possession or balanced can snowball.",
+      buildupLow: "Your build-up is only {rate}%. Vision/composure is the first fix.",
+      accuracyLow: "You reach shots but do not finish: {rate}% accuracy. Offense/direct play helps more than control.",
+      oppBuildupHigh: "They build too cleanly: {rate}% opp build-up. Defense/press/keeper help.",
+      finalNeedEntry: "Need cleaner entry first: build-up {rate}%.",
+      finalNeedPressure: "Entry is okay. You need shot pressure now: accuracy {rate}%.",
+      finalProtectionWorking: "Protection is working. Defense/composure can close this out.",
       ironwallEarly: "Ironwall trait: rounds 1–2 their defence is nearly impenetrable.",
       sniperWarning: "Precision shooter — every attempt is dangerous.",
       clutchOppLate: "They get stronger late — rounds 5–6 watch out.",
@@ -256,6 +520,347 @@ I18N.registerLocale("en", {
       finalLegendaryOnBench: "Legendary on the bench — final round could be their moment.",
       oppBuildupLow: "Opponent build-up only {pct}% successful — they're vulnerable.",
       noHint: ""
+    },
+
+    streaks: {
+      zone: "In the zone",
+      cold: "Cold spell",
+      frustrated: "Frustrated"
+    },
+
+    cards: {
+      yellow: "Yellow card — one more this match sends them off and suspends them for the next one.",
+      secondYellow: "Second yellow — sent off this match, suspended for the next one.",
+      red: "Red card — sent off this match, suspended for the next one.",
+      suspendedNext: "Suspended — can't be fielded next match.",
+      academyTooltip: "Academy call-up — temporary replacement, significantly weaker stats, no traits. Leaves the squad after this match."
+    },
+
+    eventActors: {
+      format: "{owner} {role} {name}",
+      owners: {
+        my: "your",
+        opp: "their"
+      },
+      roles: {
+        TW: "goalkeeper",
+        VT: "defender",
+        PM: "playmaker",
+        ST: "striker",
+        LF: "winger",
+        player: "player"
+      }
+    },
+
+    eventReasons: {
+      strikerMisses: "{name} has missed {n} chances in a row — frustration is building.",
+      keeperSaves: "{name} has made {n} saves back-to-back — fully dialled in.",
+      oppStrikerMisses: "Their striker {name} keeps missing — confidence is cracking.",
+      momentumShift: "Conceded {n} in a row — the match is slipping away.",
+      hotCorridor: "{name} keeps finding space down the wing — the channel is open.",
+      oppPmDirigent: "Their playmaker {name} is orchestrating — {n} clean build-ups in a row.",
+      hitzigerMoment: "Emotions are running high after that last goal.",
+      freierMann: "{name} is breaking through — a runner is loose.",
+      clearChance: "{name} gets the service and the angle — this is a moment.",
+      taktikwechsel: "{opp} is struggling — they'll change shape next.",
+      legendaryDemand: "{name} is watching from the bench, itching to go.",
+      playmakerPulse: "{name} has linked {n} clean build-ups in a row.",
+      oppKeeperRattled: "{name} has started to look uncertain under repeated pressure.",
+      backlineStepUp: "{name} has already broken up {n} attacks.",
+      redCardRisk: "{name} is playing on the edge — studs are up, tempers short.",
+      weatherRain: "The heavens open — pitch is soaked, ball is slick.",
+      weatherWind: "Swirling wind — long balls are a lottery now.",
+      weatherHeat: "The heat is brutal — legs are getting heavy out there.",
+      fanRevolt: "Crowd is on the players' backs after going down {opp}-{me}.",
+      oppStarDown: "{name} is limping off — their key man might be gone.",
+      coachWhisperDirect: "Assistant coach in your ear: \"Forget build-up, go direct.\"",
+      coachWhisperPatient: "Assistant coach in your ear: \"Slow it down, pick them apart.\"",
+      setPieceAwarded: "Foul just outside their box — a gilt-edged delivery chance.",
+      legsGone: "Heavy legs from the early tempo — the squad needs rhythm, not bursts.",
+      tacticalClashPressing: "Your press is running into their composure wall — it's costing shape.",
+      tacticalClashPossession: "Their pace burns through your possession game — they're already on the break.",
+      refereeStern: "The referee's whistle is fast today — every challenge is a risk."
+    },
+
+    events: {
+      striker_frustrated: {
+        title: "Striker Frustrated",
+        subtitle: "{name} has missed {n} chances — the body language is off.",
+        option_layoff_pm: {
+          name: "Lay off to the playmaker",
+          desc: "Playmaker-driven approach: scorer forced to ST, bonus scales with PM vision."
+        },
+        option_push_through: {
+          name: "Push through it",
+          desc: "+14% on {name}'s next shot. Trust him to break the spell."
+        },
+        option_swap_off: {
+          name: "Swap him off",
+          desc: "Bring a fresh forward from the bench. Resets his streak, costs chemistry."
+        }
+      },
+      keeper_in_zone: {
+        title: "Keeper in the Zone",
+        subtitle: "{name} has pulled off {n} saves in a row — on fire.",
+        option_launch_counter: {
+          name: "Launch a counter now",
+          desc: "Immediate attack with +22% bonus. Ride the momentum."
+        },
+        option_stay_solid: {
+          name: "Stay solid",
+          desc: "+12% next save. Let him keep the clean sheet going."
+        }
+      },
+      opp_striker_frustrated: {
+        title: "They're Rattled",
+        subtitle: "Their striker {name} has missed {n} chances — cracking under the pressure.",
+        option_press_high: {
+          name: "Press high",
+          desc: "-18% opposing shot accuracy for 2 rounds. Squeeze them harder."
+        },
+        option_guard_desperate: {
+          name: "Guard the desperate shot",
+          desc: "+20% next save. Frustrated strikers swing wildly."
+        }
+      },
+      momentum_shift: {
+        title: "Momentum Slipping",
+        subtitle: "Conceded {conceded} in a row — something has to change now.",
+        option_timeout: {
+          name: "Timeout talk",
+          desc: "+12 composure, +6 defense rest of match. Calm the squad."
+        },
+        option_switch_tactic: {
+          name: "Switch shape",
+          desc: "Defensive counter stance. Auto-counter active 2 rounds."
+        }
+      },
+      hot_corridor: {
+        title: "Hot Corridor",
+        subtitle: "{name} has been breaking down the wing repeatedly.",
+        option_double_down: {
+          name: "Double down on the wing",
+          desc: "{name} takes the next shot with +15% bonus. Flank runs extended."
+        },
+        option_switch_center: {
+          name: "Switch to the centre",
+          desc: "+14 vision, +6 offense. Surprise them in the middle."
+        }
+      },
+      opp_pm_dirigent: {
+        title: "Their Conductor",
+        subtitle: "Their playmaker {name} has strung together {n} clean build-ups.",
+        option_push_vt_high: {
+          name: "Push VT up high",
+          desc: "-18% their build-up for 2 rounds, but -6 defense (gambling high line)."
+        },
+        option_double_mark: {
+          name: "Double-mark him",
+          desc: "-25% their build-up for 3 rounds. Suffocate the creator."
+        },
+        option_bait_counter: {
+          name: "Bait the counter",
+          desc: "Auto-counter armed 2 rounds. Let him think he's in control."
+        }
+      },
+      hitziger_moment: {
+        title: "Heated Moment",
+        subtitle: "Tempers flaring after that last exchange.",
+        option_captain_calm: {
+          name: "Captain calms them",
+          desc: "+10 composure rest of match. Cool heads prevail."
+        },
+        option_go_harder: {
+          name: "Go harder",
+          desc: "+10 defense, +5 tempo. Card risk: 37% (18% red). High stakes."
+        },
+        option_ignore: {
+          name: "Ignore it",
+          desc: "No change. Let the game breathe on its own."
+        }
+      },
+      freier_mann: {
+        title: "Runner Loose",
+        subtitle: "{name} has broken through — someone has to make a decision.",
+        option_foul_stop: {
+          name: "Tactical foul",
+          desc: "Stops the attack cold. VT picks up a yellow (maybe red on second)."
+        },
+        option_retreat: {
+          name: "Retreat and cover",
+          desc: "-15% opposing shot this round. Safer, less decisive."
+        },
+        option_keeper_out: {
+          name: "Keeper comes out",
+          desc: "50/50: clean win or a forced goal. Coin flip."
+        }
+      },
+      clear_chance: {
+        title: "Clear Sight of Goal",
+        subtitle: "{name} has the ball, the angle, and the whole goal in view.",
+        option_place_flat: {
+          name: "Place it flat",
+          desc: "+18% immediate shot bonus. Conservative, reliable."
+        },
+        option_chip_keeper: {
+          name: "Chip the keeper",
+          desc: "Composure-dependent: +30% if composed, -10% if nervy."
+        },
+        option_square_lf: {
+          name: "Square to the runner",
+          desc: "+22% LF takes the shot. Unselfish, often lethal."
+        }
+      },
+      taktikwechsel_opp: {
+        title: "They're Changing Shape",
+        subtitle: "{opp} is switching to high press — their coach is reacting.",
+        option_long_balls: {
+          name: "Long balls over the top",
+          desc: "+14 offense, -6 vision rest of match. Bypass the press."
+        },
+        option_hold_possession: {
+          name: "Hold possession",
+          desc: "+14 vision, +8 composure. Possession lock active."
+        },
+        option_match_aggression: {
+          name: "Match their aggression",
+          desc: "+12 tempo, +8 defense, -4 composure. Pressing active."
+        }
+      },
+      playmaker_pulse: {
+        title: "Playmaker Pulse",
+        subtitle: "{name} is dictating the rhythm. This is the moment to lean into it.",
+        option_release_runner: {
+          name: "Release the runner",
+          desc: "Immediate wide attack with extra vision. Force the next move through the channel."
+        },
+        option_dictate_tempo: {
+          name: "Dictate the tempo",
+          desc: "Vision and composure rise for the rest of the match. Lock the game to your rhythm."
+        },
+        option_thread_risk: {
+          name: "Thread the risk",
+          desc: "Next build-up gets a major boost, and the playmaker keeps forcing sharper passes."
+        }
+      },
+      opp_keeper_rattled: {
+        title: "Keeper Shaken",
+        subtitle: "{name} is wobbling. The next decision can turn pressure into a collapse.",
+        option_shoot_early: {
+          name: "Shoot on sight",
+          desc: "Their keeper save rate drops for 2 rounds. Less patience, more volume."
+        },
+        option_crash_box: {
+          name: "Crash the box",
+          desc: "Offense and tempo rise immediately. Swarm the second balls and rebounds."
+        },
+        option_reset_probe: {
+          name: "Reset and probe",
+          desc: "Boost the next build-up and sharpen the final pass before the shot."
+        }
+      },
+      backline_step_up: {
+        title: "Backline Step-Up",
+        subtitle: "{name} keeps reading the game. The back line can now set the tone.",
+        option_step_in: {
+          name: "Step into midfield",
+          desc: "Next build-up gets stronger and the whole shape pushes five yards higher."
+        },
+        option_hold_shape: {
+          name: "Hold the shape",
+          desc: "Safer block for 2 rounds. Opponent shot quality drops and composure rises."
+        },
+        option_spring_trap: {
+          name: "Spring the trap",
+          desc: "Counter stance armed and their next build-ups get shakier."
+        }
+      },
+      red_card_risk: {
+        title: "Walking a Line",
+        subtitle: "{name} is riled up — one bad tackle away from disaster.",
+        option_play_hard: { name: "Play On the Edge", desc: "+14 defense, +6 tempo. But 25% chance of a yellow card." },
+        option_play_clean: { name: "Reel It In", desc: "+10 composure, +5 defense. Safe, smart, slower." },
+        option_substitute_def: { name: "Sub Him Off", desc: "Swap in a fresh defender from the bench. Reset the fuse." }
+      },
+      weather_shift: {
+        title: "Weather Turn",
+        subtitle: "Conditions just changed — the game needs a new plan.",
+        option_adapt_tempo: { name: "Adapt", desc: "Slow the game, ride out the conditions. Defense-heavy boost." },
+        option_push_through_weather: { name: "Push Through", desc: "Ignore the weather, attack anyway. +12 attack, -6 composure." }
+      },
+      fan_revolt: {
+        title: "Crowd Unrest",
+        subtitle: "The stands are restless — boos are starting.",
+        option_rally_crowd: { name: "Use It As Fuel", desc: "+14 attack, +8 tempo. Channel the anger forward." },
+        option_ignore_noise: { name: "Tune It Out", desc: "+16 composure, +8 vision. Clinical, focused football." }
+      },
+      opp_star_down: {
+        title: "Their Star Is Fading",
+        subtitle: "{name} is off the pace — body language says they're done.",
+        option_capitalize: { name: "Go For the Throat", desc: "+18 attack, +10 tempo, -4 defense. Don't let them recover." },
+        option_stay_disciplined: { name: "Stay Disciplined", desc: "+10 defense, +10 composure, +6 vision. Wait them out." }
+      },
+      coach_whisper: {
+        title: "Assistant's Input",
+        subtitle: "Your assistant has an idea.",
+        option_trust_coach: { name: "Trust the Call", desc: "Follow the suggested adjustment. Situational but targeted." },
+        option_trust_instinct: { name: "Stick With Gut", desc: "Balanced +8 across attack, defense, composure." }
+      },
+      hot_player: {
+        title: "On Fire",
+        subtitle: "{name} has scored and looks unstoppable.",
+        option_boost: { name: "Keep Him Going", desc: "Permanent +{bonus} to {stat}." },
+        option_stabilize: { name: "Hold the Shape", desc: "Protect the lead — defensive stability." }
+      },
+      crisis_moment: {
+        title: "Heads Are Dropping",
+        subtitle: "Down {deficit} — the dressing room needs a spark.",
+        option_team_talk: { name: "Team Talk", desc: "70% composure+offense boost, 30% fail." },
+        option_focus: { name: "Single Focus", desc: "Pressure on one player to turn the tide." },
+        option_accept: { name: "Accept & Grind", desc: "Stay compact — form recovery." }
+      },
+      opp_mistake: {
+        title: "They're Cracking",
+        subtitle: "{opp} has failed {n} build-ups. The pressure is showing.",
+        option_exploit: { name: "Go For It", desc: "Immediate attack with bonus." },
+        option_sustain: { name: "Keep the Pressure On", desc: "Sustained build-up malus." }
+      },
+      legendary_demand: {
+        title: "{name} Wants In",
+        subtitle: "Your legendary is watching from the bench.",
+        option_bring_on: { name: "Bring On {name}", desc: "Sub them in — full legendary impact." },
+        option_morale: { name: "Not Yet", desc: "Keep them fresh — small team-wide boost." }
+      },
+      season_finale: {
+        title: "Title Race",
+        subtitle: "Final match — points on the table, nerves on edge.",
+        option_allin: { name: "Go All-In", desc: "Risk everything — higher ceiling, higher floor." },
+        option_controlled: { name: "Controlled Approach", desc: "Steady and clinical." }
+      },
+      set_piece_awarded: {
+        title: "Set Piece",
+        subtitle: "Foul deep in their half — how do you deliver it?",
+        option_quick_surprise: { name: "Quick & Surprise", desc: "Immediate attack, +24% bonus. Catch them unset." },
+        option_delivery_focus: { name: "Work the Delivery", desc: "+14% next build-up, team +6 composure/vision for 2 rounds." }
+      },
+      legs_gone: {
+        title: "Legs Are Going",
+        subtitle: "Late in the match and the squad's running on fumes.",
+        option_push_anyway: { name: "Push Anyway", desc: "+6 tempo, +4 attack, -8 composure. Hope the adrenaline carries us." },
+        option_manage_rhythm: { name: "Manage the Rhythm", desc: "-6 tempo, +8 defense, +10 composure. Preserve and control." }
+      },
+      tactical_clash: {
+        title: "Tactical Clash",
+        subtitle: "Your approach is walking into their strength — adjust or commit?",
+        option_adapt: { name: "Adapt", desc: "-5 attack, +10 defense, +8 vision. Adjust the plan mid-game." },
+        option_double_down: { name: "Double Down", desc: "+14 attack, +6 tempo, -8 defense. Beat them at their own game." }
+      },
+      referee_stern: {
+        title: "Stern Referee",
+        subtitle: "The official's whistle is quick — cards await anyone crossing the line.",
+        option_play_clean: { name: "Play It Clean", desc: "+10 composure, -4 tempo. No card risk, controlled tempo." },
+        option_normal_game: { name: "Keep Playing Normal", desc: "They're wary too: opp -5 tempo for 2 rounds. Mutual caution." }
+      }
     },
 
     log: {
@@ -281,6 +886,35 @@ I18N.registerLocale("en", {
       halftimeChoice: "  → {name}",
       finalChoice: "  → {name}",
       roundHeader: "ROUND {round}",
+      eventPlaymakerRelease: "  ↗ {name} releases the runner early.",
+      eventPlaymakerDictate: "  🎼 {name} slows the game to your pace.",
+      eventPlaymakerThread: "  🧵 {name} starts threading sharper passes.",
+      eventOppKeeperTarget: "  🎯 {name} is targeted from everywhere now.",
+      eventCrashBox: "  🧨 Bodies flood the box — every rebound is alive.",
+      eventResetProbe: "  🧭 One more clean move — then hit the gap.",
+      eventBacklineStepIn: "  ⬆ {name} steps in and compresses the pitch.",
+      eventBacklineHold: "  🧱 The line stays compact — fewer gaps, calmer heads.",
+      eventBacklineTrap: "  🪤 The back line sits on the cue — one bad pass and you break.",
+      eventPlayHardYellow: "  🟨 {name} goes in hard — ref books him. Walking the line now.",
+      eventPlayHardClean: "  💢 {name} wins it cleanly on the edge — no card, full impact.",
+      eventPlayClean: "  ✓ {name} pulls back — game smart, composure lifted.",
+      eventSubDefender: "  ⇄ {out} off, {in} on — fresh defender plugs the gap.",
+      eventWeatherAdapt: "  ☔ Shape tightens, tempo drops — adapt to the conditions.",
+      eventWeatherPush: "  💨 Ignore the weather — straight through.",
+      eventFanRally: "  📣 Crowd noise redirected — team channels it forward.",
+      eventFanIgnore: "  🔇 Players tune out — clinical focus.",
+      eventStarCapitalize: "  ⚡ Their star is off — pressure on.",
+      eventStarDiscipline: "  🛡 Hold shape — don't let them regroup cheap.",
+      eventCoachTrust: "  📋 Following the assistant's read — plan engaged.",
+      eventCoachInstinct: "  🎯 Gut call — balanced approach.",
+      eventSetPieceQuick: "  ⚡ Quick delivery — catch them cold!",
+      eventSetPieceDelivery: "  🎯 Work the set piece — patient build-up coming.",
+      eventLegsPush: "  💢 Legs heavy — push through anyway.",
+      eventLegsManage: "  🧘 Manage the rhythm — preserve and control.",
+      eventClashAdapt: "  🔄 Adapting — drop the clashing approach.",
+      eventClashCommit: "  ⚔ Doubling down — commit to the fight.",
+      eventRefClean: "  ✓ Playing clean — composure over aggression.",
+      eventRefNormal: "  ⚖ Both sides wary of the ref — cautious game.",
       roundIntroTied: [
         "Level at {me}:{opp} — anyone's game.",
         "Still goalless. Tension rising.",
@@ -320,6 +954,7 @@ I18N.registerLocale("en", {
       luckyDouble: "  🍀 {name} steal possession — second attack!",
       counter: "  🔁 Turnover — counter's on.",
       autoCounter: "  ⚡ They gave it away — we pounce.",
+      microBoost: "  ⚡ {name} · {stat} ↑ {value} (decision paying off)",
       doubleCounter: "  ⚡⚡ Two attacks wasted — double counter!",
       pressingCap: "  Pressing cuts off their second run.",
       aggressiveThird: "  💥 Wave after wave — a third attack follows.",
@@ -330,9 +965,9 @@ I18N.registerLocale("en", {
       htSummaryCounters: "Counter system fired {n}x",
       htSummaryMomentum: "Momentum active",
       pressingBeaten: [
-        "  {opp} find the gap — space opens behind the press.",
-        "  The line's beaten — {opp} are in behind.",
-        "  Pressing bypassed — {opp} have numbers going forward."
+        "  {opp} finds the gap — space opens behind the press.",
+        "  The line's beaten — {opp} is in behind.",
+        "  Pressing bypassed — {opp} has numbers going forward."
       ],
       aggressiveError: [
         "  Too eager — the move breaks down in transition.",
@@ -340,8 +975,8 @@ I18N.registerLocale("en", {
         "  The urgency costs them — loose ball in midfield."
       ],
       possessionLost: [
-        "  Ball given away — {opp} are already moving.",
-        "  Sloppy touch — {opp} immediately press high.",
+        "  Ball given away — {opp} is already moving.",
+        "  Sloppy touch — {opp} immediately presses high.",
         "  Turned over in build-up — {opp} ready to counter."
       ],
       defensiveLackOfPunch: [
@@ -360,19 +995,19 @@ I18N.registerLocale("en", {
         "  Behind and pressing — mistakes creeping in."
       ],
       allInExposed: [
-        "  All-in and caught open — the defence is thin.",
-        "  The gamble backfires — acres of space at the back.",
-        "  All men forward — {opp} find the gap."
+        "  All-in and caught open — {opp} finds the space.",
+        "  The gamble backfires — {opp} has acres behind.",
+        "  All men forward — {opp} finds the gap."
       ],
       attackingExposed: [
-        "  Attacking shape leaves gaps — {opp} exploit it.",
-        "  High line, thin cover — {opp} run straight through.",
-        "  Going forward costs them — {opp} hit on the break."
+        "  Attacking shape leaves gaps — {opp} exploits it.",
+        "  High line, thin cover — {opp} runs straight through.",
+        "  Going forward costs them — {opp} hits on the break."
       ],
       aggressiveExposed: [
         "  Aggressive press punished — {opp} through on goal.",
-        "  Too high, too open — {opp} find the channel.",
-        "  The aggression turns against them."
+        "  Too high, too open — {opp} finds the channel.",
+        "  The aggression turns against them — {opp} in space."
       ],
       synergyCombo: [
         "{a} & {b} combine",
@@ -383,7 +1018,7 @@ I18N.registerLocale("en", {
       ],
       ownGoal: "⚽ GOAL {name}!{suffix}   {me}:{opp}",
       ownGoalCombo: "⚽ GOAL {name}! {combo}   {me}:{opp}",
-      oppGoal: "💥 {name} score   {me}:{opp}",
+      oppGoal: "💥 {name} ({team}) scores   {me}:{opp}",
       fullTime: "🏁 FULL TIME — {me}:{opp}",
       epilogueWin: [
         "Three points. Job done.",
@@ -415,6 +1050,12 @@ I18N.registerLocale("en", {
       tacticRallyTrigger: "  💪 Rally fires — +{bonus} from the deficit.",
       tacticHighPressTrigger: "  High press — ball recovered.",
       tacticFinalPressTrigger: "  ⚡ Final press — counter launched.",
+      tacticGambleWin: "  🎲 Gamble lands — +35 team offense.",
+      tacticGambleLoss: "  🎲 Gamble flops — -15 to every stat.",
+      tacticShakeUp: "  🔄 Shake-up: {name} punished, team sharpens.",
+      tacticLoneWolf: "  🐺 Lone wolf: {name} carries it.",
+      tacticFortress: "  🛡 Fortress: {tw} & {vt} lock the back.",
+      tacticMasterclass: "  🎼 Masterclass: {name} conducts.",
       tacticFit: "  ✓ {name} — conditions met, bonus applied.",
       laserPass: "🎯 {name} — laser pass, counter's on.",
       bulldoze: "🛡 {name} — bulldozes through, ball won.",
@@ -422,7 +1063,7 @@ I18N.registerLocale("en", {
       chessPredict: "♟ {name} — reads it perfectly, goal's wiped out.",
       speedBurst: "💨 {name} — build-up guaranteed.",
       pounce: "🐆 {name} — pounces on the error.",
-      oppBlitzCounter: "  ⚡ {name} hit back immediately.",
+      oppBlitzCounter: "  ⚡ {name} ({team}) hits back immediately.",
       shadowStrike: "{name} — phantom run, sudden chance.",
       streetTrick: "{name} — leaves the defender standing.",
       silentKiller: "{name} — first touch, maximum damage.",
@@ -437,7 +1078,6 @@ I18N.registerLocale("en", {
       unbreakable: "🛡 {name} — stands firm. Goal cancelled.",
       synergyBonus: "  🔗 {name} ({trait}) +{bonus}%",
 
-      // ── Synergy / conflict log lines (new) ───────────────────────────────
       synergyAmplified: "  🔗 Pressing synergy — decision amplified.",
       synergyConflict: "  ⚠ Tactic conflict — decision reduced.",
       synergyPressingCombo: "  🔗 Pressing + pressing decision — in the zone.",
@@ -448,17 +1088,11 @@ I18N.registerLocale("en", {
       conflictPlayerHot: "  🔗 Player in form — focus amplified.",
       conflictLegendarySub: "  🔗 Legendary incoming — impact amplified.",
 
-      // ── Focus log lines (new) ─────────────────────────────────────────────
-      focusApplied: "  🎯 {name} gets the spotlight — {stat} sharpened for round {round}.",
-      focusFailed: "  ✗ {name} is overwhelmed — the extra pressure backfires. Form drops.",
-      focusRedemption: "  ⬆ {name} turns it around! Form recovered, team lifted.",
-      focusCrisisAttempt: "  ⚡ High-risk focus on {name} — crisis player, all or nothing.",
+      // Focus-Log-Keys entfernt — Focus-System deprecated.
 
-      // ── Tactic misfit log lines (new / extended) ─────────────────────────
       misfitPressingCollapse: "  ⚠ Pressing collapses — legs can't sustain it.",
       misfitCounterStall: "  ⚠ Counter stalls — no one quick enough to run.",
 
-      // ── Event log lines (new) ─────────────────────────────────────────────
       eventHotPlayerBoost: "  🔥 {name} gets the nod — permanent {stat} boost locked in.",
       eventHotPlayerStabilize: "  🛡 Shape held — individual flair reined in for team stability.",
       eventCrisisTeamTalk: "  📢 The message lands — squad rallied.",
@@ -472,19 +1106,65 @@ I18N.registerLocale("en", {
       eventSeasonFinaleAllIn: "  🔥 All-in for the title — no holding back.",
       eventSeasonFinaleControlled: "  Composed and controlled — let the game come to them.",
 
-      // ── Opponent trait log lines ──────────────────────────────────────────
+      eventStrikerLayoff: "  ↺ {name} drops back — ball recycled through midfield.",
+      eventStrikerPush: "  💪 {name} pushes through it — trust in the shot.",
+      eventStrikerSwap: "  ⇄ {out} off, {in} on — fresh legs up top.",
+      eventKeeperLaunch: "  🧤→⚡ {name} launches it long — counter's on.",
+      eventKeeperSolid: "  🛡 {name} stays calm — save cushion for the rest.",
+      eventOppStrikerPress: "  🏃 Press the frustrated striker — {name} under the cosh.",
+      eventOppStrikerGuard: "  🛡 Guard the desperate shot from {name}.",
+      eventMomentumTimeout: "  🕐 Timeout — the squad recomposes.",
+      eventMomentumSwitch: "  ⚙ Shape switched — defensive counter stance live.",
+      eventCorridorDouble: "  ↪ {name} goes again — same channel, same mayhem.",
+      eventCorridorSwitch: "  ↔ Ball into the middle — centre opens up.",
+      eventOppPmHigh: "  ⬆ Push up on {name} — gambling the high line.",
+      eventOppPmMark: "  🎯 {name} double-marked — service cut.",
+      eventOppPmBait: "  🎣 Let him play — counter trap armed.",
+      eventHitzigCalm: "  🧘 Captain steadies the squad.",
+      eventHitzigClean: "  😤 {name} stays sharp — no card.",
+      eventHitzigYellow: "  🟨 {name} — yellow card.",
+      eventHitzigSecondYellow: "  🟨🟥 {name} — second yellow. Sent off.",
+      eventHitzigRed: "  🟥 {name} — straight red. Sent off.",
+      eventHitzigIgnore: "  The tension lingers.",
+      eventFreierFoul: "  🟨 {name} brings the runner down — yellow card.",
+      eventFreierFoulRed: "  🟨🟥 {name} — second yellow. Sent off.",
+      eventFreierRetreat: "  Retreating to cover — shot quality reduced.",
+      eventFreierKeeperWin: "  🧤 {name} wins it at his feet — cleared!",
+      eventFreierKeeperLose: "  ⚽ {opp} rounds {name} — open net.",
+      eventClearFlat: "  📏 {name} — flat, calm, into the corner.",
+      eventClearChip: "  🌙 {name} chips — high risk, high reward.",
+      eventClearSquare: "  ⇄ {st} squares it to {lf} — tap-in attempt.",
+      eventTaktikLong: "  📏 Long balls over the top.",
+      eventTaktikHold: "  🎯 Hold the ball — possession lock engaged.",
+      eventTaktikMatch: "  💥 Match their aggression — pressing engaged.",
+
+      cardYellow: "  🟨 {name} — yellow card.",
+      cardRed:    "  🟥 {name} — red card. Suspended for the next match.",
+
+      streak: {
+        myTeam: {
+          zone:       "  🔥 {name} is in the zone — sharp as glass.",
+          cold:       "  ❄ {name} is cold — the confidence is gone.",
+          frustrated: "  😤 {name} is frustrated — short fuse."
+        },
+        oppTeam: {
+          zone:       "  🔥 {name} ({team}) is in the zone — watch him.",
+          cold:       "  ❄ {name} ({team}) has gone cold.",
+          frustrated: "  😤 {name} ({team}) is losing his head."
+        }
+      },
+
       oppTrait: {
-        sturmShot: "  {name} — precision striking, every shot counts.",
-        sniperShot: "  {name} — picks their spot, clinical finish.",
-        riegelDeny: "  {name} — saves getting harder to make.",
-        presserDisrupt: "  {name} — high press disrupts the build-up.",
-        ironwallEarly: "  {name} — defensive wall up early, nearly impenetrable.",
-        clutchSurge: "  {name} — late surge, energy levels rising."
+        sturmShot: "  {name} ({team}) — precision striking, every shot counts.",
+        sniperShot: "  {name} ({team}) — picks his spot, clinical finish.",
+        riegelDeny: "  {name} ({team}) — saves getting harder to make.",
+        presserDisrupt: "  {name} ({team}) — high press disrupts the build-up.",
+        ironwallEarly: "  {name} ({team}) — defensive wall up early, nearly impenetrable.",
+        clutchSurge: "  {name} ({team}) — late surge, energy levels rising."
       }
     }
   },
 
-  // ── Tactic misfit i18n keys (used by TACTIC_FIT.misfitKey lookups) ────────
   tactic: {
     misfit: {
       aggressiveSlow: "  ⚠ Squad lacks pace for aggressive press — fatigue risk elevated.",
@@ -511,11 +1191,11 @@ I18N.registerLocale("en", {
   logs: {
     ownBuildFail: [
       "{pm} loses it in midfield — possession's gone.",
-      "The pass from {pm} is cut out.",
+      "The pass from {pm} is cut out by {oppVT}.",
       "{vt} plays it backwards — the move stalls.",
-      "{pm} tries to force it — intercepted.",
-      "The press wins the ball back.",
-      "Turnover. They transition immediately."
+      "{pm} tries to force it — {oppPM} intercepts.",
+      "{oppPM} wins the ball back with a crunching press.",
+      "Turnover. {oppPM} and {oppVT} transition immediately."
     ],
     ownBuildSuccess: [
       "{pm} slides it through — {lf}'s running.",
@@ -537,33 +1217,40 @@ I18N.registerLocale("en", {
     miss: [
       "{scorer} drags it wide.",
       "{scorer} hits the post — so close.",
-      "{scorer} goes central — keeper reads it.",
       "{scorer} skies it — well over.",
       "Blocked! {scorer} can't believe it.",
       "{scorer} hesitates — the chance is gone.",
       "{scorer} gets under it — up and over."
     ],
+    oppKeeperSave: [
+      "{keeper} ({team}) palms {scorer}'s effort away.",
+      "{keeper} ({team}) — big hands, {scorer} denied.",
+      "{scorer} forces the save — {keeper} ({team}) holds it.",
+      "{keeper} ({team}) reads {scorer} perfectly — tipped over.",
+      "Point-blank from {scorer} — {keeper} ({team}) stands tall.",
+      "{keeper} ({team}) dives full stretch — {scorer} can't believe it."
+    ],
     oppBuildFail: [
-      "They lose it — {vt} reads the play.",
-      "Pressure from {vt} forces a poor touch.",
-      "They try to play out — {vt} intercepts.",
-      "The pass is sloppy — our ball.",
-      "{vt} wins it cleanly in the challenge."
+      "{opp} ({team}) loses it — {vt} reads the play.",
+      "Pressure from {vt} forces {opp} ({team}) into a poor touch.",
+      "{opp} ({team}) tries to play out — {vt} intercepts.",
+      "The pass from {opp} ({team}) is sloppy — our ball.",
+      "{vt} wins it cleanly off {opp} ({team})."
     ],
     oppApproach: [
-      "{opp} advance with purpose.",
-      "{opp} break quickly — numbers forward.",
-      "{opp} work it into a dangerous position.",
-      "A runner finds space in behind.",
-      "{opp} isolate the backline — threat's incoming."
+      "{opp} ({team}) advances with purpose.",
+      "{oppPM} releases {opp} — numbers forward.",
+      "{oppPM} works it into {opp} — dangerous position.",
+      "{opp} ({team}) finds space in behind.",
+      "{oppPM} isolates the backline — {opp} incoming."
     ],
     save: [
-      "{tw} — strong hands. Stays out.",
-      "{tw} dives full stretch — remarkable.",
-      "{vt} throws himself in the way — blocked.",
-      "{tw} smothers it at the near post.",
-      "Tipped over by {tw} — corner.",
-      "{vt} clears off the line — crucial."
+      "{tw} — strong hands on {shooter}'s effort. Stays out.",
+      "{tw} dives full stretch — {shooter} denied.",
+      "{vt} throws himself in {shooter}'s path — blocked.",
+      "{tw} smothers {shooter} at the near post.",
+      "Tipped over by {tw} — {shooter} ({team}) can't believe it.",
+      "{vt} clears off the line — crucial on {shooter}."
     ]
   },
   data: {
@@ -646,10 +1333,10 @@ I18N.registerLocale("en", {
       chameleon_adapt: { name: "Adaptation", desc: "Copies the trait of the most active teammate in round 4." }
     },
     starterTeams: {
-      konter: { name: "Counter Specialists", theme: "fast, defensive, punishes mistakes", desc: "Strong in midfield and out wide. Scores through fast transitions.", difficultyLabel: "Beginner" },
-      kraft: { name: "Powerhouse", theme: "physical, aerial, grinding", desc: "Wins through raw power. Especially strong late in the match.", difficultyLabel: "Moderate" },
-      technik: { name: "Technique Magicians", theme: "vision-based, combo passing", desc: "Builds attacks out of nowhere. Slow, but precise.", difficultyLabel: "Demanding" },
-      pressing: { name: "Pressing Beasts", theme: "aggressive, breaks build-up", desc: "Forces errors through constant pressure. High-risk football with shaky nerves.", difficultyLabel: "Expert" }
+      konter: { name: "Counter Specialists", theme: "fast, defensive, punishes mistakes", desc: "Strong in midfield and out wide. Scores through fast transitions." },
+      kraft: { name: "Powerhouse", theme: "physical, aerial, grinding", desc: "Wins through raw power. Especially strong late in the match." },
+      technik: { name: "Technique Magicians", theme: "vision-based, combo passing", desc: "Builds attacks out of nowhere. Slow, but precise." },
+      pressing: { name: "Pressing Beasts", theme: "aggressive, breaks build-up", desc: "Forces errors through constant pressure. High-risk football with shaky nerves." }
     },
     opponents: {
       prefixes: ["SC ", "FC ", "Athletic ", "Union ", "Sporting ", "Dynamo ", "Real ", "Racing ", "Red Star ", "Albion "],
@@ -677,56 +1364,199 @@ I18N.registerLocale("en", {
     },
     tactics: {
       kickoff: {
-        aggressive: { name: "Aggressive Start", desc: "+18 attack in rounds 1-3, -8 defense. All-out pressure from the first whistle." },
-        defensive: { name: "Defensive Start", desc: "+18 defense in rounds 1-3, -8 attack. Invite them on and hit on the break." },
-        balanced: { name: "Balanced", desc: "+8 to ALL stats in rounds 1-3. First build-up's guaranteed — no cold start." },
-        tempo: { name: "Tempo Game", desc: "+22 tempo in rounds 1-3, -6 composure. Overwhelm with pace before they settle." },
-        pressing: { name: "Pressing", desc: "+14 defense, +10 tempo in rounds 1-3. Their build-up drops hard — but gaps appear if beaten." },
-        possession: { name: "Possession", desc: "+18 vision, +10 composure in rounds 1-3. Control the game — but a turnover invites a counter." },
-        counter: { name: "Counter Trap", desc: "+22 defense, +10 tempo in rounds 1-3, -6 attack. Every failed enemy attack triggers an automatic counter." },
-        flank_play: { name: "Wing Play", desc: "+14 tempo, +14 attack in rounds 1-3. Wide and fast from the off." }
+        aggressive: { name: "Aggressive Start", desc: "+18 attack R1-3, -8 defense. All-out pressure from the first whistle." },
+        defensive: { name: "Defensive Start", desc: "+18 defense R1-3, -8 attack. Invite them on and hit on the break." },
+        balanced: { name: "Balanced", desc: "+8 to ALL stats R1-3. First build-up's guaranteed — no cold start." },
+        tempo: { name: "Tempo Game", desc: "+22 tempo R1-3, -6 composure. Overwhelm with pace before they settle." },
+        pressing: { name: "Pressing", desc: "+14 defense, +10 tempo R1-3. Their build-up drops hard — but gaps appear if beaten." },
+        possession: { name: "Possession", desc: "+18 vision, +10 composure R1-3. Control the game — but a turnover invites a counter." },
+        counter: { name: "Counter Trap", desc: "+22 defense, +10 tempo, -6 attack. Every failed enemy attack triggers a counter." },
+        flank_play: { name: "Wing Play", desc: "+14 tempo, +14 attack R1-3. Wide and fast from the off." },
+        slow_burn: { name: "Slow Burn", desc: "Punish their patience: -4 attack R1-2, then +22 attack R3. Lull them first." },
+        shot_flood: { name: "Shot Flood", desc: "+24 attack R1-3. Quantity over quality — expect misses, force errors." },
+        lockdown: { name: "Lockdown", desc: "+28 defense R1-3, -12 attack, -8 tempo. Concede nothing, score nothing." },
+        mindgames: { name: "Mind Games", desc: "+14 vision, +10 composure. Enemy -6 composure R1-3. Get into their heads." },
+        underdog: { name: "Underdog Mode", desc: "Only vs. much stronger: +14 to ALL stats R1-6. The whole team rises to the occasion." },
+        favorite: { name: "Strut", desc: "Only when clearly favored: +10 vision, +6 tempo, momentum fills faster. Play with swagger." },
+        wet_start: { name: "Soak & Strike", desc: "Absorb R1-2 with full defense, then explode R3 with +24 attack at kickoff." },
+        chaos: { name: "Chaos Football", desc: "Each round a random stat gets +20, two get -10. High variance — embrace it." },
+        zone_defense: { name: "Zone Defense", desc: "+12 defense, +12 composure, -5 tempo R1-3. Structured, not aggressive. Between pressing and lockdown." },
+        quick_strike: { name: "Quick Strike", desc: "R1: +30 attack burst. R2-3: +5 to all stats. Explosive opening then measured." },
+        disciplined: { name: "Disciplined", desc: "+10 all stats R1-3. Negative form penalties ignored — crisis players play normally." },
+        read_the_room: { name: "Read the Room", desc: "+15 vision, +10 composure, +8 defense R1-3. Cerebral opening, no tempo." }
       },
       halftime: {
-        push: { name: "Risk Push", desc: "+20 attack in rounds 4-6, -10 defense. If trailing, the boost grows with every goal owed." },
-        stabilize: { name: "Stabilize", desc: "+18 defense, +10 composure in rounds 4-6. If leading, the wall grows with every goal ahead." },
+        push: { name: "Risk Push", desc: "+20 attack R4-6, -10 defense. If trailing, the boost grows with every goal owed." },
+        stabilize: { name: "Stabilize", desc: "+18 defense, +10 composure R4-6. If leading, the wall grows per goal ahead." },
         shift: { name: "Reassign", desc: "One player permanently gains +18 to their focus stat right now." },
         rally: { name: "Rally", desc: "+6 attack per goal conceded, +6 defense per goal scored. Massive swing potential." },
-        reset: { name: "Reset Shape", desc: "+12 to ALL stats in rounds 4-6. Wipe the slate clean." },
-        counter_h: { name: "Lean Into Counters", desc: "+24 tempo, +14 defense in rounds 4-6. Every failed enemy attack triggers an automatic counter." },
-        high_press: { name: "High Press", desc: "+22 defense in rounds 4-6, -6 composure. Squeeze their build-up — but the gaps are real if beaten." },
-        vision_play: { name: "Open the Game", desc: "+22 vision, +10 attack in rounds 4-6. Create the gaps and pick them apart." }
+        reset: { name: "Reset Shape", desc: "+12 to ALL stats R4-6. Wipe the slate clean — no more script." },
+        counter_h: { name: "Lean Into Counters", desc: "+24 tempo, +14 defense R4-6. Failed enemy attack triggers a counter." },
+        high_press: { name: "High Press", desc: "+22 defense R4-6, -6 composure. Squeeze their build-up — but gaps are real." },
+        vision_play: { name: "Open the Game", desc: "+22 vision, +10 attack R4-6. Create gaps and pick them apart." },
+        shake_up: { name: "Shake-Up", desc: "Worst-form player takes a permanent -5 all stats hit. Team responds: +12 attack R4-6." },
+        lock_bus: { name: "Lock the Bus", desc: "Only if leading: +30 defense, -20 attack R4-6. Impenetrable but toothless." },
+        desperate: { name: "Desperate Attack", desc: "Only if trailing 2+: +32 attack R4-6, -20 defense. Keeper on his own. All or nothing." },
+        role_switch: { name: "Role Switch", desc: "LF and ST swap roles R4-6. +10 tempo, +10 attack, -8 vision. New angles of attack." },
+        coach_fire: { name: "Fiery Team Talk", desc: "Only if losing: next match's team form +1, this match +14 attack R4-6. Anger fuels them." },
+        cold_read: { name: "Cold Read", desc: "Read their tactics. +20 defense, enemy attack -8 R4-6. Outsmart, don't outfight." },
+        wingman: { name: "Free the Wingman", desc: "LF gets +25 tempo, +15 attack personal. Team -4 composure. One-man show risk." },
+        mind_reset: { name: "Mental Reset", desc: "Wipes all form deltas in squad. Fresh slate into R4-6 — no baggage, no momentum." },
+        double_down: { name: "Double Down", desc: "Amplifies your biggest current team buff by +40%. Rewards momentum — dead if you have none." },
+        tactical_foul: { name: "Tactical Fouls", desc: "+8 defense, opp tempo -12 for 2 rounds. Disruption, not self-improvement." },
+        wing_overload: { name: "Wing Overload", desc: "LF: +20 offense, +20 tempo personal R4-6. Team -6 defense. One-winger show." },
+        shell_defense: { name: "Shell Defense", desc: "Only drawing or leading: +24 defense, +14 composure, -10 attack R4-6. Preserve the state." }
       },
       final: {
-        all_in: { name: "All In", desc: "Final round: +15 attack, -15 defense. Scales with every goal owed — but leaves you wide open." },
+        all_in: { name: "All In", desc: "Final round: +15 attack, -15 defense. Scales with goals owed. Leaves you wide open." },
         park_bus: { name: "Park the Bus", desc: "Final round: +15 defense, -10 attack. Scales with every goal in hand." },
-        hero_ball: { name: "Hero Ball", desc: "Best form player permanently gains +30 to focus stat." },
+        hero_ball: { name: "Hero Ball", desc: "Best-form player permanently gains +30 focus stat." },
         keep_cool: { name: "Stay Cool", desc: "Final round: +20 composure, +12 vision. Nerves of steel." },
         final_press: { name: "Final Press", desc: "Final round: +24 tempo, +18 defense, -10 attack. High counter chance." },
         long_ball: { name: "Long Balls", desc: "Final round: +28 attack, -10 vision. Direct and hard." },
         midfield: { name: "Midfield Control", desc: "Final round: +20 vision, +16 tempo, +14 composure." },
         sneaky: { name: "Ambush", desc: "Final round: +28 defense, +18 tempo, -14 attack. Lure and pounce." },
-        sacrifice: { name: "Sacrifice", desc: "One player loses 15 focus stat permanently. Team: +35 offense now." }
+        sacrifice: { name: "Sacrifice", desc: "One player loses 15 focus stat permanently. Team: +35 attack now." },
+        kamikaze: { name: "Kamikaze", desc: "Only if trailing: +40 attack, -40 defense. Keeper exposed. Hope and pray." },
+        clockwatch: { name: "Clock Watching", desc: "Only if leading: +25 defense, +18 composure. Let the clock work for you." },
+        poker: { name: "Poker Face", desc: "Only if tied: +15 to every single stat. Pure clutch — everything to play for." },
+        lone_wolf: { name: "Lone Wolf", desc: "Striker: +40 attack, +20 tempo personal. Rest of team: -6 attack. One shot, one kill." },
+        fortress: { name: "Fortress", desc: "TW/VT get +40 defense. Team -20 attack. Turn the goal into a bunker." },
+        gamble: { name: "Gamble", desc: "Coin flip: +35 attack on heads, -15 all stats on tails. Pure chaos energy." },
+        masterclass: { name: "Masterclass", desc: "PM: +30 vision, +20 composure personal. Team +12 attack. Let the maestro conduct." },
+        rope_a_dope: { name: "Rope-a-Dope", desc: "R6 only: +35 defense. Every enemy attack triggers an auto-counter. Bait then strike." },
+        set_piece: { name: "Set Piece Master", desc: "R6: +25 attack, but ONLY on attacks from successful buildups. Narrow, surgical boost." },
+        siege_mode: { name: "Siege Mode", desc: "R6: +20 attack, +10 tempo, +10 vision. Clean all-around pressure, no penalty." },
+        bus_and_bike: { name: "Bus & Bike", desc: "R6: +18 defense. Each save/stop loads +30 attack on your next ball." },
+        face_pressure: { name: "Face the Pressure", desc: "R6: +25 composure, opp shots -8% accuracy. Clutch nerves under the lights." }
       }
     },
     teamNamePools: {
       konter: {
-        first: ["Jax", "Skye", "Ash", "Kai", "Zed", "Rex", "Vex", "Nyx", "Rook", "Swift", "Blaze", "Corvo", "Dash", "Echo", "Ravi", "Slate", "Volt", "Zane", "Kit", "Milo"],
-        last: ["Quick", "Cross", "Dash", "Skye", "Reeve", "Blaze", "Quinn", "Striker", "Fall", "Rush", "Edge", "Swift", "Hale", "Stryder", "Vortex", "Flicker", "Cipher"]
+        first: [
+          "Kylian", "Mohamed", "Vinicius", "Raphinha", "Wilfried", "Leroy", "Jadon", "Marcus", "Phil", "Bukayo",
+          "Raheem", "Ousmane", "Nico", "Rafael", "Kingsley", "Serge", "Jamal", "Cody", "Lamine", "Rodrygo",
+          "Kaoru", "Takefusa", "Jérémy", "Hirving", "Riyad", "Federico", "Ángel", "Nicolás", "Khvicha", "Antony",
+          "Ademola", "Eberechi", "Anthony", "Mykhailo", "Randal", "Allan", "Brennan", "Moussa", "Domingos", "Savio"
+        ],
+        last: [
+          "Mbappé", "Salah", "Júnior", "Traoré", "Sané", "Sancho", "Rashford", "Foden", "Saka", "Sterling",
+          "Dembélé", "Williams", "Leão", "Coman", "Gnabry", "Musiala", "Gakpo", "Yamal", "Doku", "Nkunku",
+          "Mitoma", "Kubo", "Doku", "Lozano", "Mahrez", "Chiesa", "Di María", "González", "Kvaratskhelia", "Antony",
+          "Lookman", "Eze", "Gordon", "Mudryk", "Kolo Muani", "Saint-Maximin", "Johnson", "Diaby", "Quenda", "Martinelli"
+        ]
       },
       pressing: {
-        first: ["Grim", "Varg", "Krag", "Brax", "Thorn", "Raze", "Brunt", "Bjorn", "Krogh", "Ulf", "Magnus", "Ragnar", "Brokk", "Vidar", "Harald", "Ivor", "Orin", "Knut"],
-        last: ["Bulk", "Crush", "Wolf", "Blood", "Steel", "Fang", "Claw", "Bane", "Hammer", "Iron", "Stone", "Mauler", "Tusk", "Growl", "Grave", "Forge", "Grimwald"]
+        first: [
+          "Erling", "Joshua", "Leon", "Robert", "Granit", "Jude", "Declan", "Aurélien", "Federico", "Nicolò",
+          "Adrien", "Ilkay", "Frenkie", "Pedri", "Gavi", "Enzo", "Moisés", "Rodri", "Casemiro", "Bruno",
+          "N'Golo", "Youri", "Dominik", "Martin", "Sofyan", "Manuel", "Marcelo", "Aaron", "Conor", "Ryan",
+          "Alexis", "Kobbie", "Angelo", "Florian", "Yves", "Warren", "Eduardo", "Exequiel", "Joaquín", "Teun"
+        ],
+        last: [
+          "Haaland", "Kimmich", "Goretzka", "Lewandowski", "Xhaka", "Bellingham", "Rice", "Tchouaméni", "Valverde", "Barella",
+          "Rabiot", "Gündoğan", "de Jong", "Fernandes", "Guimarães", "Caicedo", "Mac Allister", "Zubimendi", "Locatelli", "Koopmeiners",
+          "Kanté", "Tielemans", "Szoboszlai", "Ødegaard", "Amrabat", "Ugarte", "Brozović", "Wan-Bissaka", "Gallagher", "Gravenberch",
+          "Mac Allister", "Mainoo", "Stiller", "Wirtz", "Bissouma", "Zaïre-Emery", "Camavinga", "Palacios", "Correa", "Koopmeiners"
+        ]
       },
       technik: {
-        first: ["Luca", "Nico", "Rafa", "Mateo", "Dante", "Enzo", "Alessio", "Marco", "Gianni", "Xavi", "Theo", "Renzo", "Leandro", "Diego", "Seb", "Liam", "Silas"],
-        last: ["Bellucci", "Corelli", "Ferrando", "Moretti", "Salvatore", "Laurent", "Rossi", "Valenti", "Monti", "Rinaldi", "Serra", "Piazza", "Viale", "Lioncourt", "Delacroix"]
+        first: [
+          "Lionel", "Luka", "Andrés", "Toni", "Thiago", "David", "Riyad", "Kevin", "İlkay", "Marco",
+          "Bernardo", "Christopher", "Mason", "Florian", "Paulo", "Federico", "Hakim", "Cole", "Rodrigo", "Bruno",
+          "Dele", "Mesut", "Juan", "Martin", "Christian", "Hakan", "Isco", "James", "Philippe", "Riccardo",
+          "Dominik", "Paulo", "Xavi", "Sergi", "Iñigo", "Arda", "Dani", "Fabián", "Arthur", "Nicolás"
+        ],
+        last: [
+          "Messi", "Modrić", "Iniesta", "Kroos", "Silva", "de Bruyne", "Mahrez", "Verratti", "Reus", "Wirtz",
+          "Palmer", "Ødegaard", "Dybala", "Chiesa", "Ziyech", "Olmo", "Eriksen", "Havertz", "Alcaraz", "Isco",
+          "Özil", "Mata", "Coutinho", "Calcıoğlu", "Pellegrini", "Asensio", "Rodríguez", "Pastore", "Orsolini", "Reyes",
+          "Szoboszlai", "Raspadori", "Simons", "Roberts", "Muniain", "Güler", "Ceballos", "Ruiz", "Melo", "Paz"
+        ]
       },
       kraft: {
-        first: ["Brent", "Holt", "Reinhard", "Klaus", "Kurt", "Manny", "Detlef", "Sigurd", "Hartwin", "Werner", "Friedhelm", "Heinrich", "Gunther", "Egon", "Rolf", "Ulrich"],
-        last: ["Thunderpeak", "Ironfist", "Stonebrook", "Steelhammer", "Stormwald", "Ravencrest", "Wolfsberg", "Ackerman", "Rothmann", "Smith", "Gruber", "Bulwark", "Hardstone"]
+        first: [
+          "Harry", "Romelu", "Virgil", "Antonio", "Sergio", "Kalidou", "Rúben", "Dayot", "Matthijs", "William",
+          "Ronald", "Pepe", "Raphaël", "Ibrahima", "Niklas", "Jonathan", "Josko", "Mats", "Marquinhos", "Kim",
+          "Zlatan", "Olivier", "Didier", "Oliver", "Alessandro", "Fabio", "Mathijs", "Ronald", "Paolo", "Fabio",
+          "Jorginho", "John", "Benjamin", "Stefan", "Nathan", "Joško", "Antonio", "Trevoh", "Willy", "Micky"
+        ],
+        last: [
+          "Kane", "Lukaku", "van Dijk", "Rüdiger", "Ramos", "Koulibaly", "Dias", "Upamecano", "de Ligt", "Saliba",
+          "Araújo", "Reina", "Varane", "Konaté", "Süle", "Tah", "Gvardiol", "Hummels", "Silva", "Min-jae",
+          "Ibrahimović", "Giroud", "Drogba", "Bierhoff", "Nesta", "Cannavaro", "de Ligt", "Araújo", "Maldini", "Materazzi",
+          "Frattesi", "Stones", "Pavard", "Savić", "Aké", "Gvardiol", "Rüdiger", "Chalobah", "Boly", "van de Ven"
+        ]
       }
     },
-    legendaryNames: ["Nikolai Vega", "Rasmus Orth", "Idris Storm", "Jago Sand", "Milo Rivera", "Octavian Cross", "Darian Lux", "Suren Vex", "Leon Trax", "Rune Kainz", "Ashe Quandt", "Zephyr Boehm", "Malik Kroos", "Nils Falk", "Sovereign Reinhardt", "Maksim Thoma"],
+    opponentNamePools: {
+      sharp: {
+        first: [
+          "Cristiano", "Karim", "Olivier", "Lautaro", "Darwin", "Gabriel", "Victor", "Álvaro", "Randal", "Alexander",
+          "Lois", "Niclas", "Serhou", "Taty", "Dominik", "Julian", "Benjamin", "Lukas", "Arkadiusz", "Dušan",
+          "Sébastien", "Ivan", "Erling", "Jonathan", "Timo", "Tammy", "Memphis", "Gerard", "Radamel", "Romelu",
+          "Luis", "Zlatan", "Edinson", "Mauro", "Rafael", "Wissam", "Iago", "Andrea", "Donyell", "Joshua"
+        ],
+        last: [
+          "Ronaldo", "Benzema", "Giroud", "Martínez", "Núñez", "Jesus", "Osimhen", "Morata", "Kolo Muani", "Isak",
+          "Openda", "Füllkrug", "Guirassy", "Castellanos", "Livaković", "Álvarez", "Šeško", "Hradecky", "Milik", "Vlahović",
+          "Haller", "Toney", "Højlund", "David", "Werner", "Abraham", "Depay", "Moreno", "Falcao", "Lukaku",
+          "Suárez", "Ibrahimović", "Cavani", "Icardi", "Leão", "Ben Yedder", "Aspas", "Belotti", "Malen", "Zirkzee"
+        ]
+      },
+      heavy: {
+        first: [
+          "Axel", "Dayot", "Manuel", "Wout", "Jan", "Nathan", "Ezri", "Nordi", "Cristian", "Stefan",
+          "Ibrahim", "Olivier", "Sergi", "Giorgio", "Jean-Clair", "Dominique", "Yerry", "Antonio", "Danilo", "Gabriel",
+          "Leonardo", "Kieran", "Harry", "Eric", "Niklas", "Thilo", "Antoine", "Clément", "Pau", "Jules",
+          "Diego", "Willian", "Salvatore", "Trevoh", "Éder", "Lucas", "Daniele", "Benjamin", "Lucas", "Konrad"
+        ],
+        last: [
+          "Witsel", "Upamecano", "Akanji", "Faes", "Vertonghen", "Aké", "Konsa", "Mukiele", "Romero", "Savić",
+          "Konaté", "Kemen", "Roberto", "Chiellini", "Todibo", "Soumaoro", "Mina", "Rüdiger", "Pereira", "Magalhães",
+          "Bonucci", "Trippier", "Maguire", "Dier", "Süle", "Kehrer", "Griezmann", "Lenglet", "Torres", "Koundé",
+          "Godín", "Pablo", "Bastoni", "Chalobah", "Militão", "Hernández", "Rugani", "Mendy", "Tomori", "Laimer"
+        ]
+      },
+      cerebral: {
+        first: [
+          "Andrea", "Xabi", "Xavi", "Paul", "Lorenzo", "Marco", "Dani", "Hakan", "Sergej", "Mateo",
+          "Nikola", "Aleksandar", "Ivan", "Dušan", "Piotr", "Krzysztof", "Grzegorz", "Miralem", "Ismaël", "Eduardo",
+          "Jorge", "Gaizka", "Wesley", "Zinedine", "Bastian", "Toni", "Mesut", "Juan", "Rui", "Joan",
+          "Luis", "Iniesta", "Juan Mata", "Raul", "Eden", "Samir", "Radja", "Tonali", "Sardar", "Remo"
+        ],
+        last: [
+          "Pirlo", "Alonso", "Hernández", "Pogba", "Pellegrini", "Asensio", "Parejo", "Çalhanoğlu", "Milinković", "Kovačić",
+          "Vlašić", "Mitrović", "Rakitić", "Kovacic", "Zieliński", "Piątek", "Krychowiak", "Pjanić", "Bennacer", "Camavinga",
+          "Xavi", "Mendieta", "Sneijder", "Zidane", "Schweinsteiger", "Kroos", "Özil", "Mata", "Costa", "Verdú",
+          "Iniesta", "Silva", "Capoue", "García", "Hazard", "Handanović", "Nainggolan", "Tonali", "Azmoun", "Freuler"
+        ]
+      },
+      neutral: {
+        first: [
+          "Aaron", "Takehiro", "Takumi", "Daichi", "Ritsu", "Wataru", "Ko", "Kaoru", "Dominik", "Oliver",
+          "Mathias", "Milan", "Lovro", "Bruno", "João", "Diogo", "Gonçalo", "Francisco", "André", "Rafael",
+          "Josip", "Dominik", "Milot", "Robin", "Thibaut", "Jan", "Henrikh", "Alphonso", "Ki", "Dejan",
+          "Kasper", "Christian", "Pierre-Emile", "Andreas", "Matty", "Kieran", "Yoane", "Ciro", "Gianluca", "Mikel"
+        ],
+        last: [
+          "Ramsey", "Tomiyasu", "Minamino", "Kamada", "Dōan", "Endō", "Itakura", "Mitoma", "Szoboszlai", "Gloukh",
+          "Olivera", "Livaković", "Škriniar", "Majer", "Fernandes", "Neves", "Jota", "Ramos", "Conceição", "Silva",
+          "Mikautadze", "Sučić", "Rashica", "Gosens", "Courtois", "Oblak", "Mkhitaryan", "Davies", "Sung-yueng", "Lovren",
+          "Schmeichel", "Eriksen", "Højbjerg", "Christensen", "Cash", "Trippier", "Wissa", "Immobile", "Scamacca", "Merino"
+        ]
+      }
+    },
+    legendaryNames: [
+      "Diego Maradona", "Zinedine Zidane", "Ronaldinho Gaúcho", "Pelé Nascimento", "Johan Cruyff",
+      "Franz Beckenbauer", "Ronaldo Fenômeno", "George Best", "Alfredo Di Stéfano", "Ferenc Puskás",
+      "Michel Platini", "Marco van Basten", "Gerd Müller", "Bobby Charlton", "Eusébio Ferreira",
+      "Garrincha Santos", "Paolo Maldini", "Roberto Baggio", "Thierry Henry", "Andrea Pirlo",
+      "Lothar Matthäus", "Rivaldo Vítor", "Romário Farias", "Socrates Brasileiro", "Zico Antunes",
+      "Bobby Moore", "Dino Zoff", "Franco Baresi", "Lev Yashin", "Oliver Kahn",
+      "Rui Costa", "Luis Figo", "Hristo Stoichkov", "Davor Šuker", "Dennis Bergkamp",
+      "Patrick Vieira", "Clarence Seedorf", "Cafu Santos", "Roberto Carlos", "Paolo Rossi"
+    ],
     oppTraits: {
       sturm: { name: "Storm Roller", desc: "+8% shot accuracy." },
       riegel: { name: "Lock Chain", desc: "+5% save denial each round." },
@@ -735,7 +1565,8 @@ I18N.registerLocale("en", {
       clutch_opp: { name: "Ice Cold", desc: "Last 2 rounds: +10 attack, +5 tempo." },
       lucky: { name: "Lucky Devils", desc: "Once per match: random bonus attack." },
       ironwall: { name: "Iron Wall", desc: "First 2 rounds: +10 defense." },
-      sniper: { name: "Sniper", desc: "+15% shot accuracy, but -5 tempo." }
+      sniper: { name: "Sniper", desc: "+15% shot accuracy, but -5 tempo." },
+      boss_aura: { name: "Dominant Presence", desc: "Boss-only aura: all opponent players get a permanent stat boost every round." }
     },
     legendaryTraits: {
       god_mode: { name: "God Mode", desc: "Once per match: the next goal counts triple." },

@@ -42,33 +42,41 @@
   </div>
 
   <div id="screen-hub" class="screen">
-    <div class="topbar">
-      <div class="logo">MATCH <span id="hub-match-num">1</span> / 15</div>
-      <div class="meta">
-        <span>🏆 <b id="hub-wins">0</b></span>
-        <span>💥 <b id="hub-losses">0</b></span>
-        <span>PKT <b id="hub-points">0</b></span>
+    <!-- Zone A: Chrome (Run-Status, ruhig, klein) -->
+    <div class="hub-chrome">
+      <div class="chrome-match">MATCH <b id="hub-match-num">1</b><span class="chrome-dim">/<span id="hub-match-total">15</span></span></div>
+      <div class="chrome-record">
+        <span class="chrome-rec-cell"><b id="hub-wins">0</b>W</span>
+        <span class="chrome-rec-cell"><b id="hub-losses">0</b>L</span>
+        <span class="chrome-rec-cell accent"><b id="hub-points">0</b>PTS</span>
       </div>
     </div>
     <div class="run-progress" id="run-progress"></div>
-    <div class="hub-matchup">
-      <div class="card hub-side hub-side-me">
-        <div class="card-title"><span data-i18n="ui.hub.yourTeam"></span> <span id="hub-team-meta" class="mono-sm"></span></div>
-        <div id="hub-team-summary"></div>
+
+    <!-- Zone B: Das Bild vom Match (der Anker) -->
+    <div class="hub-anchor" id="hub-anchor"></div>
+
+    <!-- Run-Chips: Dopamin-Counter über den Run -->
+    <div class="hub-run-chips" id="hub-run-chips"></div>
+
+    <!-- Achievement-Flash: gerade gefallene Auszeichnungen -->
+    <div class="hub-achievement-flash" id="hub-achievement-flash"></div>
+
+    <!-- Zone-B-Warnings (Sperren, Karten) — nur wenn relevant -->
+    <div id="hub-alerts"></div>
+
+    <!-- Zone C: Dein Kader -->
+    <div class="hub-squad-wrap">
+      <div class="hub-squad-head">
+        <span class="hub-squad-title" data-i18n="ui.hub.squad"></span>
       </div>
-      <div class="card hub-side hub-side-opp">
-        <div class="card-title" data-i18n="ui.hub.opponent"></div>
-        <div id="next-opponent"></div>
-      </div>
-    </div>
-    <div class="card" style="margin-bottom:16px;">
-      <div class="card-title" data-i18n="ui.hub.squad"></div>
       <div class="squad-display" id="hub-squad"></div>
       <div id="hub-bench-wrap" style="display:none; margin-top:10px;">
-        <div class="mono-sm" style="margin-bottom:6px;" data-i18n="ui.hub.bench"></div>
+        <div class="mono-sm hub-bench-label"><span data-i18n="ui.hub.bench"></span></div>
         <div class="squad-display" id="hub-bench"></div>
       </div>
     </div>
+
     <div class="btn-row">
       <button class="btn" onclick="FLOW.openLineup()" data-i18n="ui.hub.lineup"></button>
       <button class="btn primary" onclick="FLOW.startMatch()" data-i18n="ui.hub.startMatch"></button>
@@ -119,6 +127,28 @@
       <div class="team-name opp" id="match-opp-name">-</div>
       <div class="round-indicator" id="round-indicator"></div>
     </div>
+    <div class="match-momentum" id="match-momentum">
+      <div class="mom-bar">
+        <div class="mom-fill mom-me" id="mom-fill-me"></div>
+        <div class="mom-fill mom-opp" id="mom-fill-opp"></div>
+        <div class="mom-center"></div>
+      </div>
+      <div class="mom-info">
+        <div class="mom-chips">
+          <span class="mom-chip mom-chip-edge"   id="mom-chip-edge"></span>
+          <span class="mom-chip mom-chip-threat" id="mom-chip-threat"></span>
+        </div>
+        <div class="mom-deltas" id="mom-deltas">
+          <span class="mom-delta" data-stat="offense">  <span class="md-label">OFF</span><span class="md-val" data-stat-val="offense"></span></span>
+          <span class="mom-delta" data-stat="defense">  <span class="md-label">DEF</span><span class="md-val" data-stat-val="defense"></span></span>
+          <span class="mom-delta" data-stat="tempo">    <span class="md-label">TMP</span><span class="md-val" data-stat-val="tempo"></span></span>
+          <span class="mom-delta" data-stat="vision">   <span class="md-label">VIS</span><span class="md-val" data-stat-val="vision"></span></span>
+          <span class="mom-delta" data-stat="composure"><span class="md-label">CMP</span><span class="md-val" data-stat-val="composure"></span></span>
+        </div>
+        <div class="mom-cause" id="mom-cause"></div>
+      </div>
+    </div>
+    <div class="match-pulse" id="match-pulse"></div>
     <div class="match-log" id="match-log"></div>
     <div style="margin-top:12px; text-align:center; display:flex; gap:8px; justify-content:center;">
       <button class="btn" id="match-pause-btn" onclick="FLOW.togglePause()" data-i18n="ui.match.pause"></button>
@@ -187,6 +217,7 @@
 <script src="./js/intel.js"></script>
 <script src="./js/engine.js"></script>
 <script src="./js/decisions.js"></script>
+<script src="./js/achievements.js"></script>
 <script src="./js/fx.js"></script>
 <script src="./js/ui.js"></script>
 <script src="./js/flow.js"></script>

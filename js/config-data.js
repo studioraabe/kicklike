@@ -36,9 +36,41 @@
     attackStatScale: 0.008,
     defenseStatScale: 0.008,
     tempoAdvantage: 0.05,
-    buildupVisionScale: 0.009,
-    tacticFitBonus: 0.12,
-    tacticMisfitPenalty: 0.14
+    buildupVisionScale: 0.007,
+    // Rogue-like tuning: fit/misfit spread decides how much tactical
+    // coherence matters. Widened from 0.12/0.14 to 0.35/0.45 so a misfit
+    // kickoff is genuinely dangerous, not just mildly suboptimal.
+    tacticFitBonus: 0.35,
+    tacticMisfitPenalty: 0.45,
+    // Extra layer: fit also scales passive trait output (+25% / -20%).
+    // Lets traits and tactics reinforce each other instead of traits
+    // dominating autonomously. See engine.js:applyTactic and traits.js:dispatchTrigger.
+    tacticFitTraitAmp: 1.25,
+    tacticMisfitTraitAmp: 0.80,
+
+    // ─── Per-level attribute growth (Phase A) ──────────────────────────────
+    // Jedes Level-Up (außerhalb von Evolutions) gibt dem Spieler automatisch
+    // Stat-Zuwachs. Ziel: Leveln soll sich spürbar lohnen, nicht nur auf die
+    // 3 Evolution-Sprünge bei 5/9/13 warten. Summe pro Level = 3 Punkte,
+    // fokussiert auf Rollen-Kernstat (Focus) plus einen Nebenstat.
+    statGrowthPerLevel: {
+      focusBonus:     2,   // +2 auf Focus-Stat pro Level
+      secondaryBonus: 1    // +1 auf einen rollen-spezifischen Nebenstat
+    },
+
+    // ─── Passive trait dedup (Phase C) ─────────────────────────────────────
+    // statCompute/oppStatCompute feuert pro Runde mehrfach (ein Schuss löst
+    // Buildup-Check, Attack-Check, Save-Check usw. aus). Ohne Dedup zählt
+    // jeder passive Trait dutzendfach pro Runde. Mit Dedup: max. ein Fire
+    // pro (Spieler × Trait × Runde). Zahl im Match-Report wird realistisch
+    // und mit Gegner-Auras vergleichbar.
+    passiveFireDedup: true,
+
+    // ─── Boss aura (Phase D) ───────────────────────────────────────────────
+    // Bosse bekommen garantiert einen passiven Aura-Trait zusätzlich zu den
+    // zufälligen Traits. Narrativ: "der Boss dominiert das Spielfeld mental".
+    // Mechanisch: Stat-Boost auf alle Gegner-Spieler.
+    bossAuraStatBonus: 6
   };
 
   // ─── Tactic fit rules ──────────────────────────────────────────────────────
@@ -143,11 +175,11 @@
   // ─── DATA: archetypes, evolutions, traits, tactics, opponents, starter teams ─
   const DATA = {
     roles: [
-      { id: "TW", label: "Keeper",     focusStat: "defense", desc: "Hält im 1-vs-1" },
-      { id: "VT", label: "Verteidiger",focusStat: "defense", desc: "Bollwerk" },
-      { id: "PM", label: "Playmaker",  focusStat: "vision",  desc: "Orchestriert Spielzüge" },
-      { id: "LF", label: "Läufer",     focusStat: "tempo",   desc: "Chaos-Faktor" },
-      { id: "ST", label: "Stürmer",    focusStat: "offense", desc: "Abschluss" }
+      { id: "TW", label: "Goalkeeper", focusStat: "defense", desc: "Holds the 1-vs-1" },
+      { id: "VT", label: "Defender",   focusStat: "defense", desc: "The wall" },
+      { id: "PM", label: "Playmaker",  focusStat: "vision",  desc: "Orchestrates attacks" },
+      { id: "LF", label: "Winger",     focusStat: "tempo",   desc: "Chaos on the flank" },
+      { id: "ST", label: "Striker",    focusStat: "offense", desc: "The finisher" }
     ],
     archetypes: {
       "keeper_block":    { role:"TW", label:"Block-Keeper",  stats:{ offense:20, defense:75, tempo:50, vision:55, composure:70 } },
@@ -158,7 +190,7 @@
       "def_sweeper":     { role:"VT", label:"Libero",        stats:{ offense:45, defense:65, tempo:55, vision:65, composure:65 } },
       "pm_regista":      { role:"PM", label:"Regista",       stats:{ offense:50, defense:40, tempo:50, vision:80, composure:70 } },
       "pm_press":        { role:"PM", label:"Presser",       stats:{ offense:55, defense:55, tempo:65, vision:60, composure:50 } },
-      "pm_playmaker":    { role:"PM", label:"Spielmacher",   stats:{ offense:55, defense:35, tempo:55, vision:75, composure:65 } },
+      "pm_playmaker":    { role:"PM", label:"Playmaker",   stats:{ offense:55, defense:35, tempo:55, vision:75, composure:65 } },
       "lf_winger":       { role:"LF", label:"Flügelflitzer", stats:{ offense:60, defense:35, tempo:80, vision:55, composure:45 } },
       "lf_dribbler":     { role:"LF", label:"Dribbler",      stats:{ offense:65, defense:30, tempo:75, vision:60, composure:50 } },
       "lf_box":          { role:"LF", label:"Box-to-Box",    stats:{ offense:55, defense:55, tempo:70, vision:55, composure:60 } },
@@ -329,10 +361,10 @@
         theme: "schnell, defensiv, bestraft Gegner-Fehler",
         color: "#2ae4ff",
         desc: "Stark im Mittelfeld und auf dem Flügel. Tor durch Tempo-Übergang.",
-        difficulty: 1, difficultyLabel: "Einsteiger",
         lineup: ["keeper_block", "def_sweeper", "pm_regista", "lf_winger", "st_poacher"],
         signatureTactics: { kickoff:["counter"], halftime:["counter_h"], final:["sneaky"] },
-        tacticTags: { konter:3, tempo:2, defensiv:2 }
+        tacticTags: { konter:3, tempo:2, defensiv:2 },
+        logo: "img/counter_attack.png"
       },
       {
         id: "kraft",
@@ -340,10 +372,10 @@
         theme: "physisch, Kopfbälle, Zermürbung",
         color: "#ffd23a",
         desc: "Gewinnt durch pure Physis. Besonders stark spät im Match.",
-        difficulty: 2, difficultyLabel: "Moderat",
         lineup: ["keeper_block", "def_wall", "pm_regista", "lf_box", "st_target"],
         signatureTactics: { kickoff:["defensive"], halftime:["stabilize"], final:["park_bus"] },
-        tacticTags: { defensiv:3, physisch:2, kontrolle:1 }
+        tacticTags: { defensiv:3, physisch:2, kontrolle:1 },
+        logo: "img/powerhouse.png"
       },
       {
         id: "technik",
@@ -351,10 +383,10 @@
         theme: "vision-basiert, Kombos über Pässe",
         color: "#aaff2a",
         desc: "Baut Angriffe aus dem Nichts. Langsam, aber präzise.",
-        difficulty: 3, difficultyLabel: "Fordernd",
         lineup: ["keeper_reflex", "def_sweeper", "pm_playmaker", "lf_box", "st_false9"],
         signatureTactics: { kickoff:["possession"], halftime:["vision_play"], final:["midfield"] },
-        tacticTags: { ballbesitz:3, technik:2, vision:2 }
+        tacticTags: { ballbesitz:3, technik:2, vision:2 },
+        logo: "img/technique_magicians.png"
       },
       {
         id: "pressing",
@@ -362,16 +394,35 @@
         theme: "aggressiv, brechen Gegner-Aufbau",
         color: "#ff3c6e",
         desc: "Zwingt Fehler mit permanentem Druck. Risikofußball mit schwachen Nerven.",
-        difficulty: 4, difficultyLabel: "Experte",
         lineup: ["keeper_sweep", "def_tackle", "pm_press", "lf_dribbler", "st_false9"],
         signatureTactics: { kickoff:["pressing"], halftime:["high_press"], final:["final_press"] },
-        tacticTags: { pressing:3, aggressiv:2, tempo:1 }
+        tacticTags: { pressing:3, aggressiv:2, tempo:1 },
+        logo: "img/pressing_beasts.png"
       }
     ],
     opponents: {
       prefixes: ["SC ", "FC ", "VfL ", "TSV ", "BSG ", "Dynamo ", "Eintracht ", "Wacker ", "Rot-Weiß ", "Alemannia "],
       places:   ["Nachtwald", "Sturmhof", "Kaltenfels", "Eisental", "Rauhbruck", "Donnerberg", "Windheim",
                  "Eisstorm", "Rabenfeld", "Schattental", "Feuerhorn", "Nebelburg", "Ödland", "Blutfels", "Gewitterhain"],
+      // Logos in gleicher Reihenfolge wie places[] (DE + EN beide nutzen diesen Index).
+      // null = kein Logo verfügbar → Render fällt auf Initial-Letter zurück.
+      placeLogos: [
+        "img/nightwood.png",    // Nachtwald / Nightwood
+        "img/stormhold.png",    // Sturmhof / Stormhold
+        "img/coldcrag.png",     // Kaltenfels / Coldcrag
+        "img/ironvale.png",     // Eisental / Ironvale
+        "img/roughbridge.png",  // Rauhbruck / Roughbridge
+        "img/thunderpeak.png",  // Donnerberg / Thunder Peak
+        "img/windhaven.png",    // Windheim / Windhaven
+        "img/froststorm.png",   // Eisstorm / Froststorm
+        "img/ravenfield.png",   // Rabenfeld / Ravenfield
+        "img/shadowvale.png",   // Schattental / Shadowvale
+        "img/firehorn.png",     // Feuerhorn / Firehorn
+        "img/mistkeep.png",     // Nebelburg / Mistkeep
+        "img/wastemark.png",    // Ödland / Wastemark
+        "img/bloodrock.png",    // Blutfels / Bloodrock
+        "img/tempest_grove.png" // Gewitterhain / Tempest Grove
+      ],
       specials: [
         { id:"offensive",    name:"Offensiv-Fokus",  stats:{ offense:+18, defense:-8 } },
         { id:"defensive",    name:"Bollwerk",         stats:{ defense:+18, offense:-8 } },
@@ -382,54 +433,106 @@
       ]
     },
     kickoffTactics: [
-      { id:"aggressive",  tags:["aggressiv"],            name:"Aggressiver Start",  desc:"+6 Offense für Runden 1-3, -4 Defense.",        tacticTrigger: null },
-      { id:"defensive",   tags:["defensiv"],             name:"Defensiver Start",   desc:"+6 Defense für Runden 1-3, -4 Offense.",        tacticTrigger: null },
-      { id:"balanced",    tags:["kontrolle"],            name:"Ausgewogen",         desc:"+3 auf alle Stats für Runden 1-3.",             tacticTrigger: null },
-      { id:"tempo",       tags:["tempo"],                name:"Tempo-Spiel",        desc:"+8 Tempo für Runden 1-3, -3 Composure.",        tacticTrigger: null },
-      { id:"pressing",    tags:["pressing","aggressiv"], name:"Pressing",           desc:"+5 Defense und +4 Tempo für Runden 1-3.",       tacticTrigger: "pressing_trigger" },
-      { id:"possession",  tags:["ballbesitz","vision"],  name:"Ballbesitz",         desc:"+6 Vision und +4 Composure für Runden 1-3.",    tacticTrigger: null },
-      { id:"counter",     tags:["konter","defensiv"],    name:"Konter-Lauer",       desc:"+8 Defense, +4 Tempo für Runden 1-3, -2 Off.",  tacticTrigger: "counter_trigger" },
-      { id:"flank_play",  tags:["tempo","technik"],      name:"Flügelspiel",        desc:"+5 Tempo und +5 Offense für Runden 1-3.",       tacticTrigger: null }
+      // — Existing 8 —
+      { id:"aggressive",  tags:["aggressiv"],            name:"Aggressive Start",  desc:"+18 attack in R1-3, -8 defense.",        tacticTrigger: null },
+      { id:"defensive",   tags:["defensiv"],             name:"Defensive Start",   desc:"+18 defense in R1-3, -8 attack.",        tacticTrigger: null },
+      { id:"balanced",    tags:["kontrolle"],            name:"Balanced",          desc:"+8 all stats in R1-3.",                  tacticTrigger: null },
+      { id:"tempo",       tags:["tempo"],                name:"Tempo Game",        desc:"+22 tempo in R1-3, -6 composure.",       tacticTrigger: null },
+      { id:"pressing",    tags:["pressing","aggressiv"], name:"Pressing",          desc:"+14 defense, +10 tempo in R1-3.",        tacticTrigger: "pressing_trigger" },
+      { id:"possession",  tags:["ballbesitz","vision"],  name:"Possession",        desc:"+18 vision, +10 composure in R1-3.",     tacticTrigger: null },
+      { id:"counter",     tags:["konter","defensiv"],    name:"Counter Trap",      desc:"+22 defense, +10 tempo, -6 attack.",     tacticTrigger: "counter_trigger" },
+      { id:"flank_play",  tags:["tempo","technik"],      name:"Wing Play",         desc:"+14 tempo, +14 attack in R1-3.",         tacticTrigger: null },
+
+      // — Prior 8 additions —
+      { id:"slow_burn",   tags:["ballbesitz","kontrolle"], name:"Slow Burn",       desc:"-4 attack R1-2, then +22 attack R3+.",   tacticTrigger: null },
+      { id:"shot_flood",  tags:["aggressiv","tempo"],      name:"Shot Flood",      desc:"+24 attack R1-3, accuracy unreliable.", tacticTrigger: null },
+      { id:"lockdown",    tags:["defensiv","pressing"],    name:"Lockdown",        desc:"+28 defense R1-3, -12 attack, -8 tempo.",tacticTrigger: null },
+      { id:"mindgames",   tags:["technik","vision"],       name:"Mind Games",      desc:"+14 vision, +10 composure, enemy -6 composure.",tacticTrigger: null },
+      { id:"underdog",    tags:["physisch","aggressiv"],   name:"Underdog Mode",   desc:"Only if opp power +60: +14 all stats R1-6.",tacticTrigger: null, condition: (match) => ((match.opp?.power || 0) - (match._myBasePower || 0)) >= 60 ? null : 'miss' },
+      { id:"favorite",    tags:["kontrolle","vision"],     name:"Strut",           desc:"Only if you lead in power: +10 vision, +6 tempo, momentum built.",tacticTrigger: null, condition: (match) => ((match._myBasePower || 0) - (match.opp?.power || 0)) >= 40 ? null : 'miss' },
+      { id:"wet_start",   tags:["defensiv","kontrolle"],   name:"Soak & Strike",   desc:"R1-2 pure defense, R3 explodes: +24 attack at kickoff of round 3.", tacticTrigger: null },
+      { id:"chaos",       tags:["aggressiv","tempo"],      name:"Chaos Football",  desc:"Random: +20 to one stat, -10 to two others each round.",tacticTrigger: null },
+
+      // — NEW: 4 additions (this turn) —
+      { id:"zone_defense",  tags:["defensiv","kontrolle"], name:"Zone Defense",    desc:"+12 defense, +12 composure, -5 tempo R1-3. Structured not aggressive.", tacticTrigger: null },
+      { id:"quick_strike",  tags:["aggressiv","tempo"],    name:"Quick Strike",    desc:"R1: +30 attack burst. R2-3: +5 all stats. Explosive then measured.", tacticTrigger: null },
+      { id:"disciplined",   tags:["kontrolle","technik"],  name:"Disciplined",     desc:"+10 all stats R1-3. Negative form penalties ignored this match.", tacticTrigger: null },
+      { id:"read_the_room", tags:["vision","defensiv"],    name:"Read the Room",   desc:"+15 vision, +10 composure, +8 defense R1-3. Cerebral opening.", tacticTrigger: null }
     ],
+
     halftimeOptions: [
-      { id:"push",        tags:["aggressiv"],              name:"Risiko",           desc:"+8 Offense für Runden 4-6, -6 Defense.",        tacticTrigger: null },
-      { id:"stabilize",   tags:["defensiv","kontrolle"],   name:"Stabilisieren",    desc:"+6 Defense und +4 Composure für Runden 4-6.",   tacticTrigger: null },
-      { id:"shift",       tags:["technik"],                name:"Umstellen",        desc:"Ein Spieler erhält permanent +10 auf Fokusstat.", tacticTrigger: null },
-      { id:"rally",       tags:["physisch","aggressiv"],   name:"Mobilisieren",     desc:"Pro kassiertem Tor: +3 Off; pro eigenem: +3 Def.", tacticTrigger: "rally_trigger" },
-      { id:"reset",       tags:["kontrolle"],              name:"Neu sortieren",    desc:"+5 auf alle Stats für Runden 4-6.",             tacticTrigger: null },
-      { id:"counter_h",   tags:["konter","tempo"],         name:"Auf Konter",       desc:"+10 Tempo und +5 Defense für Runden 4-6.",      tacticTrigger: "counter_trigger" },
-      { id:"high_press",  tags:["pressing"],               name:"Hohes Pressing",   desc:"+8 Defense für Runden 4-6, -3 Composure.",      tacticTrigger: "high_press_trigger" },
-      { id:"vision_play", tags:["ballbesitz","vision"],    name:"Spiel öffnen",     desc:"+8 Vision und +4 Offense für Runden 4-6.",      tacticTrigger: null }
+      // — Existing 8 —
+      { id:"push",        tags:["aggressiv"],              name:"Risk Push",        desc:"+20 attack R4-6, -10 defense. If trailing, grows per goal.",  tacticTrigger: null },
+      { id:"stabilize",   tags:["defensiv","kontrolle"],   name:"Stabilize",        desc:"+18 defense, +10 composure. If leading, grows per goal.",     tacticTrigger: null },
+      { id:"shift",       tags:["technik"],                name:"Reassign",         desc:"One player permanently gains +18 focus stat.",                 tacticTrigger: null },
+      { id:"rally",       tags:["physisch","aggressiv"],   name:"Rally",            desc:"+6 attack per goal conceded, +6 defense per goal scored.",     tacticTrigger: "rally_trigger" },
+      { id:"reset",       tags:["kontrolle"],              name:"Reset Shape",      desc:"+12 to ALL stats in R4-6.",                                   tacticTrigger: null },
+      { id:"counter_h",   tags:["konter","tempo"],         name:"Lean Into Counters",desc:"+24 tempo, +14 defense, auto-counter on failed enemy attack.",tacticTrigger: "counter_trigger" },
+      { id:"high_press",  tags:["pressing"],               name:"High Press",       desc:"+22 defense R4-6, -6 composure.",                              tacticTrigger: "high_press_trigger" },
+      { id:"vision_play", tags:["ballbesitz","vision"],    name:"Open the Game",    desc:"+22 vision, +10 attack in R4-6.",                             tacticTrigger: null },
+
+      // — NEW: 8 additions —
+      { id:"shake_up",    tags:["technik","aggressiv"],    name:"Shake-Up",         desc:"Worst-form player swapped — permanent -5 all stats, team +12 attack R4-6.", tacticTrigger: "shake_trigger" },
+      { id:"lock_bus",    tags:["defensiv"],               name:"Lock the Bus",     desc:"Only if leading: +30 defense, -20 attack R4-6. Impenetrable.", tacticTrigger: null, condition: (match) => (match.scoreMe > match.scoreOpp) ? null : 'miss' },
+      { id:"desperate",   tags:["aggressiv","physisch"],   name:"Desperate Attack", desc:"Only if trailing by 2+: +32 attack R4-6, -20 defense, keeper at risk.",tacticTrigger: null, condition: (match) => (match.scoreOpp - match.scoreMe) >= 2 ? null : 'miss' },
+      { id:"role_switch", tags:["technik","tempo"],        name:"Role Switch",      desc:"LF and ST swap roles R4-6. +10 tempo, +10 attack, -8 vision.",tacticTrigger: null },
+      { id:"coach_fire",  tags:["aggressiv","physisch"],   name:"Fiery Team Talk",  desc:"If losing at half: team form +1 next match, +14 attack R4-6.", tacticTrigger: null, condition: (match) => (match.scoreOpp > match.scoreMe) ? null : 'miss' },
+      { id:"cold_read",   tags:["vision","kontrolle"],     name:"Cold Read",        desc:"Analyze enemy: +20 defense, enemy attack -8 R4-6.",            tacticTrigger: null },
+      { id:"wingman",     tags:["tempo","technik"],        name:"Free the Wingman", desc:"LF gets +25 tempo, +15 attack R4-6 (personal). Team -4 composure.",tacticTrigger: null },
+      { id:"mind_reset",  tags:["kontrolle"],              name:"Mental Reset",     desc:"Wipes all form deltas in squad. Fresh slate into R4-6.",       tacticTrigger: null },
+
+      // — NEW: 4 additions (this turn) —
+      { id:"double_down",   tags:["kontrolle","aggressiv"], name:"Double Down",     desc:"Amplifies your biggest current team buff by +40%. Rewards momentum.", tacticTrigger: null },
+      { id:"tactical_foul", tags:["defensiv","physisch"],   name:"Tactical Fouls",  desc:"+8 defense, opp tempo -12 R4-5. Disruption over improvement.", tacticTrigger: null },
+      { id:"wing_overload", tags:["tempo","technik"],       name:"Wing Overload",   desc:"LF: +20 offense +20 tempo personal R4-6. Team -6 defense.", tacticTrigger: null },
+      { id:"shell_defense", tags:["defensiv","kontrolle"],  name:"Shell Defense",   desc:"Only drawing/leading: +24 defense, +14 composure, -10 attack R4-6.", tacticTrigger: null, condition: (match) => (match.scoreMe >= match.scoreOpp) ? null : 'miss' }
     ],
+
     finalOptions: [
-      { id:"all_in",      tags:["aggressiv"],              name:"All-In",           desc:"Letzte Runde: +15 Offense, -15 Defense. Bei Rückstand noch stärker.",
+      // — Existing 9 —
+      { id:"all_in",      tags:["aggressiv"],              name:"All In",           desc:"Final round: +15 attack, -15 defense. Scales with deficit.",
         tacticTrigger: null,
         condition: (match) => {
           const deficit = match.scoreOpp - match.scoreMe;
           return deficit > 0 ? { offense: 15 + deficit * 5, defense: -15 } : { offense: 15, defense: -15 };
         }
       },
-      { id:"park_bus",    tags:["defensiv"],               name:"Bus parken",       desc:"Letzte Runde: +15 Defense, -10 Offense. Bei Führung noch stärker.",
+      { id:"park_bus",    tags:["defensiv"],               name:"Park the Bus",     desc:"Final round: +15 defense, -10 attack. Scales with lead.",
         tacticTrigger: null,
         condition: (match) => {
           const lead = match.scoreMe - match.scoreOpp;
           return lead > 0 ? { defense: 15 + lead * 5, offense: -10 } : { defense: 15, offense: -10 };
         }
       },
-      { id:"hero_ball",   tags:["technik"],                name:"Held des Tages",   desc:"Spieler in Topform erhält permanent +20 Fokus-Stat.",
-        tacticTrigger: null },
-      { id:"keep_cool",   tags:["kontrolle","vision"],     name:"Cool bleiben",     desc:"Letzte Runde: +8 Composure und +5 Vision.",
-        tacticTrigger: null },
-      { id:"final_press", tags:["pressing"],               name:"Schlusspressing",  desc:"Letzte Runde: +10 Tempo und +8 Defense, -5 Off.",
-        tacticTrigger: "final_press_trigger" },
-      { id:"long_ball",   tags:["physisch","aggressiv"],   name:"Lange Bälle",      desc:"Letzte Runde: +12 Offense, -5 Vision.",
-        tacticTrigger: null },
-      { id:"midfield",    tags:["ballbesitz","kontrolle"], name:"Mittelfeldkontrolle", desc:"Letzte Runde: +8 Vision, +6 Tempo, +6 Composure.",
-        tacticTrigger: null },
-      { id:"sneaky",      tags:["konter","defensiv"],      name:"Hinterhalt",       desc:"Letzte Runde: +12 Defense, +8 Tempo, -8 Offense.",
-        tacticTrigger: null },
-      { id:"sacrifice",   tags:["aggressiv","physisch"],   name:"Opferlamm",        desc:"Ein Spieler opfert dauerhaft 15 Fokus-Stat für +25 Offense im Team jetzt.",
-        tacticTrigger: "sacrifice_trigger" }
+      { id:"hero_ball",   tags:["technik"],                name:"Hero Ball",        desc:"Best-form player permanently gains +30 focus stat.",  tacticTrigger: null },
+      { id:"keep_cool",   tags:["kontrolle","vision"],     name:"Stay Cool",        desc:"Final round: +20 composure, +12 vision.",             tacticTrigger: null },
+      { id:"final_press", tags:["pressing"],               name:"Final Press",      desc:"Final round: +24 tempo, +18 defense, -10 attack.",   tacticTrigger: "final_press_trigger" },
+      { id:"long_ball",   tags:["physisch","aggressiv"],   name:"Long Balls",       desc:"Final round: +28 attack, -10 vision. Direct.",       tacticTrigger: null },
+      { id:"midfield",    tags:["ballbesitz","kontrolle"], name:"Midfield Control", desc:"Final round: +20 vision, +16 tempo, +14 composure.",  tacticTrigger: null },
+      { id:"sneaky",      tags:["konter","defensiv"],      name:"Ambush",           desc:"Final round: +28 defense, +18 tempo, -14 attack.",   tacticTrigger: null },
+      { id:"sacrifice",   tags:["aggressiv","physisch"],   name:"Sacrifice",        desc:"A player loses 15 focus stat permanently. Team: +35 attack now.",tacticTrigger: "sacrifice_trigger" },
+
+      // — NEW: 8 additions —
+      { id:"kamikaze",    tags:["aggressiv","physisch"],   name:"Kamikaze",         desc:"Only if trailing: +40 attack, -40 defense, keeper risk.",
+        tacticTrigger: null,
+        condition: (match) => (match.scoreOpp > match.scoreMe) ? { offense: 40, defense: -40 } : null },
+      { id:"clockwatch",  tags:["defensiv","kontrolle"],   name:"Clock Watching",   desc:"Only if leading: +25 defense, +18 composure, time runs down.",
+        tacticTrigger: null,
+        condition: (match) => (match.scoreMe > match.scoreOpp) ? { defense: 25, composure: 18 } : null },
+      { id:"poker",       tags:["vision","technik"],       name:"Poker Face",       desc:"+15 to every stat if even. Nothing if leading/trailing.",
+        tacticTrigger: null,
+        condition: (match) => (match.scoreMe === match.scoreOpp) ? { offense: 15, defense: 15, tempo: 15, vision: 15, composure: 15 } : null },
+      { id:"lone_wolf",   tags:["aggressiv"],              name:"Lone Wolf",        desc:"ST: +40 attack, +20 tempo personal. Rest of team: -6 attack.", tacticTrigger: null },
+      { id:"fortress",    tags:["defensiv"],               name:"Fortress",         desc:"+40 defense for TW/VT, -20 attack for team.",                tacticTrigger: null },
+      { id:"gamble",      tags:["aggressiv"],              name:"Gamble",           desc:"50/50: +35 attack OR -15 all stats. Roll the dice.",         tacticTrigger: "gamble_trigger" },
+      { id:"masterclass", tags:["technik","vision"],       name:"Masterclass",      desc:"PM: +30 vision, +20 composure personal. Team +12 attack.",    tacticTrigger: null },
+      { id:"rope_a_dope", tags:["konter","defensiv"],      name:"Rope-a-Dope",      desc:"R6 only: +35 defense, auto-counter on every enemy attack.",  tacticTrigger: "counter_trigger" },
+
+      // — NEW: 4 additions (this turn) —
+      { id:"set_piece",     tags:["technik","aggressiv"],   name:"Set Piece Master",desc:"R6: +25 attack, but ONLY on successful buildups. Narrow boost.", tacticTrigger: null },
+      { id:"siege_mode",    tags:["aggressiv","kontrolle"], name:"Siege Mode",      desc:"R6: +20 attack, +10 tempo, +10 vision. Clean all-around pressure.", tacticTrigger: null },
+      { id:"bus_and_bike",  tags:["defensiv","konter"],     name:"Bus & Bike",      desc:"R6: +18 defense. Each save/stop triggers +30 attack on next ball.", tacticTrigger: null },
+      { id:"face_pressure", tags:["kontrolle","defensiv"],  name:"Face the Pressure",desc:"R6: +25 composure, opp shots -8% accuracy. Clutch nerves.", tacticTrigger: null }
     ]
   };
 

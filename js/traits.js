@@ -1,33 +1,9 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// traits.js — Trait trigger registry + dispatcher
-//
-// Each trait has a handler function of signature (player, ctx) → void. The
-// dispatcher fans out match events (statCompute, oppShot, ownGoal, roundStart,
-// etc.) to every handler of every player's traits. Handlers mutate ctx to
-// communicate effects back (e.g. ctx.oppShotSaved = true).
-//
-// To detect whether a trait actually fired this tick, we snapshot the
-// observable parts of ctx around each handler call. Any diff counts as a fire
-// — used for the post-match trait report.
-//
-// Mastery traits (suffix `_mastery`) wrap their parent's handler and apply a
-// +30% multiplier to every effect the parent produced. This is implemented as
-// a diff-after-call rather than a re-implementation, so mastery traits stay
-// in sync with the parent's logic automatically.
-//
-// Opponent traits have their own small registry driven by a switch-per-point
-// interface (applyOppTraitEffect), which is simpler since there are only 8.
-// ─────────────────────────────────────────────────────────────────────────────
-
 (() => {
   const KL = window.KL;
   const { rand, localeData } = KL.util;
   const { DATA } = KL.config;
 
-  // ─── Trait handlers ────────────────────────────────────────────────────────
-  // Organised here by role for readability. Logic unchanged from pre-refactor.
   const TRIGGER_HANDLERS = {
-    // ── Keeper (TW) traits ─────────────────────────────────────────────────
     titan_stand(p, ctx) {
       if (ctx.event === 'oppShot' && Math.abs(ctx.match.scoreMe - ctx.match.scoreOpp) <= 1) {
         if (rand() < 0.30) {
@@ -80,7 +56,6 @@
       }
     },
 
-    // ── Defender (VT) traits ───────────────────────────────────────────────
     intimidate(p, ctx) {
       if (ctx.event === 'oppStatCompute' && ctx.oppRole === 'ST') ctx.oppStats.offense -= 5;
     },
@@ -95,9 +70,14 @@
       if (ctx.event === 'statCompute') ctx.stats.composure += 3;
     },
     blood_scent(p, ctx) {
+      // Stacks akkumulieren pro Gegentor, Bonus läuft über ctx.stats beim
+      // statCompute — damit werden Base-Stats nicht permanent mutiert.
       if (ctx.event === 'afterOppGoal') {
-        p.stats.defense += 5;
+        p._bloodScentStacks = (p._bloodScentStacks || 0) + 1;
         ctx.log('🩸 ' + p.name + ' BLUTRAUSCH +5 Def.');
+      }
+      if (ctx.event === 'statCompute' && ctx.player === p && p._bloodScentStacks) {
+        ctx.stats.defense += 5 * p._bloodScentStacks;
       }
     },
     hard_tackle(p, ctx) {
@@ -108,9 +88,16 @@
       }
     },
     whirlwind_rush(p, ctx) {
-      if (ctx.event === 'roundStart' && !p._whirlwindUsed && (ctx.match.round === 2 || ctx.match.round === 5)) {
+      if (ctx.event !== 'roundStart') return;
+      const r = ctx.match.round;
+      // Getrennte Flags für 1. und 2. Halbzeit, damit beide Feuerungen stattfinden.
+      if (r === 2 && !p._whirlwindUsed1h) {
         ctx.match.teamBuffs.tempoBonus = (ctx.match.teamBuffs.tempoBonus || 0) + 0.5;
-        p._whirlwindUsed = ctx.match.round <= 3 ? '1h' : '2h';
+        p._whirlwindUsed1h = true;
+        ctx.log('🌪 ' + p.name + ' WIRBELWIND — doppeltes Tempo!');
+      } else if (r === 5 && !p._whirlwindUsed2h) {
+        ctx.match.teamBuffs.tempoBonus = (ctx.match.teamBuffs.tempoBonus || 0) + 0.5;
+        p._whirlwindUsed2h = true;
         ctx.log('🌪 ' + p.name + ' WIRBELWIND — doppeltes Tempo!');
       }
     },
@@ -131,7 +118,6 @@
       }
     },
 
-    // ── Playmaker (PM) traits ──────────────────────────────────────────────
     metronome_tempo(p, ctx) {
       if (ctx.event === 'roundStart') {
         p._metronomeBonus = (p._metronomeBonus || 0) + 0.02;
@@ -192,7 +178,6 @@
       }
     },
 
-    // ── Runner (LF) traits ─────────────────────────────────────────────────
     speed_burst(p, ctx) {
       if (ctx.event === 'ownAttack' && !p._speedBurstUsed) {
         ctx.guaranteedBuildup = true;
@@ -227,7 +212,7 @@
       }
     },
     ironman_stamina(p, ctx) {
-      if (ctx.event === 'statCompute' && ctx.match.round >= 5) {
+      if (ctx.event === 'statCompute' && ctx.player === p && ctx.match.round >= 5) {
         ctx.stats.tempo += 2;
       }
     },
@@ -240,7 +225,6 @@
       }
     },
 
-    // ── Striker (ST) traits ────────────────────────────────────────────────
     silent_killer(p, ctx) {
       if (ctx.event === 'ownAttack' && !ctx.match.firstShotTaken) {
         ctx.attackBonus += 0.30;
@@ -311,9 +295,6 @@
       }
     },
 
-    // ── Legendary traits ───────────────────────────────────────────────────
-    // Each is a rare, match-shaping effect. Registered here so they live
-    // alongside the rest of the registry and show up in the dispatcher.
     god_mode(p, ctx) {
       if (ctx.event === 'ownGoal' && !p._godModeUsed && ctx.match.scoreMe <= ctx.match.scoreOpp + 1) {
         p._godModeUsed = true;
@@ -372,14 +353,10 @@
     }
   };
 
-  // ─── Mastery handler synthesis ─────────────────────────────────────────────
-  // For each stage-2 evolution with suffix `_mastery`, build a wrapper that
-  // runs the parent handler, diffs ctx around the call, and amplifies any
-  // observed effect by 20%. This keeps mastery logic automatically in sync.
   function buildMasteryHandlers() {
     const MASTERY_BOOST = 0.2;
 
-    for (const [traitKey, def] of Object.entries(DATA.traits)) {
+    for (const [traitKey] of Object.entries(DATA.traits)) {
       if (!traitKey.endsWith('_mastery')) continue;
       if (TRIGGER_HANDLERS[traitKey]) continue;
 
@@ -425,19 +402,11 @@
   }
   buildMasteryHandlers();
 
-  // ─── Legendary trait definitions (merged into DATA.traits at load time) ────
-  // Pulled from the active locale. Done once at module init — a language
-  // switch after this point keeps the handlers bound to the same trait ids,
-  // only the descriptive text changes (decorateConfigData handles that).
   const LEGENDARY_TRAITS = localeData().legendaryTraits || {};
   for (const [key, def] of Object.entries(LEGENDARY_TRAITS)) {
     DATA.traits[key] = def;
   }
 
-  // ─── Fire-detection snapshot ───────────────────────────────────────────────
-  // We compare a compact JSON hash of ctx's observable fields before and
-  // after each handler to detect whether a handler actually did anything.
-  // This is what drives the per-match trait fire report.
   function snapshotTriggerState(ctx) {
     const s = {
       attackBonus:      ctx.attackBonus,
@@ -477,10 +446,6 @@
     return JSON.stringify(s);
   }
 
-  // ─── Dispatcher ────────────────────────────────────────────────────────────
-  // Fires `type` to every player's every trait. Handlers push log messages
-  // into match._triggerLogBuffer via a closure — we flush that buffer after
-  // the round loop with flushTriggerLog.
   function dispatchTrigger(type, ctx) {
     ctx.event = type;
     ctx.triggersThisRound = ctx.triggersThisRound || 0;
@@ -489,12 +454,32 @@
       if (ctx.match?._triggerLogBuffer) ctx.match._triggerLogBuffer.push(msg);
     };
 
+    // Fit-driven trait amplifier: a well-fitting kickoff tactic boosts the
+    // output of passive traits (statCompute/oppStatCompute), a misfit dampens
+    // them. Delta is measured per handler, then scaled — handlers themselves
+    // stay unchanged and keep reading intuitively.
+    const amp = ctx.match?._fitTraitAmp ?? 1.0;
+    const isPassiveEvent = (type === 'statCompute' || type === 'oppStatCompute');
+    const ampActive = amp !== 1.0 && isPassiveEvent;
+    const statKey = type === 'statCompute' ? 'stats' : 'oppStats';
+
+    // Passive-Fire-Dedup: auf statCompute/oppStatCompute zählt jeder Trait
+    // pro (Spieler × Trait × Runde) höchstens einmal. Der Effekt wird aber
+    // immer voll angewandt — nur der Counter dedupt. Ohne das explodiert
+    // die "Abilities Triggered"-Zahl im Match-Report unrealistisch hoch,
+    // weil computePlayerStats pro Schuss/Buildup/Save mehrfach gerufen wird.
+    const dedupEnabled = KL.config.CONFIG.passiveFireDedup && isPassiveEvent && ctx.match;
+    if (dedupEnabled && !ctx.match._passiveFireSeen) {
+      ctx.match._passiveFireSeen = {};  // key: "round:playerId:traitId" → true
+    }
+
     const squad = ctx.match?.squad || window.state?.roster || [];
     for (const p of squad) {
       if (!p.traits?.length) continue;
       for (const traitId of p.traits) {
         const handler = TRIGGER_HANDLERS[traitId];
         if (!handler) continue;
+        const statsBefore = (ampActive && ctx[statKey]) ? { ...ctx[statKey] } : null;
         const before = snapshotTriggerState(ctx);
         try {
           handler(p, ctx);
@@ -503,15 +488,31 @@
             console.warn('[Trait-Error]', traitId, 'on', p.name, '—', e.message);
           }
         }
+        if (statsBefore && ctx[statKey]) {
+          for (const k of Object.keys(ctx[statKey])) {
+            const delta = (ctx[statKey][k] || 0) - (statsBefore[k] || 0);
+            if (delta !== 0) {
+              ctx[statKey][k] = (statsBefore[k] || 0) + delta * amp;
+            }
+          }
+        }
         const after = snapshotTriggerState(ctx);
         if (before !== after) {
-          ctx.triggersThisRound++;
-          p._triggerCount = (p._triggerCount || 0) + 1;
-          if (ctx.match) {
-            ctx.match.stats.triggersFired = (ctx.match.stats.triggersFired || 0) + 1;
-            // Per-trait counter for the post-match intel report
-            ctx.match._traitFireCounts = ctx.match._traitFireCounts || {};
-            ctx.match._traitFireCounts[traitId] = (ctx.match._traitFireCounts[traitId] || 0) + 1;
+          let countThis = true;
+          if (dedupEnabled) {
+            const r = ctx.match.round || 0;
+            const dedupKey = `${r}:${p.id}:${traitId}`;
+            if (ctx.match._passiveFireSeen[dedupKey]) countThis = false;
+            else ctx.match._passiveFireSeen[dedupKey] = true;
+          }
+          if (countThis) {
+            ctx.triggersThisRound++;
+            p._triggerCount = (p._triggerCount || 0) + 1;
+            if (ctx.match) {
+              ctx.match.stats.triggersFired = (ctx.match.stats.triggersFired || 0) + 1;
+              ctx.match._traitFireCounts = ctx.match._traitFireCounts || {};
+              ctx.match._traitFireCounts[traitId] = (ctx.match._traitFireCounts[traitId] || 0) + 1;
+            }
           }
         }
       }
@@ -527,19 +528,17 @@
     }
   }
 
-  // ─── Opponent traits ───────────────────────────────────────────────────────
-  // Opponent traits are a flat list pulled from the locale. Their effects are
-  // applied at specific evaluation points (shot chance, save penalty, build-up
-  // malus, etc.) rather than via a full dispatcher — they're simpler and fewer.
   const OPP_TRAITS = Object.entries(localeData().oppTraits || {})
     .map(([id, def]) => ({ id, ...def }));
+
+  function holderFor(opp, traitId) {
+    return opp?.traitHolders?.[traitId] || null;
+  }
 
   function applyOppTraitEffect(opp, match, point, ctx = {}) {
     if (!opp.traits) return ctx;
     if (!ctx.logMsgs) ctx.logMsgs = [];
 
-    // Log each trait effect at most once per evaluation point per match
-    // (prevents identical log spam across rounds).
     const once = (key, msgPath, vars = {}) => {
       if (!match._oppTraitLogged) match._oppTraitLogged = {};
       const token = key + '@' + point;
@@ -548,25 +547,40 @@
       ctx.logMsgs.push(window.I18N.t(msgPath, vars));
     };
 
+    // Track opponent trigger activity for the post-match stats panel.
+    // Counts once per actual effect application, mirroring how player
+    // trait fires are counted in dispatchTrigger.
+    const track = (traitId) => {
+      if (!match?.stats) return;
+      match.stats.oppTriggersFired = (match.stats.oppTriggersFired || 0) + 1;
+      match._oppTraitFireCounts = match._oppTraitFireCounts || {};
+      match._oppTraitFireCounts[traitId] = (match._oppTraitFireCounts[traitId] || 0) + 1;
+    };
+
     for (const traitId of opp.traits) {
       const t = OPP_TRAITS.find(x => x.id === traitId);
       if (!t) continue;
+      const holder = holderFor(opp, traitId);
+      const playerName = holder?.name || opp.name;
 
       if (point === 'oppShotChance') {
         if (traitId === 'sturm') {
           ctx.bonus = (ctx.bonus || 0) + 0.08;
-          once('sturm', 'ui.log.oppTrait.sturmShot', { name: opp.name });
+          track('sturm');
+          once('sturm', 'ui.log.oppTrait.sturmShot', { name: playerName, team: opp.name });
         }
         if (traitId === 'sniper') {
           ctx.bonus = (ctx.bonus || 0) + 0.15;
-          once('sniper', 'ui.log.oppTrait.sniperShot', { name: opp.name });
+          track('sniper');
+          once('sniper', 'ui.log.oppTrait.sniperShot', { name: playerName, team: opp.name });
         }
       }
 
       if (point === 'savePenalty') {
         if (traitId === 'riegel') {
           ctx.penalty = (ctx.penalty || 0) + 0.05;
-          once('riegel', 'ui.log.oppTrait.riegelDeny', { name: opp.name });
+          track('riegel');
+          once('riegel', 'ui.log.oppTrait.riegelDeny', { name: playerName, team: opp.name });
         }
       }
 
@@ -574,6 +588,8 @@
         if (traitId === 'presser_opp') {
           ctx.malus = (ctx.malus || 0) + 0.10;
           ctx._presserActive = true;
+          ctx._presserName = playerName;
+          track('presser_opp');
         }
       }
 
@@ -581,37 +597,40 @@
         if (traitId === 'clutch_opp' && match.round >= 5) {
           ctx.offense = (ctx.offense || 0) + 10;
           ctx.tempo   = (ctx.tempo   || 0) + 5;
-          once('clutch_opp', 'ui.log.oppTrait.clutchSurge', { name: opp.name });
+          track('clutch_opp');
+          once('clutch_opp', 'ui.log.oppTrait.clutchSurge', { name: playerName, team: opp.name });
         }
       }
 
       if (point === 'earlyDefense') {
         if (traitId === 'ironwall' && match.round <= 2) {
           ctx.defense = (ctx.defense || 0) + 10;
-          once('ironwall', 'ui.log.oppTrait.ironwallEarly', { name: opp.name });
+          track('ironwall');
+          once('ironwall', 'ui.log.oppTrait.ironwallEarly', { name: playerName, team: opp.name });
         }
       }
 
       if (point === 'counterAttack') {
         if (traitId === 'konter_opp' && rand() < 0.30) {
           ctx.triggered = true;
+          ctx.counterBy = playerName;
+          track('konter_opp');
         }
       }
     }
     return ctx;
   }
 
-  // ─── Namespace + legacy exports ────────────────────────────────────────────
   KL.traits = {
     TRIGGER_HANDLERS,
     OPP_TRAITS,
     LEGENDARY_TRAITS,
     dispatch:            dispatchTrigger,
     flushLog:            flushTriggerLog,
-    applyOppTraitEffect
+    applyOppTraitEffect,
+    holderFor
   };
 
-  // Legacy bare-name exports so engine.js can call dispatchTrigger directly.
   Object.assign(window, {
     TRIGGER_HANDLERS,
     OPP_TRAITS,

@@ -18,7 +18,10 @@ I18N.registerLocale('es', {
       squad: 'Plantilla',
       bench: 'Banquillo',
       lineup: '⚙ Alineación',
-      startMatch: '▶ Empezar Partido'
+      startMatch: '▶ Empezar Partido',
+      bossTag: 'JEFE',
+      suspendedAlert: '{name} está sancionado este partido',
+      suspendedAlertTooltip: '{name}: tarjeta roja en el último partido. Sanción por {n} partidos más. Sustitúyelo desde el banquillo antes de empezar.'
     },
     lineup: {
       title: 'ALINEACIÓN',
@@ -47,7 +50,58 @@ I18N.registerLocale('es', {
       continue: '▶ Continuar',
       analysis: 'Resumen del Partido',
       players: 'Resumen de Jugadores',
-      sacrificeNote: '⚠ {name} lo dio todo — pérdida permanente de estadística.'
+      sacrificeNote: '⚠ {name} lo dio todo — pérdida permanente de estadística.',
+      hlOverperform:  'Por encima de lo esperado (pre-partido: {pre}% victoria)',
+      hlUnderperform: 'Por debajo de lo esperado (pre-partido: {pre}% victoria)',
+      decisionsTitle: 'Tus decisiones',
+      decisionsSum:   'Total',
+      matchFlowTitle: 'Flujo del Partido',
+      matchFlowHint:  'Evolución de las estadísticas del equipo durante el partido (buffs, forma, habilidades).',
+      decisionPhase: {
+        kickoff:  'Inicio',
+        halftime: 'Descanso',
+        final:    'Final'
+      }
+    },
+    prob: {
+      win:  'Victoria',
+      draw: 'Empate',
+      loss: 'Derrota',
+      currentWin: 'Probabilidad actual de victoria'
+    },
+    scorecard: {
+      threat: 'AMENAZA',
+      edge:   'VENTAJA',
+      off:    'ATQ',
+      def:    'DEF',
+      tmp:    'RIT',
+      vis:    'VIS',
+      cmp:    'TEM',
+      traitActivity: '~{n} disparos de rasgo esperados · {p} pasivas activas',
+      edgeTooltip:   'Tus ventajas: rasgos que contrarrestan a este rival más cualquier superávit de stats. Independiente de Amenaza — pueden ser altas ambas.',
+      threatTooltip: 'Su peligro para ti: rasgos rivales que dañan a tu plantilla más cualquier brecha de poder. Independiente de Ventaja — pueden ser altas ambas.'
+    },
+    cards: {
+      yellow: 'Tarjeta amarilla — una más en este partido = expulsión y sanción para el siguiente.',
+      secondYellow: 'Segunda amarilla — expulsado de este partido, sancionado para el próximo.',
+      red: 'Tarjeta roja — expulsado de este partido, sancionado para el próximo.',
+      suspendedNext: 'Sancionado — no puede jugar el próximo partido.',
+      academyTooltip: 'Suplente de la cantera — reemplazo temporal, estadísticas muy reducidas, sin habilidades. Abandona el equipo tras este partido.'
+    },
+    decisions: {
+      // Focus-Keys entfernt — Focus-System deprecated.
+    },
+    optionBadges: {
+      fitsSquad: 'ENCAJA',
+      risky:    'ARRIESGADO',
+      synergy:  'SINERGIA ×{mult}',
+      conflict: 'CONFLICTO ×{mult}',
+      synergyShort:  'SINERGIA',
+      conflictShort: 'CONFLICTO'
+    },
+    optionHints: {
+      scalesDeficit: '↑ crece con tu desventaja',
+      scalesLead:    '↑ crece con tu ventaja'
     },
     gameover: { title: 'GAME OVER' },
     victory: { survived: '15 partidos superados' },
@@ -69,7 +123,8 @@ I18N.registerLocale('es', {
       outcomeFired: 'Despedido',
       compactTeamMeta: '{lineup} + {bench}B',
       matchLabel: 'Partido {num}: {me}:{opp} vs {name}',
-      bossTell: 'Combate contra jefe — todas las estadísticas elevadas, sin margen de error'
+      bossTell: 'Combate contra jefe — todas las estadísticas elevadas, sin margen de error',
+      academy: 'CANTERA'
     },
     statsPanel: {
       possession: 'Posesión',
@@ -85,6 +140,314 @@ I18N.registerLocale('es', {
       opponent: 'Rival',
       buffsFootnote: 'Los buffs se acumulan entre inicio, descanso y fase final'
     },
+    eventReasons: {
+      strikerMisses: '{name} ha fallado {n} ocasiones — el lenguaje corporal está roto.',
+      keeperStreak: '{name} ha encadenado {n} paradas — está en racha.',
+      oppStrikerMisses: 'Su delantero {name} ha fallado {n} ocasiones — se rompe bajo presión.',
+      concededStreak: '{conceded} goles encajados seguidos — hay que reaccionar ya.',
+      hotCorridor: '{name} está rompiendo por la banda una y otra vez.',
+      oppPmStreak: 'Su creador {name} ha encadenado {n} salidas limpias.',
+      heatedMoment: 'Ambiente caldeado — las tarjetas están cerca.',
+      loose: '{name} se ha escapado — alguien tiene que decidir.',
+      clearChance: '{name} tiene balón, ángulo y la portería entera ante sí.',
+      oppTacticSwitch: '{opp} cambia a presión alta — su entrenador reacciona.',
+      playmakerPulse: '{name} dicta el ritmo. Momento de aprovecharlo.',
+      oppKeeperRattled: '{name} titubea. La próxima jugada puede convertir la presión en colapso.',
+      backlineStepUp: '{name} lee el juego cada vez mejor — la defensa puede marcar el ritmo.',
+      redCardRisk: '{name} está encendido — una mala entrada y fuera.',
+      weatherRain: 'Empieza a llover — campo pesado, balones largos impredecibles.',
+      weatherWind: 'Viento racheado — los balones largos son lotería.',
+      weatherHeat: 'El calor es brutal — las piernas pesan.',
+      fanRevolt: 'Pitidos en las gradas tras el {opp}:{me} en contra.',
+      oppStarDown: '{name} cojea fuera del campo — su jugador clave podría estar fuera.',
+      coachWhisperDirect: 'El segundo entrenador al oído: "Olvida la salida, balón directo."',
+      coachWhisperPatient: 'El segundo entrenador al oído: "Bájale el ritmo, desarma la estructura."',
+      setPieceAwarded: 'Falta cerca del área — ocasión de oro a balón parado.',
+      legsGone: 'Piernas pesadas del ritmo inicial — el equipo necesita ritmo, no sprints.',
+      tacticalClashPressing: 'Tu presión choca contra su temple — está costando forma.',
+      tacticalClashPossession: 'Su ritmo atraviesa tu posesión — ya están al contraataque.',
+      refereeStern: 'El árbitro pita rápido hoy — cada duelo es un riesgo.'
+    },
+    events: {
+      striker_frustrated: {
+        title: 'Delantero Frustrado',
+        subtitle: '{name} ha fallado {n} ocasiones — el lenguaje corporal no cuadra.',
+        option_layoff_pm: {
+          name: 'Descargar al creador',
+          desc: 'Enfoque del creador: goleador forzado ST, bonus escala con visión del PM.'
+        },
+        option_push_through: {
+          name: 'Insistir',
+          desc: '+14% en el próximo tiro de {name}. Confía en que romperá la mala racha.'
+        },
+        option_swap_off: {
+          name: 'Sustituirlo',
+          desc: 'Delantero fresco del banquillo. Reinicia la racha, cuesta química.'
+        }
+      },
+      keeper_in_zone: {
+        title: 'Portero en Estado',
+        subtitle: '{name} ha encadenado {n} paradas — en plena racha.',
+        option_launch_counter: {
+          name: 'Contragolpe inmediato',
+          desc: 'Ataque inmediato con +22% bonus. Aprovechar la inercia.'
+        },
+        option_stay_solid: {
+          name: 'Mantenerse sólido',
+          desc: '+12% en la próxima parada. Continuar la portería a cero.'
+        }
+      },
+      opp_striker_frustrated: {
+        title: 'Se Están Rompiendo',
+        subtitle: 'Su delantero {name} ha fallado {n} ocasiones — cede bajo presión.',
+        option_press_high: {
+          name: 'Presionar alto',
+          desc: '-18% precisión de tiro rival durante 2 rondas. Apretar más.'
+        },
+        option_guard_desperate: {
+          name: 'Cubrir el disparo desesperado',
+          desc: '+20% en la próxima parada. Los delanteros frustrados tiran sin control.'
+        }
+      },
+      momentum_shift: {
+        title: 'Pérdida de Inercia',
+        subtitle: '{conceded} goles seguidos encajados — algo tiene que cambiar ya.',
+        option_timeout: {
+          name: 'Charla técnica',
+          desc: '+12 temple, +6 defensa resto del partido. Calma al equipo.'
+        },
+        option_switch_tactic: {
+          name: 'Cambiar esquema',
+          desc: 'Postura contragolpe defensivo. Auto-contra activo 2 rondas.'
+        }
+      },
+      hot_corridor: {
+        title: 'Banda Caliente',
+        subtitle: '{name} rompe por la banda una y otra vez.',
+        option_double_down: {
+          name: 'Insistir por la banda',
+          desc: '{name} toma el próximo disparo con +15% bonus. Carreras por banda extendidas.'
+        },
+        option_switch_center: {
+          name: 'Pasar al centro',
+          desc: '+14 visión, +6 ataque. Sorpréndelos por dentro.'
+        }
+      },
+      opp_pm_dirigent: {
+        title: 'Su Director',
+        subtitle: 'Su creador {name} ha encadenado {n} salidas limpias.',
+        option_push_vt_high: {
+          name: 'Subir al defensa',
+          desc: '-18% salida rival durante 2 rondas, pero -6 defensa (línea alta arriesgada).'
+        },
+        option_double_mark: {
+          name: 'Doble marca',
+          desc: '-25% salida rival durante 3 rondas. Ahogar al creador.'
+        },
+        option_bait_counter: {
+          name: 'Cebar el contra',
+          desc: 'Auto-contra armado 2 rondas. Déjalo que se crea el control.'
+        }
+      },
+      hitziger_moment: {
+        title: 'Momento Caliente',
+        subtitle: 'Los ánimos subieron tras el último duelo.',
+        option_captain_calm: {
+          name: 'Capitán calma',
+          desc: '+10 temple resto del partido. Cabezas frías imponen.'
+        },
+        option_go_harder: {
+          name: 'Ir más duros',
+          desc: '+10 defensa, +5 ritmo. Riesgo de tarjeta: 37% (18% roja). Jugada grande.'
+        },
+        option_ignore: {
+          name: 'Ignorar',
+          desc: 'Sin cambio. Dejar respirar al partido.'
+        }
+      },
+      freier_mann: {
+        title: 'Hombre Suelto',
+        subtitle: '{name} se ha escapado — alguien debe decidir.',
+        option_foul_stop: {
+          name: 'Falta táctica',
+          desc: 'Corta el ataque. VT ve amarilla (roja si era la segunda).'
+        },
+        option_retreat: {
+          name: 'Replegar y cubrir',
+          desc: '-15% tiro rival esta ronda. Más seguro, menos decisivo.'
+        },
+        option_keeper_out: {
+          name: 'Portero sale',
+          desc: '50/50: victoria limpia o gol forzado. Cara o cruz.'
+        }
+      },
+      clear_chance: {
+        title: 'Portería Abierta',
+        subtitle: '{name} tiene balón, ángulo y toda la portería a la vista.',
+        option_place_flat: {
+          name: 'Colocar raso',
+          desc: '+18% bonus de tiro inmediato. Conservador, fiable.'
+        },
+        option_chip_keeper: {
+          name: 'Vaselina',
+          desc: 'Depende del temple: +30% si compuesto, -10% si nervioso.'
+        },
+        option_square_lf: {
+          name: 'Pase al corredor',
+          desc: '+22% el LF toma el tiro. Desinteresado, a menudo letal.'
+        }
+      },
+      taktikwechsel_opp: {
+        title: 'Cambian de Forma',
+        subtitle: '{opp} pasa a presión alta — su entrenador reacciona.',
+        option_long_balls: {
+          name: 'Balonazos por encima',
+          desc: '+14 ataque, -6 visión resto del partido. Saltarse la presión.'
+        },
+        option_hold_possession: {
+          name: 'Mantener posesión',
+          desc: '+14 visión, +8 temple. Bloqueo de posesión activo.'
+        },
+        option_match_aggression: {
+          name: 'Igualar agresión',
+          desc: '+12 ritmo, +8 defensa, -4 temple. Presión activa.'
+        }
+      },
+      playmaker_pulse: {
+        title: 'Pulso del Creador',
+        subtitle: '{name} marca el ritmo. Es el momento de apoyarse en él.',
+        option_release_runner: {
+          name: 'Liberar al corredor',
+          desc: 'Ataque abierto inmediato con visión extra. Forzar la siguiente jugada por la banda.'
+        },
+        option_dictate_tempo: {
+          name: 'Dictar el ritmo',
+          desc: 'Visión y temple suben el resto del partido. Fijar el juego a tu ritmo.'
+        },
+        option_thread_risk: {
+          name: 'Pases al filo',
+          desc: 'La próxima salida recibe un gran empujón, el creador sigue forzando pases más afilados.'
+        }
+      },
+      opp_keeper_rattled: {
+        title: 'Portero Sacudido',
+        subtitle: '{name} se tambalea. La próxima decisión puede convertir la presión en colapso.',
+        option_shoot_early: {
+          name: 'Tirar a la primera',
+          desc: 'Su tasa de parada baja 2 rondas. Menos paciencia, más volumen.'
+        },
+        option_crash_box: {
+          name: 'Saturar el área',
+          desc: 'Ataque y ritmo suben de inmediato. Segundos balones y rechaces asegurados.'
+        },
+        option_reset_probe: {
+          name: 'Rehacer y tantear',
+          desc: 'Empuje a la próxima salida y afina el último pase antes del tiro.'
+        }
+      },
+      backline_step_up: {
+        title: 'Defensa Adelantada',
+        subtitle: '{name} sigue leyendo el juego. La defensa puede marcar el tono ahora.',
+        option_step_in: {
+          name: 'Entrar al medio',
+          desc: 'La próxima salida gana fuerza y todo el bloque sube cinco metros.'
+        },
+        option_hold_shape: {
+          name: 'Mantener forma',
+          desc: 'Bloque más seguro 2 rondas. Calidad de tiro rival baja y temple sube.'
+        },
+        option_spring_trap: {
+          name: 'Cerrar la trampa',
+          desc: 'Postura de contragolpe armada y sus próximas salidas se tambalean.'
+        }
+      },
+      red_card_risk: {
+        title: 'Al Filo',
+        subtitle: '{name} está encendido — una mala entrada es un desastre.',
+        option_play_hard: { name: 'Jugar al filo', desc: '+14 defensa, +6 ritmo. Pero 25% de amarilla.' },
+        option_play_clean: { name: 'Calmarlo', desc: '+10 temple, +5 defensa. Seguro, inteligente, más lento.' },
+        option_substitute_def: { name: 'Sustituir', desc: 'Defensa fresco del banquillo. Reiniciar el fusible.' }
+      },
+      weather_shift: {
+        title: 'Cambio de Clima',
+        subtitle: 'Las condiciones cambiaron — nuevo plan necesario.',
+        option_adapt_tempo: { name: 'Adaptar', desc: 'Ralentizar el juego, aguantar las condiciones. Boost defensivo.' },
+        option_push_through_weather: { name: 'Insistir', desc: 'Ignorar el clima, atacar igual. +12 ataque, -6 temple.' }
+      },
+      fan_revolt: {
+        title: 'Inquietud en la Grada',
+        subtitle: 'La grada está inquieta — empiezan los silbidos.',
+        option_rally_crowd: { name: 'Usarlo como combustible', desc: '+14 ataque, +8 ritmo. Canalizar la rabia hacia adelante.' },
+        option_ignore_noise: { name: 'Aislarse del ruido', desc: '+16 temple, +8 visión. Fútbol clínico y enfocado.' }
+      },
+      opp_star_down: {
+        title: 'Su Estrella se Apaga',
+        subtitle: '{name} no llega al ritmo — el lenguaje corporal dice acabado.',
+        option_capitalize: { name: 'A por ellos', desc: '+18 ataque, +10 ritmo, -4 defensa. No dejar que se recuperen.' },
+        option_stay_disciplined: { name: 'Mantener disciplina', desc: '+10 defensa, +10 temple, +6 visión. Aguantar.' }
+      },
+      coach_whisper: {
+        title: 'Sugerencia del Segundo',
+        subtitle: 'Tu ayudante tiene una idea.',
+        option_trust_coach: { name: 'Confiar en la lectura', desc: 'Seguir el ajuste sugerido. Situacional pero dirigido.' },
+        option_trust_instinct: { name: 'Ir con el instinto', desc: 'Equilibrado +8 en ataque, defensa, temple.' }
+      },
+      hot_player: {
+        title: 'En Llamas',
+        subtitle: '{name} ha marcado y se ve imparable.',
+        option_boost: { name: 'Mantenerlo así', desc: 'Permanente +{bonus} a {stat}.' },
+        option_stabilize: { name: 'Mantener la forma', desc: 'Proteger la ventaja — estabilidad defensiva.' }
+      },
+      crisis_moment: {
+        title: 'Cabezas Caídas',
+        subtitle: '{deficit} abajo — el vestuario necesita una chispa.',
+        option_team_talk: { name: 'Charla de equipo', desc: '70% boost de temple+ataque, 30% fracaso.' },
+        option_focus: { name: 'Foco en uno', desc: 'Presión sobre un jugador para dar la vuelta.' },
+        option_accept: { name: 'Aceptar y apretar', desc: 'Mantenerse compactos — recuperación de forma.' }
+      },
+      opp_mistake: {
+        title: 'Se Rompen',
+        subtitle: '{opp} ha fallado {n} salidas. La presión hace efecto.',
+        option_exploit: { name: 'Ir a por ello', desc: 'Ataque inmediato con bonus.' },
+        option_sustain: { name: 'Mantener la presión', desc: 'Malus de salida sostenido.' }
+      },
+      legendary_demand: {
+        title: '{name} Quiere Entrar',
+        subtitle: 'Tu legendario mira desde el banquillo.',
+        option_bring_on: { name: 'Meter a {name}', desc: 'Sustituirlo — impacto legendario completo.' },
+        option_morale: { name: 'Todavía no', desc: 'Mantenerlo fresco — pequeño boost al equipo.' }
+      },
+      season_finale: {
+        title: 'Lucha por el Título',
+        subtitle: 'Último partido — puntos en juego, nervios a flor de piel.',
+        option_allin: { name: 'Jugárselo todo', desc: 'Arriesgarlo todo — techo más alto, suelo más alto.' },
+        option_controlled: { name: 'Enfoque controlado', desc: 'Constante y clínico.' }
+      },
+      set_piece_awarded: {
+        title: 'Balón Parado',
+        subtitle: 'Falta cerca de su área — ¿cómo ejecutarla?',
+        option_quick_surprise: { name: 'Rápido y sorpresa', desc: 'Ataque inmediato, +24% bonus. Sorpréndelos desordenados.' },
+        option_delivery_focus: { name: 'Trabajar la jugada', desc: '+14% próxima salida, equipo +6 temple/visión durante 2 rondas.' }
+      },
+      legs_gone: {
+        title: 'Piernas Pesadas',
+        subtitle: 'Final de partido y el equipo corre de reservas.',
+        option_push_anyway: { name: 'Insistir igual', desc: '+6 ritmo, +4 ataque, -8 temple. Esperar que la adrenalina nos lleve.' },
+        option_manage_rhythm: { name: 'Gestionar el ritmo', desc: '-6 ritmo, +8 defensa, +10 temple. Preservar y controlar.' }
+      },
+      tactical_clash: {
+        title: 'Choque Táctico',
+        subtitle: 'Tu planteamiento choca con su fuerza — ¿ajustar o insistir?',
+        option_adapt: { name: 'Adaptar', desc: '-5 ataque, +10 defensa, +8 visión. Ajustar el plan en pleno partido.' },
+        option_double_down: { name: 'Doblar la apuesta', desc: '+14 ataque, +6 ritmo, -8 defensa. Vencerles en su terreno.' }
+      },
+      referee_stern: {
+        title: 'Árbitro Estricto',
+        subtitle: 'El pitido llega rápido hoy — tarjetas para quien cruce la línea.',
+        option_play_clean: { name: 'Jugar limpio', desc: '+10 temple, -4 ritmo. Sin riesgo de tarjeta, ritmo controlado.' },
+        option_normal_game: { name: 'Seguir normal', desc: 'Ellos también están alerta: rival -5 ritmo durante 2 rondas. Cautela mutua.' }
+      }
+    },
     evolution: {
       title: '¡EVOLUCIÓN!',
       reachedLevel: '{name} ({role}) alcanza el nivel {level}',
@@ -95,6 +458,8 @@ I18N.registerLocale('es', {
       lineupIncomplete: '¡Alineación incompleta! Elige 5 jugadores.',
       benchFull: '¡El banquillo está lleno!',
       lineupInvalid: '¡Alineación inválida! Necesitas exactamente 1 portero y 5 jugadores en total.',
+      lineupSuspended: '{name} está sancionado — por favor, sustitúyelo con un jugador del banquillo.',
+      academyCalledUp: 'Banquillo vacío — se llama a suplentes de la cantera: {list}. Sus estadísticas son notablemente inferiores.',
       kickoffTitle: 'Táctica Inicial',
       kickoffSubtitle: '¿Cómo empezamos?',
       halftimeTitle: 'Ajuste al Descanso',
@@ -135,6 +500,12 @@ I18N.registerLocale('es', {
       tacticRallyTrigger: '  💪 ¡La reacción se dispara! +{bonus} ataque por el marcador!',
       tacticHighPressTrigger: '  🏃 Presión alta — ¡balón recuperado!',
       tacticFinalPressTrigger: '  ⚡ Presión final — ¡contraataque lanzado!',
+      tacticGambleWin: '  🎲 La apuesta sale — +35 ataque del equipo.',
+      tacticGambleLoss: '  🎲 La apuesta falla — -15 en cada stat.',
+      tacticShakeUp: '  🔄 Sacudida: {name} cae, el equipo se afila.',
+      tacticLoneWolf: '  🐺 Lobo solitario: {name} carga con todo.',
+      tacticFortress: '  🛡 Fortaleza: {tw} y {vt} cierran atrás.',
+      tacticMasterclass: '  🎼 Clase magistral: {name} dirige el juego.',
       laserPass: '🎯 {name} PASE LÁSER — ¡contra activada!',
       bulldoze: '🛡 {name} BULLDOZE — robo y contraataque!',
       hardTackle: '🥾 {name} ENTRADA DURA — ¡contra!',
@@ -166,7 +537,17 @@ I18N.registerLocale('es', {
       oppPenaltyMissed: '  {name} falla — {me}:{opp}',
       suddenDeath: '  Muerte súbita: {me}:{opp}',
       penaltiesWin: '🏆 VICTORIA EN LOS PENALTIS',
-      penaltiesLoss: '💥 DERROTA EN LOS PENALTIS'
+      penaltiesLoss: '💥 DERROTA EN LOS PENALTIS',
+      eventSetPieceQuick: '  ⚡ Ejecución rápida — ¡los pillamos fríos!',
+      eventSetPieceDelivery: '  🎯 Trabajar el balón parado — salida paciente.',
+      eventLegsPush: '  💢 Piernas pesadas — insistir igual.',
+      eventLegsManage: '  🧘 Gestionar el ritmo — preservar y controlar.',
+      eventClashAdapt: '  🔄 Adaptando — dejar el enfoque que choca.',
+      eventClashCommit: '  ⚔ Doblando apuesta — entrar a la pelea.',
+      eventRefClean: '  ✓ Jugar limpio — temple sobre agresión.',
+      eventRefNormal: '  ⚖ Ambos cautos con el árbitro — partido contenido.',
+      eventCoachTrust: '  📋 Siguiendo la lectura del ayudante — plan activado.',
+      eventCoachInstinct: '  🎯 Decisión de instinto — enfoque equilibrado.'
     }
   },
   stats: {
@@ -357,10 +738,10 @@ I18N.registerLocale('es', {
       chameleon_adapt: { name: 'Adaptación', desc: 'Copia el rasgo del compañero más activo en la ronda 4.' }
     },
     starterTeams: {
-      konter: { name: 'Especialistas al Contraataque', theme: 'rápidos, defensivos, castigan errores', desc: 'Fuertes en el medio y por fuera. Marcan en transición.', difficultyLabel: 'Principiante' },
-      kraft: { name: 'Potencia Bruta', theme: 'físico, juego aéreo, desgaste', desc: 'Gana por pura presencia física. Muy fuerte al final del partido.', difficultyLabel: 'Intermedio' },
-      technik: { name: 'Magos Técnicos', theme: 'basado en visión, combinaciones por pase', desc: 'Construye ataques de la nada. Lento, pero preciso.', difficultyLabel: 'Exigente' },
-      pressing: { name: 'Bestias de la Presión', theme: 'agresivos, rompen la salida rival', desc: 'Fuerza errores con presión constante. Fútbol de riesgo y nervios frágiles.', difficultyLabel: 'Experto' }
+      konter: { name: 'Especialistas al Contraataque', theme: 'rápidos, defensivos, castigan errores', desc: 'Fuertes en el medio y por fuera. Marcan en transición.' },
+      kraft: { name: 'Potencia Bruta', theme: 'físico, juego aéreo, desgaste', desc: 'Gana por pura presencia física. Muy fuerte al final del partido.' },
+      technik: { name: 'Magos Técnicos', theme: 'basado en visión, combinaciones por pase', desc: 'Construye ataques de la nada. Lento, pero preciso.' },
+      pressing: { name: 'Bestias de la Presión', theme: 'agresivos, rompen la salida rival', desc: 'Fuerza errores con presión constante. Fútbol de riesgo y nervios frágiles.' }
     },
     opponents: {
       prefixes: ['SC ', 'FC ', 'Atlético ', 'Unión ', 'Deportivo ', 'Dínamo ', 'Real ', 'Racing ', 'Estrella Roja ', 'Albión '],
@@ -392,35 +773,71 @@ I18N.registerLocale('es', {
     },
     tactics: {
       kickoff: {
-        aggressive: { name: 'Inicio Agresivo', desc: '+6 ataque en rondas 1-3, -4 defensa.' },
-        defensive: { name: 'Inicio Defensivo', desc: '+6 defensa en rondas 1-3, -4 ataque.' },
-        balanced: { name: 'Equilibrado', desc: '+3 a todas las estadísticas en rondas 1-3.' },
-        tempo: { name: 'Ritmo Alto', desc: '+8 ritmo en rondas 1-3, -3 temple.' },
-        pressing: { name: 'Presión', desc: '+5 defensa y +4 ritmo en rondas 1-3. Posibilidad de contra.' },
-        possession: { name: 'Posesión', desc: '+6 visión y +4 temple en rondas 1-3.' },
-        counter: { name: 'Emboscada al Contra', desc: '+8 defensa, +4 ritmo en rondas 1-3, -2 ataque. Bonus de salida.' },
-        flank_play: { name: 'Juego por Bandas', desc: '+5 ritmo y +5 ataque en rondas 1-3.' }
+        aggressive: { name: 'Inicio Agresivo', desc: '+18 ataque R1-3, -8 defensa. Presión total desde el primer silbato.' },
+        defensive: { name: 'Inicio Defensivo', desc: '+18 defensa R1-3, -8 ataque. Dejarles venir y golpear al contra.' },
+        balanced: { name: 'Equilibrado', desc: '+8 a TODAS las stats R1-3. Primera salida garantizada — nada de arranque frío.' },
+        tempo: { name: 'Ritmo Alto', desc: '+22 ritmo R1-3, -6 temple. Arrollar antes de que se asienten.' },
+        pressing: { name: 'Presión', desc: '+14 defensa, +10 ritmo R1-3. Su salida cae fuerte — pero aparecen huecos.' },
+        possession: { name: 'Posesión', desc: '+18 visión, +10 temple R1-3. Controlar el juego — una pérdida invita al contra.' },
+        counter: { name: 'Emboscada al Contra', desc: '+22 defensa, +10 ritmo, -6 ataque. Cada ataque rival fallido dispara un contra.' },
+        flank_play: { name: 'Juego por Bandas', desc: '+14 ritmo, +14 ataque R1-3. Anchos y rápidos desde el principio.' },
+        slow_burn: { name: 'Fuego Lento', desc: 'Castigar su paciencia: -4 ataque R1-2, luego +22 ataque R3. Primero adormecer.' },
+        shot_flood: { name: 'Lluvia de Disparos', desc: '+24 ataque R1-3. Cantidad sobre calidad — esperar fallos, forzar errores.' },
+        lockdown: { name: 'Candado', desc: '+28 defensa R1-3, -12 ataque, -8 ritmo. Ni encajar ni marcar.' },
+        mindgames: { name: 'Juegos Mentales', desc: '+14 visión, +10 temple. Rival -6 temple R1-3. Meterse en sus cabezas.' },
+        underdog: { name: 'Modo Outsider', desc: 'Solo ante rivales muy superiores: +14 a TODAS las stats R1-6. El equipo se crece.' },
+        favorite: { name: 'Chulería', desc: 'Solo si eres claro favorito: +10 visión, +6 ritmo, momentum más rápido. Jugar con desparpajo.' },
+        wet_start: { name: 'Absorber y Golpear', desc: 'R1-2 defensa pura, luego R3 explosión: +24 ataque al saque de la ronda 3.' },
+        chaos: { name: 'Fútbol Caótico', desc: 'Cada ronda: +20 a una stat aleatoria, -10 a dos. Alta varianza — aceptarlo.' },
+        zone_defense: { name: 'Defensa en Zona', desc: '+12 defensa, +12 temple, -5 ritmo R1-3. Estructurada, no agresiva. Entre presión y candado.' },
+        quick_strike: { name: 'Golpe Rápido', desc: 'R1: +30 ataque explosivo. R2-3: +5 a todas las stats. Primero explosión, luego medido.' },
+        disciplined: { name: 'Disciplinado', desc: '+10 a todas las stats R1-3. Penalizaciones de forma negativa ignoradas — jugadores en crisis juegan normal.' },
+        read_the_room: { name: 'Leer el Partido', desc: '+15 visión, +10 temple, +8 defensa R1-3. Cabeza, no ritmo.' }
       },
       halftime: {
-        push: { name: 'Arriesgar', desc: '+8 ataque en rondas 4-6, -6 defensa.' },
-        stabilize: { name: 'Estabilizar', desc: '+6 defensa y +4 temple en rondas 4-6.' },
-        shift: { name: 'Reubicar', desc: 'Un jugador gana permanentemente +10 en su estadística clave.' },
-        rally: { name: 'Reacción', desc: '+3 ataque por cada gol recibido; +3 defensa por cada gol marcado. Más fuerte si vas perdiendo.' },
-        reset: { name: 'Reordenar', desc: '+5 a todas las estadísticas en rondas 4-6.' },
-        counter_h: { name: 'Ir al Contra', desc: '+10 ritmo y +5 defensa en rondas 4-6. Bonus de salida.' },
-        high_press: { name: 'Presión Alta', desc: '+8 defensa en rondas 4-6, -3 temple. Posibilidad de recuperar el balón.' },
-        vision_play: { name: 'Abrir el Juego', desc: '+8 visión y +4 ataque en rondas 4-6.' }
+        push: { name: 'Arriesgar', desc: '+20 ataque R4-6, -10 defensa. Si vas perdiendo, el bonus crece por cada gol.' },
+        stabilize: { name: 'Estabilizar', desc: '+18 defensa, +10 temple R4-6. Si vas ganando, el muro crece por cada gol.' },
+        shift: { name: 'Reubicar', desc: 'Un jugador gana ahora +18 permanente en su estadística clave.' },
+        rally: { name: 'Reacción', desc: '+6 ataque por gol recibido, +6 defensa por gol marcado. Enorme potencial de vuelco.' },
+        reset: { name: 'Reordenar', desc: '+12 a TODAS las stats R4-6. Borrar la pizarra — sin guion.' },
+        counter_h: { name: 'Ir al Contra', desc: '+24 ritmo, +14 defensa R4-6. Ataque rival fallido dispara un contra.' },
+        high_press: { name: 'Presión Alta', desc: '+22 defensa R4-6, -6 temple. Aprieta su salida — pero los huecos son reales.' },
+        vision_play: { name: 'Abrir el Juego', desc: '+22 visión, +10 ataque R4-6. Crear huecos y aprovecharlos.' },
+        shake_up: { name: 'Sacudida', desc: 'El jugador en peor forma sufre -5 permanente en todas sus stats. Equipo responde: +12 ataque R4-6.' },
+        lock_bus: { name: 'Cerrar el Autobús', desc: 'Solo si vas ganando: +30 defensa, -20 ataque R4-6. Impenetrable pero sin colmillos.' },
+        desperate: { name: 'Ataque Desesperado', desc: 'Solo con 2+ de desventaja: +32 ataque R4-6, -20 defensa. Portero a su suerte. Todo o nada.' },
+        role_switch: { name: 'Cambio de Rol', desc: 'LF y ST intercambian roles R4-6. +10 ritmo, +10 ataque, -8 visión. Nuevos ángulos de ataque.' },
+        coach_fire: { name: 'Bronca Apasionada', desc: 'Solo si vas perdiendo: próximo partido +1 forma de equipo, este +14 ataque R4-6. La rabia los mueve.' },
+        cold_read: { name: 'Leer el Juego', desc: 'Descifrar sus tácticas. +20 defensa, ataque rival -8 R4-6. Más listos, no más duros.' },
+        wingman: { name: 'Liberar al Extremo', desc: 'LF: +25 ritmo, +15 ataque personal. Equipo -4 temple. Riesgo del hombre-espectáculo.' },
+        mind_reset: { name: 'Reinicio Mental', desc: 'Borra todos los deltas de forma del equipo. Pizarra en blanco para R4-6 — sin lastre, sin impulso.' },
+        double_down: { name: 'Doblar la Apuesta', desc: 'Amplifica tu mayor bonus de equipo actual un +40%. Recompensa el impulso — sin efecto si no lo tienes.' },
+        tactical_foul: { name: 'Faltas Tácticas', desc: '+8 defensa, ritmo rival -12 durante 2 rondas. Interrumpir, no mejorarse.' },
+        wing_overload: { name: 'Sobrecarga en Banda', desc: 'LF: +20 ataque, +20 ritmo personal R4-6. Equipo -6 defensa. Espectáculo unipersonal.' },
+        shell_defense: { name: 'Defensa en Caparazón', desc: 'Solo con empate o ventaja: +24 defensa, +14 temple, -10 ataque R4-6. Preservar la situación.' }
       },
       final: {
-        all_in: { name: 'Todo o Nada', desc: 'Última ronda: +15 ataque, -15 defensa. Más fuerte si vas perdiendo.' },
-        park_bus: { name: 'Autobús', desc: 'Última ronda: +15 defensa, -10 ataque. Más fuerte si vas ganando.' },
-        hero_ball: { name: 'Héroe del Día', desc: 'El jugador con mejor forma gana +20 permanente en su estadística clave.' },
-        keep_cool: { name: 'Mantener la Calma', desc: 'Última ronda: +8 temple y +5 visión.' },
-        final_press: { name: 'Presión Final', desc: 'Última ronda: +10 ritmo y +8 defensa, -5 ataque. Alta probabilidad de contra.' },
-        long_ball: { name: 'Balón Largo', desc: 'Última ronda: +12 ataque, -5 visión.' },
-        midfield: { name: 'Control del Medio', desc: 'Última ronda: +8 visión, +6 ritmo, +6 temple.' },
-        sneaky: { name: 'Emboscada', desc: 'Última ronda: +12 defensa, +8 ritmo, -8 ataque.' },
-        sacrifice: { name: 'Sacrificio', desc: 'Un jugador pierde 15 de su estadística clave de forma permanente. Equipo: +25 ataque ahora mismo.' }
+        all_in: { name: 'Todo o Nada', desc: 'Última ronda: +15 ataque, -15 defensa. Crece si vas perdiendo. Completamente abiertos atrás.' },
+        park_bus: { name: 'Autobús', desc: 'Última ronda: +15 defensa, -10 ataque. Crece por cada gol de ventaja.' },
+        hero_ball: { name: 'Héroe del Día', desc: 'Jugador en mejor forma gana ahora +30 permanente en su estadística clave.' },
+        keep_cool: { name: 'Mantener la Calma', desc: 'Última ronda: +20 temple, +12 visión. Nervios de acero.' },
+        final_press: { name: 'Presión Final', desc: 'Última ronda: +24 ritmo, +18 defensa, -10 ataque. Alta probabilidad de contra.' },
+        long_ball: { name: 'Balón Largo', desc: 'Última ronda: +28 ataque, -10 visión. Directo y duro.' },
+        midfield: { name: 'Control del Medio', desc: 'Última ronda: +20 visión, +16 ritmo, +14 temple.' },
+        sneaky: { name: 'Emboscada', desc: 'Última ronda: +28 defensa, +18 ritmo, -14 ataque. Atraer y saltar.' },
+        sacrifice: { name: 'Sacrificio', desc: 'Un jugador pierde 15 de stat clave permanentemente. Equipo: ahora +35 ataque.' },
+        kamikaze: { name: 'Kamikaze', desc: 'Solo si vas perdiendo: +40 ataque, -40 defensa. Portero expuesto. A esperar y rezar.' },
+        clockwatch: { name: 'Esperar el Reloj', desc: 'Solo si vas ganando: +25 defensa, +18 temple. Dejar que el tiempo trabaje por ti.' },
+        poker: { name: 'Cara de Póker', desc: 'Solo con empate: +15 a cada una de las stats. Clutch puro — todo en juego.' },
+        lone_wolf: { name: 'Lobo Solitario', desc: 'Delantero: +40 ataque, +20 ritmo personal. Resto: -6 ataque. Un tiro, un gol.' },
+        fortress: { name: 'Fortaleza', desc: 'TW/VT: +40 defensa. Equipo -20 ataque. Convertir la portería en un búnker.' },
+        gamble: { name: 'Apuesta', desc: 'Cara o cruz: +35 ataque si cara, -15 a todas las stats si cruz. Caos puro.' },
+        masterclass: { name: 'Clase Magistral', desc: 'PM: +30 visión, +20 temple personal. Equipo +12 ataque. Dejar dirigir al maestro.' },
+        rope_a_dope: { name: 'Cuerda Rota', desc: 'Solo R6: +35 defensa. Cada ataque rival dispara un auto-contra. Atraer, luego golpear.' },
+        set_piece: { name: 'Maestro de Jugadas', desc: 'R6: +25 ataque, pero SOLO en ataques tras salida exitosa. Agudeza quirúrgica.' },
+        siege_mode: { name: 'Modo Asedio', desc: 'R6: +20 ataque, +10 ritmo, +10 visión. Presión limpia sin penalización.' },
+        bus_and_bike: { name: 'Autobús y Bicicleta', desc: 'R6: +18 defensa. Cada parada/stop carga +30 ataque en tu próximo balón.' },
+        face_pressure: { name: 'Afrontar la Presión', desc: 'R6: +25 temple, tiros rivales -8% precisión. Nervios clutch bajo los focos.' }
       }
     },
     teamNamePools: {
@@ -450,7 +867,8 @@ I18N.registerLocale('es', {
       clutch_opp: { name: 'Sangre Fría', desc: 'Últimas 2 rondas: +10 ataque, +5 ritmo.' },
       lucky: { name: 'Afortunados', desc: 'Una vez por partido: ataque extra aleatorio.' },
       ironwall: { name: 'Muro de Hierro', desc: 'Primeras 2 rondas: +10 defensa.' },
-      sniper: { name: 'Francotirador', desc: '+15% de precisión, pero -5 ritmo.' }
+      sniper: { name: 'Francotirador', desc: '+15% de precisión, pero -5 ritmo.' },
+      boss_aura: { name: 'Presencia Dominante', desc: 'Aura exclusiva de jefes: todos los jugadores rivales reciben un bonus permanente de estadísticas en cada ronda.' }
     },
     legendaryTraits: {
       god_mode: { name: 'Modo Dios', desc: 'Una vez por partido: el siguiente gol vale triple.' },

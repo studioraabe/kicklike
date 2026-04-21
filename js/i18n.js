@@ -27,14 +27,25 @@
     return registry[currentLang] || registry.en || Object.values(registry)[0] || {};
   }
 
+  // Zweistufiger Lookup: zuerst aktuelle Locale, dann Englisch als Fallback.
+  // Das verhindert, dass Nutzer in DE/ES rohe Key-Pfade sehen, wenn eine
+  // Übersetzung fehlt.
+  function resolvePath(path) {
+    let value = getPath(locale(), path);
+    if (value == null && currentLang !== 'en' && registry.en) {
+      value = getPath(registry.en, path);
+    }
+    return value;
+  }
+
   function t(path, vars = {}) {
-    const value = getPath(locale(), path);
+    const value = resolvePath(path);
     if (value == null) return path;
     return format(value, vars);
   }
 
   function list(path) {
-    const value = getPath(locale(), path);
+    const value = resolvePath(path);
     return Array.isArray(value) ? value : [];
   }
 
@@ -98,7 +109,6 @@
       team.name = translated.name;
       team.theme = translated.theme;
       team.desc = translated.desc;
-      team.difficultyLabel = translated.difficultyLabel;
     });
 
     data.opponents.prefixes = list('data.opponents.prefixes');
