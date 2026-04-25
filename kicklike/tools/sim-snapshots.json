@@ -1,0 +1,212 @@
+{
+  "starter-pressing-vs-amateur": {
+    "final": {
+      "me": 1,
+      "opp": 2
+    },
+    "rounds": 6,
+    "stats": {
+      "myShots": 3,
+      "myShotsOnTarget": 2,
+      "myBuildups": 6,
+      "myBuildupsOk": 3,
+      "oppShots": 3,
+      "oppShotsOnTarget": 2,
+      "oppBuildups": 7
+    },
+    "triggers": 0,
+    "finalMomentum": -7,
+    "squadConditions": [
+      {
+        "role": "TW",
+        "cond": 65
+      },
+      {
+        "role": "VT",
+        "cond": 56
+      },
+      {
+        "role": "PM",
+        "cond": 50
+      },
+      {
+        "role": "LF",
+        "cond": 50
+      },
+      {
+        "role": "ST",
+        "cond": 47
+      }
+    ],
+    "oppPower": 282,
+    "result": "loss"
+  },
+  "starter-possession-vs-amateur": {
+    "final": {
+      "me": 8,
+      "opp": 2
+    },
+    "rounds": 6,
+    "stats": {
+      "myShots": 11,
+      "myShotsOnTarget": 9,
+      "myBuildups": 13,
+      "myBuildupsOk": 11,
+      "oppShots": 2,
+      "oppShotsOnTarget": 2,
+      "oppBuildups": 6
+    },
+    "triggers": 0,
+    "finalMomentum": 70,
+    "squadConditions": [
+      {
+        "role": "TW",
+        "cond": 65
+      },
+      {
+        "role": "VT",
+        "cond": 56
+      },
+      {
+        "role": "PM",
+        "cond": 45
+      },
+      {
+        "role": "LF",
+        "cond": 50
+      },
+      {
+        "role": "ST",
+        "cond": 47
+      }
+    ],
+    "oppPower": 282,
+    "result": "win"
+  },
+  "starter-konter-vs-amateur-aggressive": {
+    "final": {
+      "me": 0,
+      "opp": 2
+    },
+    "rounds": 6,
+    "stats": {
+      "myShots": 3,
+      "myShotsOnTarget": 3,
+      "myBuildups": 6,
+      "myBuildupsOk": 3,
+      "oppShots": 3,
+      "oppShotsOnTarget": 2,
+      "oppBuildups": 6
+    },
+    "triggers": 0,
+    "finalMomentum": -37,
+    "squadConditions": [
+      {
+        "role": "TW",
+        "cond": 65
+      },
+      {
+        "role": "VT",
+        "cond": 56
+      },
+      {
+        "role": "PM",
+        "cond": 50
+      },
+      {
+        "role": "LF",
+        "cond": 50
+      },
+      {
+        "role": "ST",
+        "cond": 47
+      }
+    ],
+    "oppPower": 289,
+    "result": "loss"
+  },
+  "starter-konter-vs-pro-defensive": {
+    "final": {
+      "me": 0,
+      "opp": 2
+    },
+    "rounds": 6,
+    "stats": {
+      "myShots": 0,
+      "myShotsOnTarget": 0,
+      "myBuildups": 5,
+      "myBuildupsOk": 0,
+      "oppShots": 4,
+      "oppShotsOnTarget": 2,
+      "oppBuildups": 7
+    },
+    "triggers": 0,
+    "finalMomentum": -37,
+    "squadConditions": [
+      {
+        "role": "TW",
+        "cond": 65
+      },
+      {
+        "role": "VT",
+        "cond": 56
+      },
+      {
+        "role": "PM",
+        "cond": 50
+      },
+      {
+        "role": "LF",
+        "cond": 50
+      },
+      {
+        "role": "ST",
+        "cond": 47
+      }
+    ],
+    "oppPower": 670,
+    "result": "loss"
+  },
+  "starter-pressing-vs-boss": {
+    "final": {
+      "me": 0,
+      "opp": 2
+    },
+    "rounds": 6,
+    "stats": {
+      "myShots": 1,
+      "myShotsOnTarget": 0,
+      "myBuildups": 4,
+      "myBuildupsOk": 1,
+      "oppShots": 2,
+      "oppShotsOnTarget": 2,
+      "oppBuildups": 6
+    },
+    "triggers": 0,
+    "finalMomentum": -45,
+    "squadConditions": [
+      {
+        "role": "TW",
+        "cond": 65
+      },
+      {
+        "role": "VT",
+        "cond": 56
+      },
+      {
+        "role": "PM",
+        "cond": 46
+      },
+      {
+        "role": "LF",
+        "cond": 46
+      },
+      {
+        "role": "ST",
+        "cond": 47
+      }
+    ],
+    "oppPower": 712,
+    "result": "loss"
+  }
+}

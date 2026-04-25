@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KICKLIKE · 5-Mann-Football-Roguelite</title>
+<link rel="icon" type="image/png" href="./assets/favicon.png">
+<link rel="apple-touch-icon" href="./assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=VT323&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<div id="app">
+
+
+  <div id="screen-start" class="screen active">
+    <div class="menu-screen start-screen">
+      <div class="start-hero">
+        <h1>KICKLIKE</h1>
+        <div class="tagline" data-i18n="ui.start.tagline"></div>
+        <div class="sub" data-i18n="ui.start.sub"></div>
+      </div>
+      <div class="menu-actions">
+        <button class="btn primary" onclick="FLOW.newRun()" data-i18n="ui.start.newRun"></button>
+        <button class="btn" onclick="UI.openCodex()" data-i18n="ui.start.openCodex"></button>
+      </div>
+      <div class="menu-lang">
+        <button class="btn" type="button" data-lang="en">EN</button>
+        <button class="btn" type="button" data-lang="de">DE</button>
+        <button class="btn" type="button" data-lang="es">ES</button>
+      </div>
+      <div class="hint menu-howto">
+        <b data-i18n="ui.start.howTitle"></b>
+        <span data-i18n="ui.start.howBody"></span>
+        <a href="#" class="menu-howto-link" onclick="UI.openManual(); return false;" data-i18n="ui.start.openManual"></a>
+      </div>
+      <!-- Highscore moved to the bottom — secondary info, not the
+           first thing the player sees on the menu. -->
+      <div id="start-highscore" class="menu-highscore"></div>
+      <!-- Build footer — version label + changelog link. Tiny, muted,
+           sits below the highscore line. Version string is populated
+           from KL.VERSION by UI.renderStart() so the HTML stays static
+           across releases. -->
+      <div class="menu-footer">
+        <span class="menu-footer-version">v<span id="footer-version">–</span></span>
+        <span class="menu-footer-channel" id="footer-channel" style="display:none"></span>
+        <span class="menu-footer-sep">·</span>
+        <a href="#" class="menu-footer-link" onclick="UI.openChangelog(); return false;" data-i18n="ui.start.changelog"></a>
+        <!-- Telemetry control — hidden by default, surfaced only when
+             test-run recording is on (enabled via ?telemetry=1 URL param
+             or via KL.telemetry.setEnabled(true) in the console). -->
+        <span class="menu-footer-sep menu-footer-telemetry-only" style="display:none">·</span>
+        <a href="#" class="menu-footer-link menu-footer-telemetry-only" id="footer-telemetry-link"
+           style="display:none"
+           onclick="UI.downloadTelemetry(); return false;"></a>
+        <span class="menu-footer-sep menu-footer-telemetry-only" style="display:none">·</span>
+        <a href="#" class="menu-footer-link menu-footer-telemetry-only" id="footer-telemetry-off"
+           style="display:none"
+           onclick="UI.toggleTelemetry(false); return false;">REC OFF</a>
+      </div>
+    </div>
+  </div>
+
+  <div id="screen-draft" class="screen">
+    <h2 style="color:var(--accent); margin-bottom:8px;" data-i18n="ui.draft.title"></h2>
+    <p class="dim" style="margin-bottom:16px;" data-i18n="ui.draft.body"></p>
+    <div id="draft-grid" class="draft-grid"></div>
+  </div>
+
+  <div id="screen-hub" class="screen">
+    <!-- Zone A: Chrome (Run-Status, ruhig, klein) -->
+    <div class="hub-chrome">
+      <div class="chrome-match"><span id="hub-mode-label" class="chrome-mode-label"></span>MATCH <b id="hub-match-num">1</b><span class="chrome-dim">/<span id="hub-match-total">15</span></span></div>
+      <div class="chrome-record">
+        <span class="chrome-rec-cell"><b id="hub-wins">0</b>W</span>
+        <span class="chrome-rec-cell"><b id="hub-losses">0</b>L</span>
+        <span class="chrome-rec-cell accent"><b id="hub-points">0</b>PTS</span>
+      </div>
+    </div>
+    <!-- Zone-B-Warnings (Sperren, Karten) — v0.47: über der Match-
+         Progression, nicht mehr zwischen Anchor und Accordion. Warnungen
+         sollen früh im Lesefluss gesehen werden, nicht beim Scrollen
+         verschwinden. -->
+    <div id="hub-alerts"></div>
+    <div class="run-progress" id="run-progress"></div>
+
+    <!-- Zone B: Das Bild vom Match (der Anker) -->
+    <div class="hub-anchor" id="hub-anchor"></div>
+
+    <!-- Run-Chips removed from between anchor and accordion in v52.2.
+         The per-run dopamine counters (traits fired, goals, evos, win
+         streak) now live inside a Stats accordion section below, with
+         the hottest number surfaced in the section's always-visible
+         meta line so the ambient progress feedback isn't lost. -->
+
+    <!-- Zone C: Accordion with three sections. One open at a time; last
+         picked is remembered in localStorage. Cuts vertical scroll in half
+         compared to the old always-expanded layout. -->
+    <div class="hub-accordion" id="hub-accordion">
+      <div class="hub-acc-section" data-section="squad">
+        <div class="hub-acc-head" onclick="UI.hubAccOpen('squad')">
+          <span class="hub-acc-label" data-i18n="ui.hub.squad"></span>
+          <span class="hub-acc-meta" id="hub-acc-squad-meta"></span>
+          <span class="hub-acc-arrow">▾</span>
+        </div>
+        <div class="hub-acc-body">
+          <div class="squad-display" id="hub-squad"></div>
+        </div>
+      </div>
+
+      <div class="hub-acc-section" data-section="deck" id="hub-acc-deck-section" style="display:none;">
+        <div class="hub-acc-head" onclick="UI.hubAccOpen('deck')">
+          <span class="hub-acc-label" data-i18n="ui.hub.deck"></span>
+          <span class="hub-acc-meta" id="hub-acc-deck-meta"></span>
+          <span class="hub-acc-arrow">▾</span>
+        </div>
+        <div class="hub-acc-body">
+          <div class="hub-deck-panel-inline" id="hub-deck-panel-inline"></div>
+        </div>
+      </div>
+
+      <!-- Stats section (v52.2) — absorbs what used to be the hub-run-chips
+           row. Meta line always shows the top dopamine counter so the peek
+           is preserved; clicking expands a grid with the full run summary
+           (W/D/L, goal diff, trait fires, evos, best streak). -->
+      <div class="hub-acc-section" data-section="stats">
+        <div class="hub-acc-head" onclick="UI.hubAccOpen('stats')">
+          <span class="hub-acc-label" data-i18n="ui.hub.stats"></span>
+          <span class="hub-acc-meta" id="hub-acc-stats-meta"></span>
+          <span class="hub-acc-arrow">▾</span>
+        </div>
+        <div class="hub-acc-body">
+          <div class="hub-stats-grid" id="hub-stats-grid"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" onclick="FLOW.openLineup()" data-i18n="ui.hub.lineup"></button>
+      <button class="btn" id="hub-quick-sim-btn" onclick="FLOW.startQuickSim()" style="display:none;" data-i18n="ui.hub.quickSim"></button>
+      <button class="btn primary" onclick="FLOW.startMatch()" data-i18n="ui.hub.startMatch"></button>
+    </div>
+  </div>
+
+  <div id="screen-lineup" class="screen">
+    <div class="topbar">
+      <div class="logo" data-i18n="ui.lineup.title"></div>
+      <div class="meta">
+        <span class="mono-sm" data-i18n="ui.lineup.tapToSwap"></span>
+      </div>
+    </div>
+    <div class="swap-hint" id="lineup-hint" data-i18n="ui.lineup.defaultHint"></div>
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-title"><span data-i18n="ui.lineup.starters"></span> <span class="mono-sm" style="float:right;">5</span></div>
+      <div class="lineup-slots" id="lineup-starters"></div>
+    </div>
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-title"><span data-i18n="ui.lineup.bench"></span> <span class="mono-sm" style="float:right;" id="bench-count">0</span></div>
+      <div class="lineup-bench" id="lineup-bench"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn" onclick="FLOW.closeLineup()" data-i18n="ui.lineup.done"></button>
+    </div>
+  </div>
+
+  <div id="screen-recruit" class="screen">
+    <div class="recruit-intro">
+      <h1 data-i18n="ui.recruit.title"></h1>
+      <div class="pixel" data-i18n="ui.recruit.subtitle"></div>
+      <p class="dim" style="margin-top:12px;" data-i18n="ui.recruit.body"></p>
+    </div>
+    <div class="squad-display" id="recruit-options"></div>
+    <div class="btn-row" style="justify-content:center;">
+      <button class="btn" onclick="FLOW.skipRecruit()" data-i18n="ui.recruit.decline"></button>
+    </div>
+  </div>
+
+  <!-- Card draft: post-match deck shaping. Alternates between ADD (pick
+       from 3 uncommons to append) and REMOVE (pick from your deck to
+       thin). Small screen, fast decision, real stakes. -->
+  <div id="screen-card-draft" class="screen">
+    <div class="recruit-intro">
+      <h1 id="cd-title"></h1>
+      <p class="dim" id="cd-subtitle" style="margin-top:12px;"></p>
+    </div>
+    <div class="card-draft-options" id="card-draft-options"></div>
+    <div class="btn-row" style="justify-content:center;">
+      <button class="btn" onclick="FLOW.skipCardDraft()" id="cd-skip-btn"></button>
+    </div>
+  </div>
+
+  <div id="screen-match" class="screen">
+    <div class="match-header">
+      <div class="team-name me" id="match-me-name">-</div>
+      <div class="score">
+        <span id="score-me">0</span>
+        <span class="vs">:</span>
+        <span id="score-opp">0</span>
+      </div>
+      <div class="team-name opp" id="match-opp-name">-</div>
+      <div class="round-indicator" id="round-indicator"></div>
+    </div>
+    <!-- Active card effects: delayed payoffs, multi-round buffs, absorbed
+         telegraphs — removed as a visual chip row in v52.5. Those events
+         now surface as log lines only, keeping the match screen above the
+         log focused on score + momentum + player tiles. -->
+    <div class="match-momentum" id="match-momentum">
+      <div class="mom-bar">
+        <div class="mom-fill mom-me" id="mom-fill-me"></div>
+        <div class="mom-fill mom-opp" id="mom-fill-opp"></div>
+        <div class="mom-center"></div>
+      </div>
+      <div class="mom-info">
+        <div class="mom-chips">
+          <span class="mom-chip mom-chip-edge"   id="mom-chip-edge"></span>
+          <span class="mom-chip mom-chip-threat" id="mom-chip-threat"></span>
+        </div>
+        <!-- Stat deltas consolidated into card-phase stat-diff strip
+             below — single source of truth for "how do we stack vs opp."
+             Keeping only EDGE/THREAT chips here for matchup identity. -->
+        <div class="mom-cause" id="mom-cause"></div>
+      </div>
+    </div>
+    <div class="match-pulse" id="match-pulse"></div>
+    <!-- Log wrapper: hosts the log itself plus the pinned OPP THREAT banner
+         that sits on top while an intent is loaded. The wrapper carries the
+         frame so the threat reads as part of the log area (not as a floating
+         chip), and the log's innerHTML-reset on match-start can't wipe the
+         pinned banner since it lives as a sibling above the log. -->
+    <div class="match-log-wrap">
+      <div class="cp-intent" id="cp-intent"></div>
+      <div class="match-log" id="match-log"></div>
+    </div>
+
+    <!-- Card-phase UI: inline, non-modal. Shown on round-start, hidden
+         after End Turn. Gated by CONFIG.cardsEnabled. -->
+    <div class="card-phase" id="card-phase">
+      <div class="card-phase-bar">
+        <div class="cp-left">
+          <div class="cp-energy" id="cp-energy"></div>
+          <div class="cp-counts">
+            <span class="cp-count"><b id="cp-deck-count">0</b> <span data-i18n="ui.cards.deckLabel">DECK</span></span>
+            <span class="cp-count dim"><b id="cp-discard-count">0</b> <span data-i18n="ui.cards.discardLabel">DISC</span></span>
+          </div>
+        </div>
+        <div class="cp-right">
+          <div class="cp-tags" id="cp-tags"></div>
+          <button class="btn cp-mulligan" id="cp-mulligan-btn" data-i18n="ui.cards.mulliganBtn" style="display:none" title="Discard hand, draw a fresh one. Once per match, round 1 only, BEFORE you play any card.">MULLIGAN</button>
+          <button class="btn cp-end" id="cp-end-btn" data-i18n="ui.cards.endTurn">END TURN</button>
+        </div>
+      </div>
+      <!-- Situation frame: replaces old modal events. Inline banner with
+           icon + narrative + mechanical effect + response hint. -->
+      <div class="cp-frame" id="cp-frame" style="display:none"></div>
+      <!-- Compact stat-diff strip: shows my-vs-opp deltas so the player
+           can pick cards that address the actual gap. Top 3 by |diff|. -->
+      <div class="cp-stat-diffs" id="cp-stat-diffs"></div>
+      <div class="card-hand" id="card-hand"></div>
+    </div>
+
+    <div style="margin-top:12px; text-align:center; display:flex; gap:8px; justify-content:center;">
+      <button class="btn" id="match-pause-btn" onclick="FLOW.togglePause()" data-i18n="ui.match.pause"></button>
+      <button class="btn" id="match-speed-btn" onclick="FLOW.toggleSpeed()" data-i18n="ui.match.speed"></button>
+    </div>
+  </div>
+
+  <div id="screen-result" class="screen">
+    <div id="result-content"></div>
+  </div>
+
+  <div id="screen-gameover" class="screen">
+    <div class="menu-screen result-big">
+      <h1 class="loss" data-i18n="ui.gameover.title"></h1>
+      <div class="pixel menu-victory-tagline" id="gameover-tagline"></div>
+      <div id="gameover-summary" class="menu-victory-summary"></div>
+      <div class="menu-actions">
+        <button class="btn primary" onclick="FLOW.newRun()" data-i18n="ui.start.newRun"></button>
+      </div>
+    </div>
+  </div>
+
+  <div id="screen-victory" class="screen">
+    <div class="menu-screen result-big">
+      <h1 class="win">CHAMPION!</h1>
+      <div class="pixel menu-victory-tagline" id="victory-tagline"></div>
+      <div id="victory-summary" class="menu-victory-summary"></div>
+      <div class="menu-actions" id="victory-actions">
+        <button class="btn primary" onclick="FLOW.newRun()" data-i18n="ui.start.newRun"></button>
+      </div>
+    </div>
+  </div>
+
+  <div id="screen-codex" class="screen">
+    <div class="codex-page">
+      <div class="codex-header">
+        <button class="btn codex-back" onclick="UI.closeCodex()" data-i18n="ui.codex.back"></button>
+        <h1 class="codex-title" data-i18n="ui.codex.title"></h1>
+      </div>
+      <div class="codex-tabs">
+        <button class="codex-tab active" data-codex-tab="achievements" onclick="UI.switchCodexTab('achievements')" data-i18n="ui.codex.tabs.achievements"></button>
+        <button class="codex-tab" data-codex-tab="cards" onclick="UI.switchCodexTab('cards')" data-i18n="ui.codex.tabs.cards"></button>
+        <button class="codex-tab" data-codex-tab="legendaries" onclick="UI.switchCodexTab('legendaries')" data-i18n="ui.codex.tabs.legendaries"></button>
+      </div>
+      <div class="codex-progress" id="codex-progress"></div>
+      <div class="codex-content" id="codex-content"></div>
+    </div>
+  </div>
+</div>
+
+<div class="interrupt-overlay" id="interrupt-overlay">
+  <div class="interrupt-modal" id="interrupt-modal"></div>
+</div>
+
+<!--
+  Script load order reflects the KL namespace dependency graph.
+  Anything earlier in the list must not depend on anything later.
+
+    1. version        — KL.VERSION constant (must load before persistence)
+    2. telemetry      — test-run recorder; opt-in, no-op by default
+    3. i18n           — sets up I18N so config-data can call decorateConfigData
+    4. lang/*         — register locales into I18N
+    5. util           — foundation helpers (RNG, DOM, i18n shortcuts)
+    6. config-data    — static data + highscore (runs decorateConfigData)
+    7. state          — season/roster/session with legacy state proxy
+    8. persistence    — save/load across tab closes (reads/writes state)
+    9. stats          — team aggregations and stat computation
+   10. traits         — trigger registry + dispatcher, opp-trait effects
+   11. opp-moves      — opponent move declarations (needs traits hooks)
+   12. entities       — player/opponent factories (needs traits.OPP_TRAITS)
+   13. intel          — matchup intel + post-match trait report
+   14. narrative      — flavor-text generation (no deps beyond i18n)
+   15. engine         — match engine (needs everything above)
+   16. decisions      — situative events + halftime focus/sub (needs engine)
+   17. achievements   — achievement registry + checks
+   18. fx             — visual effects (no deps)
+   19. cards          — card pool + handlers (needs engine, traits)
+   20. roles          — role helpers
+   21. league         — league/cup structure + scheduling
+   22. codex          — codex screen content builder
+   23. ui             — rendering (needs state + intel + engine + i18n)
+   24. tooltip        — generic tooltip controller (post-ui)
+   25. match-hud      — live-match HUD overlay (needs ui)
+   26. flow           — top-level screen flow + match orchestration (needs all)
+-->
+<script src="./js/version.js"></script>
+<script src="./js/telemetry.js"></script>
+<script src="./js/i18n.js"></script>
+<script src="./js/lang/de.js"></script>
+<script src="./js/lang/en.js"></script>
+<script src="./js/lang/es.js"></script>
+<script src="./js/util.js"></script>
+<script src="./js/config-data.js"></script>
+<script src="./js/state.js"></script>
+<script src="./js/persistence.js"></script>
+<script src="./js/stats.js"></script>
+<script src="./js/traits.js"></script>
+<script src="./js/opp-moves.js"></script>
+<script src="./js/entities.js"></script>
+<script src="./js/intel.js"></script>
+<script src="./js/narrative.js"></script>
+<script src="./js/engine.js"></script>
+<script src="./js/decisions.js"></script>
+<script src="./js/achievements.js"></script>
+<script src="./js/fx.js"></script>
+<script src="./js/cards.js"></script>
+<script src="./js/roles.js"></script>
+<script src="./js/league.js"></script>
+<script src="./js/codex.js"></script>
+<script src="./js/ui.js"></script>
+<script src="./js/tooltip.js"></script>
+<script src="./js/match-hud.js"></script>
+<script src="./js/flow.js"></script>
+
+<!-- Manual modal — in-depth reference. Opened from the start screen's
+     how-to line (detail link) and dismissable via close button or
+     overlay click. Content built by JS from I18N for lang-switch. -->
+<div id="manual-modal" class="modal-backdrop" style="display:none;" onclick="UI.closeManual(event)">
+  <div class="modal-panel manual-panel" onclick="event.stopPropagation()">
+    <div class="manual-head">
+      <h2 class="manual-title" data-i18n="ui.manual.title"></h2>
+      <button class="btn manual-close" onclick="UI.closeManual()" data-i18n="ui.manual.close"></button>
+    </div>
+    <div class="manual-body" id="manual-body"></div>
+  </div>
+</div>
+
+<!-- Changelog modal — player-facing release notes. Reachable via the
+     start-screen footer link. Content is a tight, player-relevant slice
+     of the full CHANGELOG.md (engine regression tests, internal refactors
+     and dev-only notes deliberately omitted). Rendered from I18N at open
+     time so language switch works. -->
+<div id="changelog-modal" class="modal-backdrop" style="display:none;" onclick="UI.closeChangelog(event)">
+  <div class="modal-panel manual-panel" onclick="event.stopPropagation()">
+    <div class="manual-head">
+      <h2 class="manual-title">
+        <span data-i18n="ui.changelog.title"></span>
+        <span class="manual-title-version" id="changelog-version-label"></span>
+      </h2>
+      <button class="btn manual-close" onclick="UI.closeChangelog()" data-i18n="ui.manual.close"></button>
+    </div>
+    <div class="manual-body" id="changelog-body"></div>
+  </div>
+</div>
+</body>
+</html>
